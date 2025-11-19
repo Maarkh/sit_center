@@ -217,3 +217,5 @@ def create_monthly_partition(self=None):
 @celery_app.task
 def healthcheck():
     return {"status": "ok"}
+
+
