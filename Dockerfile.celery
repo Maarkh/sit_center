@@ -1,0 +1,27 @@
+# Dockerfile.celery
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Установка системных зависимостей
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        postgresql-client \
+        && rm -rf /var/lib/apt/lists/*
+
+# Копируем зависимости
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем код приложения
+COPY . .
+
+# Убедимся, что файлы исполняемы
+RUN chmod +x wait-for-db-and-start.sh
+
+# Переменные окружения (временные, переопределятся в docker-compose)
+ENV PYTHONPATH=/app
+
+# Команда по умолчанию — будет переопределена в docker-compose
+CMD ["celery", "-A", "tasks.celery_app", "worker", "-l", "INFO", "--concurrency", "2"]

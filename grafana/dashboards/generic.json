@@ -1,0 +1,51 @@
+{
+  "dashboard": {
+    "title": "Situational Center — Generic",
+    "panels": [
+      {
+        "title": "$metric over $dimension",
+        "type": "timeseries",
+        "datasource": "PostgreSQL",
+        "targets": [
+          {
+            "rawSql": "SELECT\n  timestamp AS \"time\",\n  dimensions->>'$dimension' AS metric,\n  value\nFROM canonical_metrics\nWHERE\n  metric_name = '$metric'\n  AND $__timeFilter(timestamp)\nORDER BY 1",
+            "format": "time_series"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "title": "ML Anomalies",
+        "type": "stat",
+        "datasource": "PostgreSQL",
+        "targets": [
+          {
+            "rawSql": "SELECT\n  count(*) AS anomalies\nFROM ml_anomalies\nWHERE $__timeFilter(timestamp);"
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "metric",
+          "type": "query",
+          "datasource": "PostgreSQL",
+          "query": "SELECT DISTINCT metric_name FROM canonical_metrics",
+          "refresh": 2
+        },
+        {
+          "name": "dimension",
+          "type": "custom",
+          "query": "region,service,dc,env"
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}

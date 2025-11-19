@@ -1,0 +1,43 @@
+# api/Dockerfile.api — исправленная версия
+
+# Stage 1: сборка зависимостей
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+# Устанавливаем в /root/.local для builder
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Stage 2: production-образ
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos '' appuser
+
+# ИСПРАВЛЕНО: копируем из /root/.local в /home/appuser/.local
+COPY --from=builder /root/.local /home/appuser/.local
+
+USER appuser
+ENV PATH=/home/appuser/.local/bin:$PATH
+
+COPY --chown=appuser:appuser . .
+
+ENV MPLCONFIGDIR=/home/appuser/.matplotlib
+
+EXPOSE 8000
+
+COPY .env .
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

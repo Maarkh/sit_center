@@ -1,0 +1,36 @@
+name: Generate Project Documentation
+on:
+  push:
+    branches:
+      - master  # или любая другая нужная тебе ветка
+    paths:
+      - "**.py"
+      - ".gitignore"
+      - "requirements.txt"
+      - "generate_docs.py"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Generate documentation
+        run: |
+          python generate_docs.py
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "m.a.arkhipov@gmail.com"
+          git config --local user.name "Maarkh"
+          git add README.md
+          git diff-index --quiet HEAD || git commit -m "docs: auto-update project structure"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
