@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     # --- Redis ---
     REDIS_HOST: str = Field(..., env="REDIS_HOST") # type: ignore
     REDIS_PORT: int = Field(..., env="REDIS_PORT") # type: ignore
-    REDIS_DB: int = Field(..., env="REDIS_DB") # type: ignore
+    REDIS_DB: int = Field(0, env="REDIS_DB") # type: ignore
     REDIS_PASSWORD: Optional[str] = Field(None, env="REDIS_PASSWORD") # type: ignore
     REDIS_URL: Optional[str] = Field(None, env="REDIS_URL") # type: ignore
 
@@ -124,6 +124,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Игнорируем неизвестные поля
 
 
 settings = Settings() # type: ignore

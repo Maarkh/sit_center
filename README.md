@@ -95,6 +95,93 @@
 │   │   │   │   ├────── postgres.yaml
 │   │   │   ├── dashboards/
 │   │   │   │   ├────── dashboard.yml
+│   ├── .git/
+│   │   ├── info/
+│   │   ├── refs/
+│   │   │   ├── remotes/
+│   │   │   │   ├── origin/
+│   │   │   ├── tags/
+│   │   │   ├── heads/
+│   │   ├── objects/
+│   │   │   ├── 5e/
+│   │   │   ├── 77/
+│   │   │   ├── info/
+│   │   │   ├── ac/
+│   │   │   ├── 42/
+│   │   │   ├── 20/
+│   │   │   ├── ff/
+│   │   │   ├── 7e/
+│   │   │   ├── 4f/
+│   │   │   ├── 8e/
+│   │   │   ├── 5d/
+│   │   │   ├── b9/
+│   │   │   ├── 56/
+│   │   │   ├── 95/
+│   │   │   ├── 50/
+│   │   │   ├── 1d/
+│   │   │   ├── 33/
+│   │   │   ├── 7a/
+│   │   │   ├── 5f/
+│   │   │   ├── 7f/
+│   │   │   ├── 73/
+│   │   │   ├── ed/
+│   │   │   ├── 40/
+│   │   │   ├── c7/
+│   │   │   ├── c6/
+│   │   │   ├── e6/
+│   │   │   ├── e0/
+│   │   │   ├── b7/
+│   │   │   ├── be/
+│   │   │   ├── b4/
+│   │   │   ├── 4e/
+│   │   │   ├── ba/
+│   │   │   ├── f0/
+│   │   │   ├── 83/
+│   │   │   ├── c3/
+│   │   │   ├── 7b/
+│   │   │   ├── 04/
+│   │   │   ├── 99/
+│   │   │   ├── 28/
+│   │   │   ├── 4b/
+│   │   │   ├── 10/
+│   │   │   ├── 3c/
+│   │   │   ├── f6/
+│   │   │   ├── ea/
+│   │   │   ├── eb/
+│   │   │   ├── b5/
+│   │   │   ├── 0e/
+│   │   │   ├── 24/
+│   │   │   ├── 18/
+│   │   │   ├── 75/
+│   │   │   ├── 8d/
+│   │   │   ├── d3/
+│   │   │   ├── d0/
+│   │   │   ├── b8/
+│   │   │   ├── 0a/
+│   │   │   ├── 98/
+│   │   │   ├── a0/
+│   │   │   ├── 9a/
+│   │   │   ├── 55/
+│   │   │   ├── 11/
+│   │   │   ├── d2/
+│   │   │   ├── 31/
+│   │   │   ├── 05/
+│   │   │   ├── b0/
+│   │   │   ├── 74/
+│   │   │   ├── 5a/
+│   │   │   ├── f7/
+│   │   │   ├── fa/
+│   │   │   ├── 67/
+│   │   │   ├── 17/
+│   │   │   ├── pack/
+│   │   │   ├── b1/
+│   │   │   ├── 5b/
+│   │   │   ├── d7/
+│   │   │   ├── 71/
+│   │   │   ├── 6f/
+│   │   │   ├── 88/
+│   │   ├── logs/
+│   │   ├── hooks/
 │   ├── core/
 │   │   ├────── __init__.py
 │   │   ├────── alert_settings.py
@@ -141,7 +228,7 @@ RUN chmod +x wait-for-db-and-start.sh
 ENV PYTHONPATH=/app
 
 # Команда по умолчанию — будет переопределена в docker-compose
-CMD ["celery", "-A", "tasks.celery_app", "worker", "-l", "INFO", "-P", "eventlet"]
+CMD ["celery", "-A", "tasks.celery_app", "worker", "-l", "INFO", "--concurrency", "2"]
 ```
 ### 📄 `celery_app.py`
 
@@ -410,12 +497,11 @@ def get_redis():
 
 
 def close_redis():
-    """Корректное закрытие Redis соединения"""
     global _redis_client
     with _redis_lock:
         if _redis_client is not None:
             try:
-                _redis_client.close()
+                _redis_client.connection_pool.disconnect()
             except Exception:
                 pass
             _redis_client = None
@@ -508,7 +594,6 @@ def replay_dlq():
 ### 📄 `docker-compose.prod.yml`
 
 ```yaml
-# docker-compose.prod.yml
 version: '3.8'
 
 services:
@@ -523,7 +608,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db/migrations:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - app-network
     healthcheck:
@@ -542,9 +627,6 @@ services:
       - redis_data:/data
     networks:
       - app-network
-    # НЕ пробрасываем порт 6379 в проде:
-    # ports:
-    #  - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -552,38 +634,83 @@ services:
       retries: 3
 
   # ——— Airbyte ———
-  airbyte-server:
-    image: airbyte/server:latest
+  airbyte-db:
+    image: postgres:13
     environment:
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_USER=${POSTGRES_USER}
-      - DATABASE_HOST=db
-      - CONFIG_DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: airbyte
+    volumes:
+      - airbyte_db_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airbyte-temporal:
+    image: airbyte/temporal:${AIRBYTE_VERSION:-0.50.4}
+    environment:
+      - DB=postgresql
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=airbyte-db
+      - POSTGRES_DB=airbyte
     depends_on:
-      db:
+      airbyte-db:
         condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  airbyte-server:
+    image: airbyte/server:${AIRBYTE_VERSION:-0.50.4}
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airbyte-db:5432/airbyte
+      - CONFIG_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airbyte-db:5432/airbyte
+      - TEMPORAL_HOST=airbyte-temporal
+      - WORKSPACE_ROOT=/tmp/workspace
+      - LOCAL_ROOT=/tmp/workspace
+      - LOG_LEVEL=INFO
+    depends_on:
+      airbyte-db:
+        condition: service_healthy
+      airbyte-temporal:
+        condition: service_started
+    volumes:
+      - airbyte_workspace:/tmp/workspace
     networks:
       - app-network
     restart: unless-stopped
 
   airbyte-worker:
-    image: airbyte/worker:latest
+    image: airbyte/worker:${AIRBYTE_VERSION:-0.50.4}
     environment:
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_USER=${POSTGRES_USER}
-      - DATABASE_HOST=db
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airbyte-db:5432/airbyte
+      - TEMPORAL_HOST=airbyte-temporal
+      - WORKSPACE_ROOT=/tmp/workspace
+      - LOCAL_ROOT=/tmp/workspace
       - WORKER_ENVIRONMENT=docker
     depends_on:
-      db:
+      airbyte-db:
         condition: service_healthy
+      airbyte-temporal:
+        condition: service_started
+    volumes:
+      - airbyte_workspace:/tmp/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - app-network
     restart: unless-stopped
 
   airbyte-webapp:
-    image: airbyte/webapp:latest
+    image: airbyte/webapp:${AIRBYTE_VERSION:-0.50.4}
     ports:
       - "8001:80"
+    environment:
+      - API_URL=http://airbyte-server:8001
     depends_on:
       - airbyte-server
     networks:
@@ -649,7 +776,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.celery
-    command: ["celery", "-A", "tasks.celery_app", "worker", "-l", "INFO", "-P", "eventlet"]
+    command: >
+      celery -A tasks.celery_app worker
+      --loglevel=INFO
+      --concurrency=2
+      --max-tasks-per-child=100
+      --pool=prefork
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
@@ -661,7 +793,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "celery", "inspect", "ping", "-b", "redis://:${REDIS_PASSWORD}@redis:6379/0"]
+      test: ["CMD", "celery", "call", "tasks.healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -684,7 +816,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "celery", "inspect", "ping", "-b", "redis://:${REDIS_PASSWORD}@redis:6379/0"]
+      test: ["CMD", "celery", "call", "tasks.healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -692,7 +824,7 @@ services:
   # ——— Flower ———
   flower:
     image: mher/flower
-    command: ["--broker=redis://:${REDIS_PASSWORD}@redis:6379/0", "--port=5555"]
+    command: ["celery", "--broker=redis://:${REDIS_PASSWORD}@redis:6379/0", "flower", "--port=5555"]
     ports:
       - "5555:5555"
     depends_on:
@@ -700,16 +832,16 @@ services:
     networks:
       - app-network
 
-  # ——— i-doit (ITSM/CMDB) ———
-  idoit-mysql:
-    image: mysql:5.7
+  # ——— GLPI (IT Service Management) ———
+  glpi-db:
+    image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${GLPI_DB_NAME}
+      MYSQL_USER: ${GLPI_DB_USER}
+      MYSQL_PASSWORD: ${GLPI_DB_PASS}
     volumes:
-      - idoit_mysql_data:/var/lib/mysql
+      - glpi_mysql_data:/var/lib/mysql
     networks:
       - app-network
     healthcheck:
@@ -717,22 +849,23 @@ services:
       timeout: 20s
       retries: 10
 
-  idoit:
-    image: i-doit/i-doit:1.19
+  glpi:
+    image: glpi/glpi:latest
     environment:
-      DB_HOST: idoit-mysql
-      DB_NAME: ${IDOIT_DB_NAME}
-      DB_USER: ${IDOIT_DB_USER}
-      DB_PASS: ${IDOIT_DB_PASS}
-      ADMIN_PASS: ${IDOIT_ADMIN_PASS}
-      ITOOL_LICENSE_KEY: ""
+      - GLPI_DB_HOST=glpi-db
+      - GLPI_DB_NAME=${GLPI_DB_NAME}
+      - GLPI_DB_USER=${GLPI_DB_USER}
+      - GLPI_DB_PASSWORD=${GLPI_DB_PASS}
+      - GLPI_LANGUAGE=ru_RU
     ports:
       - "8080:80"
     depends_on:
-      idoit-mysql:
+      glpi-db:
         condition: service_healthy
     volumes:
-      - idoit_data:/var/www/html
+      - glpi_data:/var/www/html
+      - glpi_plugins:/var/www/html/plugins
+      - glpi_marketplace:/var/www/html/marketplace
     networks:
       - app-network
     restart: unless-stopped
@@ -745,8 +878,12 @@ volumes:
   postgres_data:
   redis_data:
   grafana_data:
-  idoit_mysql_data:
-  idoit_data:
+  airbyte_db_data:
+  airbyte_workspace:
+  glpi_mysql_data:
+  glpi_data:
+  glpi_plugins:
+  glpi_marketplace:
 ```
 ### 📄 `full_stack_architecture.txt`
 
@@ -1859,6 +1996,7 @@ from telegram_bot import send_alert_sync
 from celery.signals import task_failure
 from datetime import datetime, timezone
 from hashlib import md5
+from core.locking import global_lock
 
 def get_data_from_db(time_filter: str = "1h") -> pd.DataFrame:
     delta_map = {"1h": 1, "6h": 6, "24h": 24}
@@ -1989,75 +2127,83 @@ def handle_task_failure(sender=None, task_id=None, exception=None, traceback=Non
         
 @celery_app.task(name="tasks.create_monthly_partition", bind=True)
 def create_monthly_partition(self=None):
-    from sqlalchemy import text
-    from core.database import get_engine
-    from config import logger
-    from datetime import datetime, timedelta
-    import re
-    """
-    Создаёт партицию canonical_metrics_<YYYY_MM> на следующий месяц.
-    Использует безопасный EXECUTE format('%I', table_name) внутри DO $$ ... $$.
-    """
-    PARTITION_NAME_RE = re.compile(r"^canonical_metrics_\d{4}_\d{2}$")
-    engine = get_engine()
-    today = datetime.utcnow().date()
-    next_month = (today.replace(day=1) + timedelta(days=32)).replace(day=1)
-    start = next_month
-    end = (start + timedelta(days=32)).replace(day=1)
-    table_name = f"canonical_metrics_{next_month.strftime('%Y_%m')}"
-
-    # Валидация имени партиции
-    if not PARTITION_NAME_RE.match(table_name):
+    with global_lock("partition_create", timeout=10):
+        from sqlalchemy import text
+        from core.database import get_engine
         from config import logger
-        logger.error("Invalid partition name: %s", table_name)
-        return
+        from datetime import datetime, timedelta
+        import re
+        """
+        Создаёт партицию canonical_metrics_<YYYY_MM> на следующий месяц.
+        Использует безопасный EXECUTE format('%I', table_name) внутри DO $$ ... $$.
+        """
+        PARTITION_NAME_RE = re.compile(r"^canonical_metrics_\d{4}_\d{2}$")
+        engine = get_engine()
+        today = datetime.utcnow().date()
+        next_month = (today.replace(day=1) + timedelta(days=32)).replace(day=1)
+        start = next_month
+        end = (start + timedelta(days=32)).replace(day=1)
+        table_name = f"canonical_metrics_{next_month.strftime('%Y_%m')}"
 
-    # Используем безопасную проверку существования через to_regclass
-    create_sql = text("""
-    DO $$
-    BEGIN
-        IF to_regclass(:full_table_name) IS NULL THEN
-            EXECUTE format(
-                'CREATE TABLE %I PARTITION OF canonical_metrics FOR VALUES FROM (%L) TO (%L)',
-                :table_name,
-                :start_date,
-                :end_date
-            );
-        END IF;
-    END $$;
-    """)
+        # Валидация имени партиции
+        if not PARTITION_NAME_RE.match(table_name):
+            from config import logger
+            logger.error("Invalid partition name: %s", table_name)
+            return
 
-    # index creation as separate EXECUTE to avoid quoting issues
-    index_sql = text("""
-    DO $$
-    BEGIN
-        IF to_regclass(:idx_name) IS NULL THEN
-            EXECUTE format(
-                'CREATE INDEX IF NOT EXISTS %I ON %I (timestamp DESC)',
-                :index_on_table,
-                :table_name
-            );
-        END IF;
-    END $$;
-    """)
+        # Используем безопасную проверку существования через to_regclass
+        create_sql = text("""
+        DO $$
+        BEGIN
+            IF to_regclass(:full_table_name) IS NULL THEN
+                EXECUTE format(
+                    'CREATE TABLE %I PARTITION OF canonical_metrics FOR VALUES FROM (%L) TO (%L)',
+                    :table_name,
+                    :start_date,
+                    :end_date
+                );
+            END IF;
+        END $$;
+        """)
 
-    params = {
-        "full_table_name": f"public.{table_name}",
-        "table_name": table_name,
-        "start_date": start.strftime('%Y-%m-%d'),
-        "end_date": end.strftime('%Y-%m-%d'),
-        "idx_name": f"idx_{table_name}_ts",
-        "index_on_table": f"idx_{table_name}_ts"
-    }
+        # index creation as separate EXECUTE to avoid quoting issues
+        index_sql = text("""
+        DO $$
+        BEGIN
+            IF to_regclass(:idx_name) IS NULL THEN
+                EXECUTE format(
+                    'CREATE INDEX IF NOT EXISTS %I ON %I (timestamp DESC)',
+                    :index_on_table,
+                    :table_name
+                );
+            END IF;
+        END $$;
+        """)
 
-    with engine.begin() as conn:
-        # Создаем таблицу-партицию, если её нет
-        conn.execute(create_sql, params)
-        # Создаём индекс на партиции
-        conn.execute(index_sql, params)
+        params = {
+            "full_table_name": f"public.{table_name}",
+            "table_name": table_name,
+            "start_date": start.strftime('%Y-%m-%d'),
+            "end_date": end.strftime('%Y-%m-%d'),
+            "idx_name": f"idx_{table_name}_ts",
+            "index_on_table": f"idx_{table_name}_ts"
+        }
 
-    from config import logger
-    logger.info("✅ Partition %s ensured", table_name)
+        with engine.begin() as conn:
+            # Создаем таблицу-партицию, если её нет
+            conn.execute(create_sql, params)
+            # Создаём индекс на партиции
+            conn.execute(index_sql, params)
+
+        from config import logger
+        logger.info("✅ Partition %s ensured", table_name)
+    
+@celery_app.task
+def healthcheck():
+    return {"status": "ok"}
+
+
+
 ```
 ### 📄 `telegram_bot.py`
 

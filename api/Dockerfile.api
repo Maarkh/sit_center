@@ -15,6 +15,7 @@ COPY requirements.txt .
 # Устанавливаем в /root/.local для builder
 RUN pip install --user --no-cache-dir -r requirements.txt
 
+
 # Stage 2: production-образ
 FROM python:3.11-slim
 
@@ -25,6 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos '' appuser
+
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
 
 # ИСПРАВЛЕНО: копируем из /root/.local в /home/appuser/.local
 COPY --from=builder /root/.local /home/appuser/.local
