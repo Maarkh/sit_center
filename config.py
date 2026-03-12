@@ -160,6 +160,13 @@ class Settings(BaseSettings):
         extra = "ignore"  # Игнорируем неизвестные поля
 
 
+# Inject Vault secrets into env before Settings init (if VAULT_ENABLED=true)
+try:
+    from core.vault import inject_vault_secrets
+    inject_vault_secrets()
+except Exception:
+    pass
+
 settings = Settings() # type: ignore
 
 

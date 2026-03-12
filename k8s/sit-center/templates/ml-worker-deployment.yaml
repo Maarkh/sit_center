@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-ml-worker
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ml-worker
+spec:
+  replicas: {{ .Values.replicaCount.mlWorker }}
+  selector:
+    matchLabels:
+      {{- include "sit-center.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ml-worker
+  template:
+    metadata:
+      labels:
+        {{- include "sit-center.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ml-worker
+    spec:
+      containers:
+        - name: ml-worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - celery
+            - -A
+            - celery_app
+            - worker
+            - --queues=ml
+            - --loglevel=INFO
+            - --concurrency=1
+            - --max-tasks-per-child=10
+          env:
+            {{- include "sit-center.env" . | nindent 12 }}
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          resources:
+            {{- toYaml .Values.resources.mlWorker | nindent 12 }}

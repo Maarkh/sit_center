@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-celery-worker
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+    app.kubernetes.io/component: celery-worker
+spec:
+  replicas: {{ .Values.replicaCount.celeryWorker }}
+  selector:
+    matchLabels:
+      {{- include "sit-center.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: celery-worker
+  template:
+    metadata:
+      labels:
+        {{- include "sit-center.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: celery-worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - celery
+            - -A
+            - tasks.celery_app
+            - worker
+            - --loglevel=INFO
+            - --concurrency=2
+            - --max-tasks-per-child=100
+          env:
+            {{- include "sit-center.env" . | nindent 12 }}
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          resources:
+            {{- toYaml .Values.resources.celeryWorker | nindent 12 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-celery-beat
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+    app.kubernetes.io/component: celery-beat
+spec:
+  replicas: {{ .Values.replicaCount.celeryBeat }}
+  selector:
+    matchLabels:
+      {{- include "sit-center.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: celery-beat
+  template:
+    metadata:
+      labels:
+        {{- include "sit-center.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: celery-beat
+    spec:
+      containers:
+        - name: beat
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - celery
+            - -A
+            - tasks.celery_app
+            - beat
+            - --loglevel=INFO
+          env:
+            {{- include "sit-center.env" . | nindent 12 }}
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi

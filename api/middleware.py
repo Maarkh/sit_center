@@ -24,6 +24,43 @@ http_requests_in_progress = Gauge(
     ["method"],
 )
 
+# --- SQLAlchemy connection pool metrics ---
+
+sqlalchemy_pool_size = Gauge(
+    "sqlalchemy_pool_size",
+    "Number of connections currently in the pool (checked in + checked out)",
+)
+
+sqlalchemy_pool_checked_in = Gauge(
+    "sqlalchemy_pool_checked_in",
+    "Number of idle connections in the pool",
+)
+
+sqlalchemy_pool_checked_out = Gauge(
+    "sqlalchemy_pool_checked_out",
+    "Number of connections currently checked out (in use)",
+)
+
+sqlalchemy_pool_overflow = Gauge(
+    "sqlalchemy_pool_overflow",
+    "Current overflow connections beyond pool_size",
+)
+
+
+def collect_pool_metrics():
+    """Update SQLAlchemy pool gauges from the current engine's QueuePool."""
+    try:
+        from core.database import _engine
+        if _engine is None:
+            return
+        pool = _engine.pool
+        sqlalchemy_pool_size.set(pool.size())
+        sqlalchemy_pool_checked_in.set(pool.checkedin())
+        sqlalchemy_pool_checked_out.set(pool.checkedout())
+        sqlalchemy_pool_overflow.set(pool.overflow())
+    except Exception:
+        pass
+
 
 class PrometheusMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -35,6 +72,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
                 path = path.replace(segment, "{id}")
 
         http_requests_in_progress.labels(method=method).inc()
+        collect_pool_metrics()
         start = time.perf_counter()
         try:
             response = await call_next(request)

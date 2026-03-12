@@ -1,0 +1,107 @@
+# Default values for sit-center Helm chart
+
+replicaCount:
+  api: 2
+  celeryWorker: 2
+  mlWorker: 1
+  celeryBeat: 1
+
+image:
+  repository: situational-center/api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# -- External secrets (create manually or via ExternalSecrets operator)
+existingSecret: sit-center-secrets
+# Keys expected in secret:
+#   POSTGRES_PASSWORD, REDIS_PASSWORD, SECRET_KEY,
+#   ADMIN_PASSWORD, WEBHOOK_API_KEY, I_DOIT_API_KEY
+
+postgresql:
+  host: sit-center-postgresql
+  port: 5432
+  user: sit_center
+  database: sit_center
+
+redis:
+  host: sit-center-redis
+  port: 6379
+
+# -- Optional components
+kafka:
+  enabled: false
+  bootstrapServers: sit-center-kafka:9092
+
+clickhouse:
+  enabled: false
+  host: sit-center-clickhouse
+  port: 8123
+
+ldap:
+  enabled: false
+  url: "ldap://ldap:389"
+  baseDn: ""
+
+oidc:
+  enabled: false
+  issuerUrl: ""
+  clientId: ""
+  baseUrl: "https://sit-center.example.com"
+
+# -- Resource limits
+resources:
+  api:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  celeryWorker:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  mlWorker:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+# -- Autoscaling
+autoscaling:
+  api:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+
+# -- Ingress
+ingress:
+  enabled: true
+  className: nginx
+  host: sit-center.example.com
+  tls: true
+  secretName: sit-center-tls
+
+# -- Service
+service:
+  type: ClusterIP
+  port: 8000
+
+# -- Monitoring
+prometheus:
+  scrape: true
+  port: 8000
+  path: /metric
+
+# -- Vault integration (optional)
+vault:
+  enabled: false
+  address: "https://vault.example.com"
+  role: sit-center
+  secretPath: secret/data/sit-center
