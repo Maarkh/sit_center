@@ -18,7 +18,7 @@ from core.exceptions import (
 )
 
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
-from api.middleware import PrometheusMiddleware
+from api.middleware import PrometheusMiddleware, DeprecationMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import DatabaseError as SQLADatabaseError
@@ -38,6 +38,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"OIDC configuration failed: {e}")
 
+    # Configure OpenTelemetry tracing if enabled
+    try:
+        from core.tracing import setup_tracing
+        setup_tracing(app)
+    except Exception as e:
+        logger.warning(f"OpenTelemetry setup failed: {e}")
+
     asyncio.create_task(alert_stream_task())
     yield
     logger.info("🛑 Остановка API-сервера...")
@@ -47,14 +54,18 @@ app = FastAPI(
     description="REST API для управления ситуационным центром",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",        # Swagger UI
-    redoc_url="/redoc",      # ReDoc
-    openapi_url="/openapi.json"
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": True,
+    },
 )
 
 from starlette.middleware.sessions import SessionMiddleware
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 app.add_middleware(PrometheusMiddleware)
+app.add_middleware(DeprecationMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler) # type: ignore
 app.add_exception_handler(SituationalCenterError, situational_center_error_handler) # type: ignore
@@ -73,7 +84,22 @@ app.add_middleware(
 
 
 
-# Подключаем роутеры
+# API v1 — all business routes under /api/v1/ prefix
+API_V1_PREFIX = "/api/v1"
+app.include_router(metrics.router, prefix=API_V1_PREFIX)
+app.include_router(dimensions.router, prefix=API_V1_PREFIX)
+app.include_router(rules.router, prefix=API_V1_PREFIX)
+app.include_router(ml_configs.router, prefix=API_V1_PREFIX)
+app.include_router(alerts.router, prefix=API_V1_PREFIX)
+app.include_router(data.router, prefix=API_V1_PREFIX)
+app.include_router(webhooks.router, prefix=API_V1_PREFIX)
+app.include_router(admin.router, prefix=API_V1_PREFIX)
+app.include_router(incidents.router, prefix=API_V1_PREFIX)
+app.include_router(forecasts.router, prefix=API_V1_PREFIX)
+app.include_router(auth_routes.router, prefix=API_V1_PREFIX)
+app.include_router(audit_routes.router, prefix=API_V1_PREFIX)
+
+# Backward-compat: also mount without prefix for existing clients
 app.include_router(metrics.router)
 app.include_router(dimensions.router)
 app.include_router(rules.router)

@@ -8,22 +8,27 @@ from core.metadata_service import RuleDTO
 
 @pytest.fixture
 def mock_metadata_service():
-    with patch("api.routes.rules.get_metadata_service") as mock:
-        service = MagicMock()
-        mock.return_value = service
-        yield service
+    from api.main import app
+    from api.dependencies import get_metadata_service
+    service = MagicMock()
+    app.dependency_overrides[get_metadata_service] = lambda: service
+    yield service
+    app.dependency_overrides.pop(get_metadata_service, None)
 
 
 def _make_rule(rule_id=None, is_active=True):
-    return RuleDTO(
-        id=rule_id or uuid4(),
-        name="test_rule",
-        description="Test rule description",
-        condition={"metric": "cpu", "threshold": 90},
-        labels={"severity": "critical"},
-        actions={"notify": True},
-        is_active=is_active,
-    )
+    from datetime import datetime
+    mock = MagicMock()
+    mock.id = rule_id or uuid4()
+    mock.name = "test_rule"
+    mock.description = "Test rule description"
+    mock.condition = {"expr": "cpu > 90", "for": "1m", "eval": "1m"}
+    mock.labels = {"severity": "critical"}
+    mock.actions = [{"type": "notify", "config": {"channel": "telegram"}}]
+    mock.is_active = is_active
+    mock.created_at = datetime.now()
+    mock.updated_at = datetime.now()
+    return mock
 
 
 class TestListRules:
@@ -46,8 +51,11 @@ class TestListRules:
 class TestCreateRule:
     @patch("api.routes.rules.log_audit")
     def test_create_rule(self, mock_audit, api_client, auth_headers, mock_metadata_service):
+        import json as _json
+        from datetime import datetime
         rule_id = uuid4()
         mock_metadata_service.create_rule.return_value = rule_id
+        mock_metadata_service._deserialize_json.side_effect = lambda x: _json.loads(x) if isinstance(x, str) else x
 
         mock_engine = MagicMock()
         mock_metadata_service._get_engine.return_value = mock_engine
@@ -58,10 +66,12 @@ class TestCreateRule:
             "id": rule_id,
             "name": "new_rule",
             "description": "desc",
-            "condition": '{"metric": "test"}',
+            "condition": '{"expr": "cpu > 90", "for": "1m", "eval": "1m"}',
             "labels": '{"env": "prod"}',
-            "actions": '{"alert": true}',
+            "actions": '[{"type": "notify", "config": {"channel": "telegram"}}]',
             "is_active": True,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
         resp = api_client.post(
@@ -69,9 +79,9 @@ class TestCreateRule:
             json={
                 "name": "new_rule",
                 "description": "desc",
-                "condition": {"metric": "test"},
+                "condition": {"expr": "cpu > 90", "for": "1m", "eval": "1m"},
                 "labels": {"env": "prod"},
-                "actions": {"alert": True},
+                "actions": [{"type": "notify", "config": {"channel": "telegram"}}],
             },
             headers=auth_headers,
         )

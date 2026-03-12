@@ -27,8 +27,8 @@ def mask_secrets(s: str) -> str:
         s = str(s)
 
     # Redis/Postgres URLs: mask password between : and @
-    s = re.sub(r"(redis://[^:@]+:)([^@]+)(@)", r"\1***\3", s, flags=re.IGNORECASE)
-    s = re.sub(r"(postgres(?:ql)?://[^:@]+:)([^@]+)(@)", r"\1***\3", s, flags=re.IGNORECASE)
+    s = re.sub(r"(redis://[^:@]*:)([^@]+)(@)", r"\1***\3", s, flags=re.IGNORECASE)
+    s = re.sub(r"(postgres(?:ql)?://[^:@]*:)([^@]+)(@)", r"\1***\3", s, flags=re.IGNORECASE)
 
     # Telegram bot token: bot<id>:<token> -> bot<id>:***
     s = re.sub(r"(bot\d+:)[A-Za-z0-9_\-]+", r"\1***", s, flags=re.IGNORECASE)

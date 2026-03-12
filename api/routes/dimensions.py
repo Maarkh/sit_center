@@ -19,8 +19,8 @@ def create_dimension(
     current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
     try:
-        dim_key = service.create_dimension(data)  # type: ignore
-        dim = service.get_dimension(dim_key)
+        dim_key = service.create_dimension(data, tenant_id=current_user.tenant_id)  # type: ignore
+        dim = service.get_dimension(dim_key, tenant_id=current_user.tenant_id)
         if not dim:
             raise HTTPException(status_code=500, detail="Dimension created but not found")
         log_audit(current_user.username, current_user.tenant_id, "create", "dimension", resource_id=dim_key)
@@ -36,7 +36,7 @@ def list_dimensions(
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
-    return service.list_dimensions()
+    return service.list_dimensions(tenant_id=current_user.tenant_id)
 
 
 @router.get("/{dimension_key}", response_model=DimensionRead)
@@ -45,7 +45,7 @@ def get_dimension(
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
-    dim = service.get_dimension(dimension_key)
+    dim = service.get_dimension(dimension_key, tenant_id=current_user.tenant_id)
     if not dim:
         raise HTTPException(status_code=404, detail="Dimension not found")
     return dim

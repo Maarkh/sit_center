@@ -64,8 +64,18 @@ class MLConfigDTO:
 class MetadataService:
     def __init__(self):
         self._engine = None
-        self._cache = get_cache()
+        self.__cache = None
         self._logger = logger.getChild("metadata_service")
+
+    @property
+    def _cache(self):
+        if self.__cache is None:
+            self.__cache = get_cache()
+        return self.__cache
+
+    @_cache.setter
+    def _cache(self, value):
+        self.__cache = value
 
     def _get_engine(self):
         if self._engine is None:
@@ -91,17 +101,17 @@ class MetadataService:
 
     # --- CRUD: Metrics ---
 
-    def create_metric(self, dto: MetricDTO) -> str:
+    def create_metric(self, dto: MetricDTO, tenant_id: str = "default") -> str:
         with global_lock("metadata_metric_create", timeout=10):
             try:
                 engine = self._get_engine()
                 query = text("""
                     INSERT INTO metadata_metrics (
                         metric_name, display_name, description, unit,
-                        default_threshold, default_critical_threshold, is_active
+                        default_threshold, default_critical_threshold, is_active, tenant_id
                     ) VALUES (
                         :metric_name, :display_name, :description, :unit,
-                        :default_threshold, :default_critical_threshold, :is_active
+                        :default_threshold, :default_critical_threshold, :is_active, :tenant_id
                     )
                     ON CONFLICT (metric_name) DO UPDATE SET
                         display_name = EXCLUDED.display_name,
@@ -113,34 +123,39 @@ class MetadataService:
                         updated_at = NOW()
                     RETURNING metric_name;
                 """)
+                params = asdict(dto)
+                params["tenant_id"] = tenant_id
                 with engine.begin() as conn:
-                    result = conn.execute(query, asdict(dto))
+                    result = conn.execute(query, params)
                     metric_name = result.scalar_one()
                     self._invalidate_cache("metrics")
-                    self._logger.info(f"✅ Метрика '{metric_name}' создана/обновлена")
+                    self._logger.info(f"Метрика '{metric_name}' создана/обновлена (tenant={tenant_id})")
                     return metric_name
             except Exception as e:
-                self._logger.error(f"❌ Ошибка создания метрики {dto.metric_name}: {mask_secrets(str(e))}")
+                self._logger.error(f"Ошибка создания метрики {dto.metric_name}: {mask_secrets(str(e))}")
                 raise
 
-    def get_metric(self, metric_name: str) -> Optional[MetricDTO]:
-        key = f"metadata:metric:{metric_name}"
+    def get_metric(self, metric_name: str, tenant_id: str = "default") -> Optional[MetricDTO]:
+        key = f"metadata:metric:{tenant_id}:{metric_name}"
         cached = self._cache.get(key)
         if cached:
             return MetricDTO(**json.loads(cached)) # type: ignore
 
         try:
             engine = self._get_engine()
-            query = text("SELECT * FROM metadata_metrics WHERE metric_name = :name AND is_active = true")
+            query = text(
+                "SELECT * FROM metadata_metrics "
+                "WHERE metric_name = :name AND is_active = true AND tenant_id = :tid"
+            )
             with engine.connect() as conn:
-                row = conn.execute(query, {"name": metric_name}).mappings().first()
+                row = conn.execute(query, {"name": metric_name, "tid": tenant_id}).mappings().first()
                 if not row:
                     return None
-                dto = MetricDTO(**row)
+                dto = MetricDTO(**{k: row[k] for k in MetricDTO.__dataclass_fields__})
                 self._cache.setex(key, 300, self._serialize_json(asdict(dto)))
                 return dto
         except Exception as e:
-            self._logger.error(f"❌ Ошибка чтения метрики {metric_name}: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка чтения метрики {metric_name}: {mask_secrets(str(e))}")
             return None
 
     def list_metrics(self, active_only: bool = True, tenant_id: str = "default") -> List[MetricDTO]:
@@ -158,24 +173,24 @@ class MetadataService:
             query = text(f"SELECT * FROM metadata_metrics {where} ORDER BY metric_name")
             with engine.connect() as conn:
                 rows = conn.execute(query, {"tenant_id": tenant_id}).mappings().all()
-                dtos = [MetricDTO(**row) for row in rows]
+                dtos = [MetricDTO(**{k: row[k] for k in MetricDTO.__dataclass_fields__}) for row in rows]
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка метрик: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка метрик: {mask_secrets(str(e))}")
             return []
 
     # --- CRUD: Dimensions ---
 
-    def create_dimension(self, dto: DimensionDTO) -> str:
+    def create_dimension(self, dto: DimensionDTO, tenant_id: str = "default") -> str:
         with global_lock("metadata_dimension_create", timeout=10):
             try:
                 engine = self._get_engine()
                 query = text("""
                     INSERT INTO metadata_dimensions (
-                        dimension_key, description, allowed_values, is_required
+                        dimension_key, description, allowed_values, is_required, tenant_id
                     ) VALUES (
-                        :dimension_key, :description, :allowed_values, :is_required
+                        :dimension_key, :description, :allowed_values, :is_required, :tenant_id
                     )
                     ON CONFLICT (dimension_key) DO UPDATE SET
                         description = EXCLUDED.description,
@@ -189,66 +204,71 @@ class MetadataService:
                         "dimension_key": dto.dimension_key,
                         "description": dto.description,
                         "allowed_values": self._serialize_json(dto.allowed_values),
-                        "is_required": dto.is_required
+                        "is_required": dto.is_required,
+                        "tenant_id": tenant_id,
                     })
                     dim_key = result.scalar_one()
                     self._invalidate_cache("dimensions")
-                    self._logger.info(f"✅ Измерение '{dim_key}' создано/обновлено")
+                    self._logger.info(f"Измерение '{dim_key}' создано/обновлено (tenant={tenant_id})")
                     return dim_key
             except Exception as e:
-                self._logger.error(f"❌ Ошибка создания измерения {dto.dimension_key}: {mask_secrets(str(e))}")
+                self._logger.error(f"Ошибка создания измерения {dto.dimension_key}: {mask_secrets(str(e))}")
                 raise
 
-    def get_dimension(self, dimension_key: str) -> Optional[DimensionDTO]:
-        key = f"metadim:{dimension_key}"
+    def get_dimension(self, dimension_key: str, tenant_id: str = "default") -> Optional[DimensionDTO]:
+        key = f"metadim:{tenant_id}:{dimension_key}"
         cached = self._cache.get(key)
         if cached:
             return DimensionDTO(**json.loads(cached)) # type: ignore
 
         try:
             engine = self._get_engine()
-            query = text("SELECT * FROM metadata_dimensions WHERE dimension_key = :key")
+            query = text(
+                "SELECT * FROM metadata_dimensions WHERE dimension_key = :key AND tenant_id = :tid"
+            )
             with engine.connect() as conn:
-                row = conn.execute(query, {"key": dimension_key}).mappings().first()
+                row = conn.execute(query, {"key": dimension_key, "tid": tenant_id}).mappings().first()
                 if not row:
                     return None
-                dto = DimensionDTO(**row)
+                dto = DimensionDTO(**{k: row[k] for k in DimensionDTO.__dataclass_fields__})
                 self._cache.setex(key, 300, self._serialize_json(asdict(dto)))
                 return dto
         except Exception as e:
-            self._logger.error(f"❌ Ошибка чтения измерения {dimension_key}: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка чтения измерения {dimension_key}: {mask_secrets(str(e))}")
             return None
 
-    def list_dimensions(self) -> List[DimensionDTO]:
-        key = "metadimensions:all"
+    def list_dimensions(self, tenant_id: str = "default") -> List[DimensionDTO]:
+        key = f"metadimensions:{tenant_id}:all"
         cached = self._cache.get(key)
         if cached:
             return [DimensionDTO(**item) for item in json.loads(cached)] # type: ignore
 
         try:
             engine = self._get_engine()
-            query = text("SELECT * FROM metadata_dimensions ORDER BY dimension_key")
+            query = text(
+                "SELECT * FROM metadata_dimensions WHERE tenant_id = :tid ORDER BY dimension_key"
+            )
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
-                dtos = [DimensionDTO(**row) for row in rows]
+                rows = conn.execute(query, {"tid": tenant_id}).mappings().all()
+                dtos = [DimensionDTO(**{k: row[k] for k in DimensionDTO.__dataclass_fields__}) for row in rows]
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка измерений: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка измерений: {mask_secrets(str(e))}")
             return []
 
     # --- CRUD: Rules ---
 
-    def create_rule(self, dto: RuleDTO) -> uuid.UUID:
+    def create_rule(self, dto: RuleDTO, tenant_id: str = "default") -> uuid.UUID:
         rule_id = dto.id or uuid.uuid4()
         with global_lock(f"metadata_rule_{rule_id}", timeout=10):
             try:
                 engine = self._get_engine()
                 query = text("""
                     INSERT INTO metadata_rules (
-                        id, name, description, condition, labels, actions, is_active
+                        id, name, description, condition, labels, actions, is_active, tenant_id
                     ) VALUES (
-                        :id, :name, :description, :condition, :labels, :actions, :is_active
+                        :id, :name, :description, :condition, :labels, :actions, :is_active, :tenant_id
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         name = EXCLUDED.name,
@@ -268,18 +288,19 @@ class MetadataService:
                         "condition": self._serialize_json(dto.condition),
                         "labels": self._serialize_json(dto.labels),
                         "actions": self._serialize_json(dto.actions),
-                        "is_active": dto.is_active
+                        "is_active": dto.is_active,
+                        "tenant_id": tenant_id,
                     })
                     created_id = result.scalar_one()
                     self._invalidate_cache("rules")
-                    self._logger.info(f"✅ Правило '{dto.name}' (id={created_id}) создано/обновлено")
+                    self._logger.info(f"Правило '{dto.name}' (id={created_id}) создано/обновлено")
                     return created_id
             except Exception as e:
-                self._logger.error(f"❌ Ошибка создания правила {dto.name}: {mask_secrets(str(e))}")
+                self._logger.error(f"Ошибка создания правила {dto.name}: {mask_secrets(str(e))}")
                 raise
 
-    def list_active_rules(self) -> List[RuleDTO]:
-        key = "metadata:rules:active"
+    def list_active_rules(self, tenant_id: str = "default") -> List[RuleDTO]:
+        key = f"metadata:rules:{tenant_id}:active"
         cached = self._cache.get(key)
         if cached:
             return [RuleDTO(**item) for item in json.loads(cached)] # type: ignore
@@ -289,11 +310,11 @@ class MetadataService:
             query = text("""
                 SELECT id, name, description, condition, labels, actions, is_active
                 FROM metadata_rules
-                WHERE is_active = true
+                WHERE is_active = true AND tenant_id = :tid
                 ORDER BY name
             """)
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
+                rows = conn.execute(query, {"tid": tenant_id}).mappings().all()
                 dtos = []
                 for row in rows:
                     dto = RuleDTO(
@@ -309,12 +330,12 @@ class MetadataService:
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка правил: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка правил: {mask_secrets(str(e))}")
             return []
 
     # --- CRUD: ML Configs ---
 
-    def create_ml_config(self, dto: MLConfigDTO) -> uuid.UUID:
+    def create_ml_config(self, dto: MLConfigDTO, tenant_id: str = "default") -> uuid.UUID:
         config_id = dto.id or uuid.uuid4()
         with global_lock(f"metadata_ml_{config_id}", timeout=10):
             try:
@@ -322,10 +343,10 @@ class MetadataService:
                 query = text("""
                     INSERT INTO metadata_ml_configs (
                         id, name, metric_name, group_by, methods, method_params,
-                        retrain_schedule, auto_alert, alert_severity, is_active
+                        retrain_schedule, auto_alert, alert_severity, is_active, tenant_id
                     ) VALUES (
                         :id, :name, :metric_name, :group_by, :methods, :method_params,
-                        :retrain_schedule, :auto_alert, :alert_severity, :is_active
+                        :retrain_schedule, :auto_alert, :alert_severity, :is_active, :tenant_id
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         name = EXCLUDED.name,
@@ -351,18 +372,19 @@ class MetadataService:
                         "retrain_schedule": dto.retrain_schedule,
                         "auto_alert": dto.auto_alert,
                         "alert_severity": dto.alert_severity,
-                        "is_active": dto.is_active
+                        "is_active": dto.is_active,
+                        "tenant_id": tenant_id,
                     })
                     created_id = result.scalar_one()
                     self._invalidate_cache("ml_configs")
-                    self._logger.info(f"✅ ML-конфиг '{dto.name}' (id={created_id}) создан/обновлён")
+                    self._logger.info(f"ML-конфиг '{dto.name}' (id={created_id}) создан/обновлён")
                     return created_id
             except Exception as e:
-                self._logger.error(f"❌ Ошибка создания ML-конфига {dto.name}: {mask_secrets(str(e))}")
+                self._logger.error(f"Ошибка создания ML-конфига {dto.name}: {mask_secrets(str(e))}")
                 raise
 
-    def list_active_ml_configs(self) -> List[MLConfigDTO]:
-        key = "metadata:ml_configs:active"
+    def list_active_ml_configs(self, tenant_id: str = "default") -> List[MLConfigDTO]:
+        key = f"metadata:ml_configs:{tenant_id}:active"
         cached = self._cache.get(key)
         if cached:
             return [MLConfigDTO(**item) for item in json.loads(cached)] # type: ignore
@@ -373,11 +395,11 @@ class MetadataService:
                 SELECT id, name, metric_name, group_by, methods, method_params,
                        retrain_schedule, auto_alert, alert_severity, is_active
                 FROM metadata_ml_configs
-                WHERE is_active = true
+                WHERE is_active = true AND tenant_id = :tid
                 ORDER BY name
             """)
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
+                rows = conn.execute(query, {"tid": tenant_id}).mappings().all()
                 dtos = []
                 for row in rows:
                     dto = MLConfigDTO(
@@ -396,12 +418,11 @@ class MetadataService:
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка ML-конфигов: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка ML-конфигов: {mask_secrets(str(e))}")
             return []
 
-    def list_all_ml_configs(self) -> List[MLConfigDTO]:
-        # Аналогично list_active, но без WHERE is_active = true
-        key = "metaml_configs:all"
+    def list_all_ml_configs(self, tenant_id: str = "default") -> List[MLConfigDTO]:
+        key = f"metaml_configs:{tenant_id}:all"
         cached = self._cache.get(key)
         if cached:
             return [MLConfigDTO(**item) for item in json.loads(cached)] # type: ignore
@@ -412,10 +433,11 @@ class MetadataService:
                 SELECT id, name, metric_name, group_by, methods, method_params,
                     retrain_schedule, auto_alert, alert_severity, is_active
                 FROM metadata_ml_configs
+                WHERE tenant_id = :tid
                 ORDER BY name
             """)
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
+                rows = conn.execute(query, {"tid": tenant_id}).mappings().all()
                 dtos = [MLConfigDTO(
                     id=row["id"],
                     name=row["name"],
@@ -431,7 +453,7 @@ class MetadataService:
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка всех ML-конфигов: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка всех ML-конфигов: {mask_secrets(str(e))}")
             return []
 
     # --- Утилиты ---

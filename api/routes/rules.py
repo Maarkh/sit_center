@@ -21,7 +21,7 @@ def create_rule(
     current_user: TokenData = Depends(require_permission("write:rules")),
 ):
     try:
-        rule_id = service.create_rule(data)  # type: ignore
+        rule_id = service.create_rule(data, tenant_id=current_user.tenant_id)  # type: ignore
         rule = _get_rule_by_id(service, rule_id)
         if not rule:
             raise HTTPException(status_code=500, detail="Rule created but not found")
@@ -39,9 +39,9 @@ def list_rules(
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("read:rules")),
 ):
-    rules = service.list_active_rules()
+    rules = service.list_active_rules(tenant_id=current_user.tenant_id)
     if not active_only:
-        rules = _list_all_rules(service)
+        rules = _list_all_rules(service, tenant_id=current_user.tenant_id)
     return rules
 
 
@@ -51,7 +51,7 @@ def get_rule(
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("read:rules")),
 ):
-    rule = _get_rule_by_id(service, rule_id)
+    rule = _get_rule_by_id(service, rule_id, tenant_id=current_user.tenant_id)
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
     return rule
@@ -65,8 +65,8 @@ def update_rule(
     current_user: TokenData = Depends(require_permission("write:rules")),
 ):
     try:
-        service.create_rule(data)  # type: ignore
-        updated = _get_rule_by_id(service, rule_id)
+        service.create_rule(data, tenant_id=current_user.tenant_id)  # type: ignore
+        updated = _get_rule_by_id(service, rule_id, tenant_id=current_user.tenant_id)
         if not updated:
             raise HTTPException(status_code=500, detail="Rule updated but not found")
         log_audit(current_user.username, current_user.tenant_id, "update", "rule", resource_id=str(rule_id))
@@ -87,8 +87,8 @@ def delete_rule(
     try:
         with engine.begin() as conn:
             result = conn.execute(
-                text("UPDATE metadata_rules SET is_active = false WHERE id = :id"),
-                {"id": rule_id},
+                text("UPDATE metadata_rules SET is_active = false WHERE id = :id AND tenant_id = :tid"),
+                {"id": rule_id, "tid": current_user.tenant_id},
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Rule not found")
@@ -101,40 +101,43 @@ def delete_rule(
         raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
 
 
-def _get_rule_by_id(service: MetadataService, rule_id: UUID):
+def _get_rule_by_id(service: MetadataService, rule_id: UUID, tenant_id: str = "default"):
     """Fetch a single rule by ID directly from DB."""
     engine = service._get_engine()
     with engine.connect() as conn:
         row = conn.execute(
             text("""
-                SELECT id, name, description, condition, labels, actions, is_active
-                FROM metadata_rules WHERE id = :id
+                SELECT id, name, description, condition, labels, actions, is_active,
+                       created_at, updated_at
+                FROM metadata_rules WHERE id = :id AND tenant_id = :tid
             """),
-            {"id": rule_id},
+            {"id": rule_id, "tid": tenant_id},
         ).mappings().first()
     if not row:
         return None
-    from core.metadata_service import RuleDTO
-    return RuleDTO(
-        id=row["id"],
-        name=row["name"],
-        description=row["description"],
-        condition=service._deserialize_json(row["condition"]),
-        labels=service._deserialize_json(row["labels"]),
-        actions=service._deserialize_json(row["actions"]),
-        is_active=row["is_active"],
-    )
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "description": row["description"],
+        "condition": service._deserialize_json(row["condition"]),
+        "labels": service._deserialize_json(row["labels"]),
+        "actions": service._deserialize_json(row["actions"]),
+        "is_active": row["is_active"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
 
 
-def _list_all_rules(service: MetadataService):
+def _list_all_rules(service: MetadataService, tenant_id: str = "default"):
     """List all rules including inactive ones."""
     engine = service._get_engine()
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
                 SELECT id, name, description, condition, labels, actions, is_active
-                FROM metadata_rules ORDER BY name
+                FROM metadata_rules WHERE tenant_id = :tid ORDER BY name
             """),
+            {"tid": tenant_id},
         ).mappings().all()
     from core.metadata_service import RuleDTO
     return [

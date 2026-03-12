@@ -209,4 +209,16 @@ async def idoit_sync_webhook(request: Request, payload: IdoitSyncPayload):
             )
         result["synced"].append("comment")
 
+    # Audit log for external sync
+    try:
+        from core.audit import log_audit
+        log_audit(
+            f"idoit:{payload.assigned or 'system'}", "default",
+            "sync", "incident",
+            resource_id=str(incident_id),
+            changes={"synced": result.get("synced", [])},
+        )
+    except Exception:
+        pass
+
     return {"success": True, **result}

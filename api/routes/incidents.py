@@ -1,5 +1,5 @@
 # api/routes/incidents.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy import text
@@ -13,6 +13,7 @@ from api.schemas import (
 )
 from config import mask_secrets, logger
 from core.audit import log_audit
+from api.limiter import limiter
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
 
@@ -117,7 +118,9 @@ def list_incidents(
 
 
 @router.post("/", response_model=IncidentRead, status_code=201)
-def create_incident(
+@limiter.limit("30/minute")
+async def create_incident(
+    request: Request,
     data: IncidentCreate,
     current_user: TokenData = Depends(require_permission("write:alerts")),
 ):
@@ -224,7 +227,9 @@ def get_incident(
 
 
 @router.patch("/{incident_id}/status", response_model=IncidentRead)
-def update_incident_status(
+@limiter.limit("30/minute")
+async def update_incident_status(
+    request: Request,
     incident_id: int,
     data: IncidentStatusUpdate,
     current_user: TokenData = Depends(require_permission("write:alerts")),

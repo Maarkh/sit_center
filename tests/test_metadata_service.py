@@ -28,7 +28,7 @@ def test_make_fingerprint_deterministic():
 def test_list_metrics_cached(service, fake_redis_instance):
     import json
     cached = [{"metric_name": "m1", "display_name": "M1", "is_active": True, "unit": "", "description": None, "default_threshold": None, "default_critical_threshold": None}]
-    fake_redis_instance.set("metadata:metrics:active", json.dumps(cached))
+    fake_redis_instance.set("metadata:metrics:default:active", json.dumps(cached))
 
     result = service.list_metrics(active_only=True)
     assert len(result) == 1

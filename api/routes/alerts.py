@@ -10,7 +10,6 @@ from api.auth import TokenData
 from core.rbac import require_permission
 from core.audit import log_audit
 from config import mask_secrets
-from api.routes.data import validate_label_name, ALLOWED_DIMENSIONS
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 

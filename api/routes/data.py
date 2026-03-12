@@ -201,6 +201,7 @@ def prometheus_query_range(
     end: float,
     step: str = "15s",
     aggregation: Literal["avg", "sum", "min", "max", "count"] = "avg",
+    current_user: TokenData = Depends(get_current_user),
 ):
     match_obj = re.match(r'^([a-zA-Z0-9_\-\.]+)(?:\{(.*)\})?$', query)
     if not match_obj:
@@ -368,9 +369,9 @@ async def query_data(
                 if '"' in val or "'" in val or len(val) > 100:
                     raise HTTPException(400, f"Invalid value in dimension_in[{k}]: {val}")
                 clean_vals.append(val)
-            where.append("dimensions->>:key_in = ANY(:vals_in)")
-            params["key_in"] = k
-            params["vals_in"] = clean_vals # type: ignore
+            where.append(f"dimensions->>:key_in_{i} = ANY(:vals_in_{i})")
+            params[f"key_in_{i}"] = k
+            params[f"vals_in_{i}"] = clean_vals # type: ignore
 
     limit = min(request.limit, MAX_QUERY_RESULTS)
     params["limit"] = limit # type: ignore

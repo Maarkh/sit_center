@@ -41,3 +41,11 @@ clickhouse-connect
 ldap3
 authlib
 itsdangerous
+locust
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-sqlalchemy
+opentelemetry-instrumentation-redis
+opentelemetry-instrumentation-requests

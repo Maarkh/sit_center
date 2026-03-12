@@ -21,8 +21,8 @@ def create_ml_config(
     current_user: TokenData = Depends(require_permission("write:ml")),
 ):
     try:
-        config_id = service.create_ml_config(data)  # type: ignore
-        config = next((c for c in service.list_active_ml_configs() if c.id == config_id), None)
+        config_id = service.create_ml_config(data, tenant_id=current_user.tenant_id)  # type: ignore
+        config = next((c for c in service.list_active_ml_configs(tenant_id=current_user.tenant_id) if c.id == config_id), None)
         if not config:
             raise HTTPException(status_code=500, detail="Config created but not found")
         log_audit(current_user.username, current_user.tenant_id, "create", "ml_config", resource_id=str(config_id))
@@ -39,7 +39,8 @@ def list_ml_configs(
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("read:ml")),
 ):
-    return service.list_active_ml_configs() if active_only else service.list_all_ml_configs()
+    tid = current_user.tenant_id
+    return service.list_active_ml_configs(tenant_id=tid) if active_only else service.list_all_ml_configs(tenant_id=tid)
 
 
 @router.get("/{config_id}", response_model=MLConfigRead)
@@ -48,7 +49,7 @@ def get_ml_config(
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("read:ml")),
 ):
-    configs = service.list_active_ml_configs()
+    configs = service.list_active_ml_configs(tenant_id=current_user.tenant_id)
     config = next((c for c in configs if c.id == config_id), None)
     if not config:
         raise HTTPException(status_code=404, detail="ML config not found")
@@ -63,8 +64,8 @@ def update_ml_config(
     current_user: TokenData = Depends(require_permission("write:ml")),
 ):
     try:
-        service.create_ml_config(data)  # type: ignore
-        updated = next((c for c in service.list_active_ml_configs() if c.id == config_id), None)
+        service.create_ml_config(data, tenant_id=current_user.tenant_id)  # type: ignore
+        updated = next((c for c in service.list_active_ml_configs(tenant_id=current_user.tenant_id) if c.id == config_id), None)
         if not updated:
             raise HTTPException(status_code=500, detail="Config updated but not found")
         log_audit(current_user.username, current_user.tenant_id, "update", "ml_config", resource_id=str(config_id))
@@ -85,8 +86,8 @@ def delete_ml_config(
     try:
         with engine.begin() as conn:
             result = conn.execute(
-                text("UPDATE metadata_ml_configs SET is_active = false WHERE id = :id"),
-                {"id": config_id},
+                text("UPDATE metadata_ml_configs SET is_active = false WHERE id = :id AND tenant_id = :tid"),
+                {"id": config_id, "tid": current_user.tenant_id},
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="ML config not found")

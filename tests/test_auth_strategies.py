@@ -57,7 +57,7 @@ class TestDbAuth:
             "permissions": ["read:metrics"],
         }
 
-        with patch("core.auth_strategies.get_engine") as mock_engine, \
+        with patch("core.database.get_engine") as mock_engine, \
              patch("core.auth_strategies.pwd_context") as mock_pwd:
             conn = MagicMock()
             mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)
@@ -74,7 +74,7 @@ class TestDbAuth:
     def test_db_user_not_found(self):
         from core.auth_strategies import try_db_auth
 
-        with patch("core.auth_strategies.get_engine") as mock_engine:
+        with patch("core.database.get_engine") as mock_engine:
             conn = MagicMock()
             mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)
             mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
@@ -96,7 +96,7 @@ class TestDbAuth:
             "permissions": [],
         }
 
-        with patch("core.auth_strategies.get_engine") as mock_engine, \
+        with patch("core.database.get_engine") as mock_engine, \
              patch("core.auth_strategies.pwd_context") as mock_pwd:
             conn = MagicMock()
             mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)

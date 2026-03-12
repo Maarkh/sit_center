@@ -62,10 +62,27 @@ async def callback_oidc(request: Request):
     except Exception as e:
         logger.warning("Failed to sync OIDC user: %s", e)
 
-    # Map Keycloak roles
+    # Map Keycloak roles -> local permissions
     realm_access = token.get("access_token_claims", {}).get("realm_access", {})
     kc_roles = realm_access.get("roles", [])
     roles = kc_roles if kc_roles else ["viewer"]
+
+    # Resolve permissions from DB roles
+    permissions: list = []
+    try:
+        from sqlalchemy import text as _t
+        with engine.connect() as conn:
+            for role_name in roles:
+                r = conn.execute(
+                    _t("SELECT permissions FROM roles WHERE name = :name AND tenant_id = 'default'"),
+                    {"name": role_name},
+                ).mappings().first()
+                if r:
+                    import json as _json
+                    perms = r["permissions"]
+                    permissions.extend(_json.loads(perms) if isinstance(perms, str) else perms)
+    except Exception as e:
+        logger.warning("Failed to resolve OIDC permissions: %s", e)
 
     access_token = create_access_token(
         data={
@@ -73,10 +90,18 @@ async def callback_oidc(request: Request):
             "scopes": ["admin"] if "admin" in roles else [],
             "tenant_id": "default",
             "roles": roles,
-            "permissions": [],
+            "permissions": list(set(permissions)),
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
+
+    # Audit log for OIDC login
+    try:
+        from core.audit import log_audit
+        ip = request.client.host if request.client else None
+        log_audit(username, "default", "login", "session", ip_address=ip)
+    except Exception as e:
+        logger.warning("Failed to log OIDC audit: %s", e)
 
     # Redirect to frontend with token
     base_url = getattr(settings, "OIDC_BASE_URL", str(request.base_url).rstrip("/"))

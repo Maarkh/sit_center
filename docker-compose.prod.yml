@@ -227,6 +227,12 @@ services:
         limits:
           memory: 4G
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "celery", "-A", "celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # ——— Celery Beat ———
   celery-beat:
@@ -350,6 +356,12 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import kafka; print(\"ok\")' 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # ——— GLPI (ITSM) ———
   glpi-db:

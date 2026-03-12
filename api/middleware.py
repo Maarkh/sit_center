@@ -51,6 +51,25 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class DeprecationMiddleware(BaseHTTPMiddleware):
+    """Add Deprecation header to legacy routes (without /api/v1/ prefix)."""
+
+    LEGACY_PREFIXES = (
+        "/metrics", "/dimensions", "/rules", "/ml/", "/alerts",
+        "/data", "/webhooks", "/admin", "/incidents", "/forecasts",
+        "/auth", "/audit",
+    )
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        response = await call_next(request)
+        path = request.url.path
+        if not path.startswith("/api/v1") and any(path.startswith(p) for p in self.LEGACY_PREFIXES):
+            response.headers["Deprecation"] = "true"
+            response.headers["Sunset"] = "2026-09-01"
+            response.headers["Link"] = f'</api/v1{path}>; rel="successor-version"'
+        return response
+
+
 def _looks_like_id(segment: str) -> bool:
     """Heuristic: UUIDs, numeric IDs, hex strings."""
     if segment.isdigit():

@@ -8,7 +8,6 @@ from core.database import get_engine
 from core.metadata_service import metadata_service
 
 
-cache = get_cache()
 CACHE_TTL = settings.cache_ttl
 
 def create_mv():
@@ -37,7 +36,7 @@ def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.
     key = f"data_from_db_{time_filter}_{fill_missing}"
 
     try:
-        data = cache.get(key)
+        data = get_cache().get(key)
         if data:
             df = pd.read_json(io.StringIO(data), orient="split") # type: ignore
             logger.debug(f"Данные загружены из Redis: {key}")
@@ -86,7 +85,7 @@ def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.
 
         df_raw = pd.read_sql(query, engine, params={"cutoff": cutoff, "metrics": metrics}) # type: ignore
 
-        cache.setex(key, CACHE_TTL, df_raw.to_json(orient="split"))
+        get_cache().setex(key, CACHE_TTL, df_raw.to_json(orient="split"))
         return df_raw.copy()
 
     except Exception as e:

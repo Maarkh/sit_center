@@ -44,7 +44,7 @@ class TestSafeIdoitPush:
         def push_data():
             raise RuntimeError("i-doit connection refused")
 
-        with patch("core.resilience.celery_app") as mock_celery:
+        with patch("celery_app.celery_app") as mock_celery:
             mock_celery.send_task = MagicMock()
             result = push_data()
             assert result is None

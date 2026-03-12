@@ -20,8 +20,8 @@ def create_metric(
     current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
     try:
-        metric_name = service.create_metric(data)  # type: ignore
-        metric = service.get_metric(metric_name)
+        metric_name = service.create_metric(data, tenant_id=current_user.tenant_id)  # type: ignore
+        metric = service.get_metric(metric_name, tenant_id=current_user.tenant_id)
         if not metric:
             raise HTTPException(status_code=500, detail="Metric created but not found")
         log_audit(current_user.username, current_user.tenant_id, "create", "metric", resource_id=metric_name)
@@ -47,7 +47,7 @@ def get_metric(
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
-    metric = service.get_metric(metric_name)
+    metric = service.get_metric(metric_name, tenant_id=current_user.tenant_id)
     if not metric:
         raise HTTPException(status_code=404, detail="Metric not found")
     return metric
@@ -64,8 +64,8 @@ def update_metric(
         raise HTTPException(status_code=400, detail="Cannot change metric_name on update")
 
     try:
-        service.create_metric(data)  # type: ignore
-        updated = service.get_metric(metric_name)
+        service.create_metric(data, tenant_id=current_user.tenant_id)  # type: ignore
+        updated = service.get_metric(metric_name, tenant_id=current_user.tenant_id)
         if not updated:
             raise HTTPException(status_code=500, detail="Metric updated but not found")
         log_audit(current_user.username, current_user.tenant_id, "update", "metric", resource_id=metric_name)

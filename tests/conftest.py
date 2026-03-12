@@ -1,4 +1,7 @@
 # tests/conftest.py
+import os
+os.environ["TESTING"] = "1"
+
 import pytest
 import fakeredis
 from unittest.mock import patch, MagicMock
