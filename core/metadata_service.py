@@ -143,18 +143,21 @@ class MetadataService:
             self._logger.error(f"❌ Ошибка чтения метрики {metric_name}: {mask_secrets(str(e))}")
             return None
 
-    def list_metrics(self, active_only: bool = True) -> List[MetricDTO]:
-        key = "metadata:metrics:active" if active_only else "metadata:metrics:all"
+    def list_metrics(self, active_only: bool = True, tenant_id: str = "default") -> List[MetricDTO]:
+        key = f"metadata:metrics:{tenant_id}:{'active' if active_only else 'all'}"
         cached = self._cache.get(key)
         if cached:
             return [MetricDTO(**item) for item in json.loads(cached)] # type: ignore
 
         try:
             engine = self._get_engine()
-            where = "WHERE is_active = true" if active_only else ""
+            conditions = ["tenant_id = :tenant_id"]
+            if active_only:
+                conditions.append("is_active = true")
+            where = "WHERE " + " AND ".join(conditions)
             query = text(f"SELECT * FROM metadata_metrics {where} ORDER BY metric_name")
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
+                rows = conn.execute(query, {"tenant_id": tenant_id}).mappings().all()
                 dtos = [MetricDTO(**row) for row in rows]
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos

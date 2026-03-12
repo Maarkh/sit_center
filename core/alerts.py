@@ -309,6 +309,30 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
 
         s.commit()
 
+        # Publish to Redis Pub/Sub for WebSocket clients
+        alert_payload = {
+            "type": "alert",
+            "id": str(new_alert.id),
+            "metric": selected,
+            "dimensions": {"region": region},
+            "value": float(val),
+            "status": "firing",
+            "event_time": new_alert.event_time.isoformat(),
+        }
+        try:
+            from core.pubsub import publish_alert
+            publish_alert(alert_payload)
+        except Exception as e:
+            logger.warning(f"Failed to publish alert to pubsub: {e}")
+
+        # Publish to Kafka if enabled
+        try:
+            if settings.KAFKA_ENABLED:
+                from core.kafka_producer import publish_alert_event
+                publish_alert_event(alert_payload)
+        except Exception as e:
+            logger.warning(f"Failed to publish alert to Kafka: {e}")
+
         # История
         history = get_alert_history()
         history.append(AlertLog(time.time(), selected, region, val, prio))

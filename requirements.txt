@@ -14,7 +14,7 @@ xlsxwriter
 tenacity
 psycopg2-binary
 sqlalchemy
-redis
+redis[hiredis]
 fakeredis
 celery
 prophet
@@ -31,7 +31,13 @@ slowapi
 psutil
 fastapi-jwt-auth
 pytest-cov
+pytest-asyncio
+httpx
 torch
 passlib
 bcrypt
 python-multipart
+clickhouse-connect
+ldap3
+authlib
+itsdangerous

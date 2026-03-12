@@ -12,6 +12,52 @@ class Base(DeclarativeBase):
 
 
 # === Каноническая метрика (только для ORM-запросов, необязательна, но удобна) ===
+class Tenant(Base):
+    __tablename__ = "tenants"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    settings = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=True)
+    password_hash = Column(String, nullable=True)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, default="default")
+    is_active = Column(Boolean, default=True)
+    auth_provider = Column(String, default="local")
+    external_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    roles = relationship("Role", secondary="user_roles", back_populates="users")
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, default="default")
+    permissions = Column(JSONB, nullable=False, default=list)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    users = relationship("User", secondary="user_roles", back_populates="roles")
+
+
+class UserRole(Base):
+    __tablename__ = "user_roles"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True)
+
+
 class CanonicalMetric(Base):
     __tablename__ = "canonical_metrics"
 
@@ -22,6 +68,7 @@ class CanonicalMetric(Base):
     dimensions = Column(JSONB, nullable=False, default=dict)
     tags = Column(JSONB, nullable=False, default=dict)
     source = Column(String, nullable=True)
+    tenant_id = Column(String, nullable=False, default="default")
 
     __table_args__ = (
         Index("ix_canonical_ts", "timestamp"),
@@ -65,6 +112,7 @@ class MLAnomaly(Base):
     confidence = Column(Float)
     method = Column(String, default="prophet")  # prophet, lstm, clustering
     model_version = Column(String, nullable=True)
+    tenant_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime(timezone=True), default=func.now())
 
     def __repr__(self):
@@ -93,8 +141,8 @@ class AlertEvent(Base):
     escalation_level = Column(Integer, default=0)
     last_escalation = Column(DateTime(timezone=True), nullable=True)
     alert_hash = Column(String, index=True)
-    
-    # 🔴 ДОБАВЛЕНО — критически недостающие поля:
+    tenant_id = Column(String, nullable=False, default="default")
+
     incident_created = Column(Boolean, default=False)
     incident_created_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -126,6 +174,7 @@ class Incident(Base):
     started_at = Column(DateTime, nullable=True)
     resolved_at = Column(DateTime, nullable=True)
     closed_at = Column(DateTime, nullable=True)
+    tenant_id = Column(String, nullable=False, default="default")
     comments = relationship("IncidentComment", back_populates="incident", cascade="all, delete-orphan")
 
 
@@ -153,7 +202,7 @@ class ConfigTable(Base):
     
 class MetadataMetric(Base):
     __tablename__ = "metadata_metrics"
-    
+
     metric_name = Column(String, primary_key=True)
     display_name = Column(String, nullable=False)
     description = Column(Text)
@@ -161,6 +210,7 @@ class MetadataMetric(Base):
     default_threshold = Column(Float)
     default_critical_threshold = Column(Float)
     is_active = Column(Boolean, default=True)
+    tenant_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
     # В классе MetadataMetric — добавьте:
@@ -168,16 +218,17 @@ class MetadataMetric(Base):
 
 class MetadataDimension(Base):
     __tablename__ = "metadata_dimensions"
-    
+
     dimension_key = Column(String, primary_key=True)
     description = Column(Text)
     allowed_values = Column(JSONB)
     is_required = Column(Boolean, default=False)
+    tenant_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime(timezone=True), default=func.now())
 
 class MetadataRule(Base):
     __tablename__ = "metadata_rules"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     description = Column(Text)
@@ -185,15 +236,17 @@ class MetadataRule(Base):
     labels = Column(JSONB, default=dict)
     actions = Column(JSONB, default=list)
     is_active = Column(Boolean, default=True)
+    tenant_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
     
 class MetadataMLConfig(Base):
     __tablename__ = "metadata_ml_configs"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     metric_name = Column(String, ForeignKey("metadata_metrics.metric_name"), nullable=False)
+    tenant_id = Column(String, nullable=False, default="default")
     group_by = Column(ARRAY(String), nullable=False, default=list)  # TEXT[] → ARRAY(String)
     methods = Column(ARRAY(String), nullable=False, default=lambda: ["prophet"])
     method_params = Column(JSONB, nullable=False, default=dict)

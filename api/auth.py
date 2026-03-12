@@ -26,6 +26,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
     scopes: List[str] = Field(default_factory=list)
+    tenant_id: str = "default"
+    roles: List[str] = Field(default_factory=list)
+    permissions: List[str] = Field(default_factory=list)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -40,9 +43,18 @@ def verify_token(token: str) -> TokenData:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub") # type: ignore
         scopes = payload.get("scopes", [])
+        tenant_id = payload.get("tenant_id", "default")
+        roles = payload.get("roles", [])
+        permissions = payload.get("permissions", [])
         if username is None:
             raise JWTError()
-        return TokenData(username=username, scopes=scopes)
+        return TokenData(
+            username=username,
+            scopes=scopes,
+            tenant_id=tenant_id,
+            roles=roles,
+            permissions=permissions,
+        )
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

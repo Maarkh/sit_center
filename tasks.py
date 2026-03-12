@@ -5,14 +5,13 @@ from celery_app import celery_app
 from core.database import get_engine
 from core.smart_alerts import check_growth_alert
 from core.alert_settings import load_alert_settings_cached
-from core.ml_anomaly import find_recent_ml_anomalies
 from config import logger, get_redis
 from core.notifications import notify
 from telegram_bot import send_alert_sync
 from celery.signals import task_failure
 from datetime import datetime, timezone
 from hashlib import md5
-from core.locking import global_lock
+
 
 def get_data_from_db(time_filter: str = "1h") -> pd.DataFrame:
     delta_map = {"1h": 1, "6h": 6, "24h": 24}
@@ -62,27 +61,6 @@ def run_alerts_check_task(self, time_filter: str = "1h"):
         logger.exception("❌ Celery task failed")
         raise self.retry(exc=exc, countdown=30)
 
-
-@celery_app.task
-def run_ml_anomaly_check():
-    try:
-        count = find_recent_ml_anomalies(time_filter="6h")
-        logger.info(f"✅ ML: найдено {count} аномалий")
-        return count
-    except Exception as e:
-        logger.exception("❌ ML task failed")
-        return 0
-
-
-@celery_app.task
-def retrain_ml_models():
-    try:
-        from core.ml_anomaly import retrain_all_models
-        retrain_all_models()
-        return {"status": "success"}
-    except Exception as e:
-        logger.exception("❌ Retrain ML failed")
-        return {"status": "error", "message": str(e)}
 
 
 @celery_app.task(bind=True, max_retries=3)
@@ -141,79 +119,6 @@ def handle_task_failure(sender=None, task_id=None, exception=None, traceback=Non
     except Exception:
         logger.exception("💥 Ошибка в handle_task_failure")
         
-@celery_app.task(name="tasks.create_monthly_partition", bind=True)
-def create_monthly_partition(self=None):
-    with global_lock("partition_create", timeout=10):
-        from sqlalchemy import text
-        from core.database import get_engine
-        from config import logger
-        from datetime import datetime, timedelta
-        import re
-        """
-        Создаёт партицию canonical_metrics_<YYYY_MM> на следующий месяц.
-        Использует безопасный EXECUTE format('%I', table_name) внутри DO $$ ... $$.
-        """
-        PARTITION_NAME_RE = re.compile(r"^canonical_metrics_\d{4}_\d{2}$")
-        engine = get_engine()
-        today = datetime.now(timezone.utc).date()
-        next_month = (today.replace(day=1) + timedelta(days=32)).replace(day=1)
-        start = next_month
-        end = (start + timedelta(days=32)).replace(day=1)
-        table_name = f"canonical_metrics_{next_month.strftime('%Y_%m')}"
-
-        # Валидация имени партиции
-        if not PARTITION_NAME_RE.match(table_name):
-            from config import logger
-            logger.error("Invalid partition name: %s", table_name)
-            return
-
-        # Используем безопасную проверку существования через to_regclass
-        create_sql = text("""
-        DO $$
-        BEGIN
-            IF to_regclass(:full_table_name) IS NULL THEN
-                EXECUTE format(
-                    'CREATE TABLE %I PARTITION OF canonical_metrics FOR VALUES FROM (%L) TO (%L)',
-                    :table_name,
-                    :start_date,
-                    :end_date
-                );
-            END IF;
-        END $$;
-        """)
-
-        # index creation as separate EXECUTE to avoid quoting issues
-        index_sql = text("""
-        DO $$
-        BEGIN
-            IF to_regclass(:idx_name) IS NULL THEN
-                EXECUTE format(
-                    'CREATE INDEX IF NOT EXISTS %I ON %I (timestamp DESC)',
-                    :index_on_table,
-                    :table_name
-                );
-            END IF;
-        END $$;
-        """)
-
-        params = {
-            "full_table_name": f"public.{table_name}",
-            "table_name": table_name,
-            "start_date": start.strftime('%Y-%m-%d'),
-            "end_date": end.strftime('%Y-%m-%d'),
-            "idx_name": f"idx_{table_name}_ts",
-            "index_on_table": f"idx_{table_name}_ts"
-        }
-
-        with engine.begin() as conn:
-            # Создаем таблицу-партицию, если её нет
-            conn.execute(create_sql, params)
-            # Создаём индекс на партиции
-            conn.execute(index_sql, params)
-
-        from config import logger
-        logger.info("✅ Partition %s ensured", table_name)
-    
 @celery_app.task
 def healthcheck():
     return {"status": "ok"}

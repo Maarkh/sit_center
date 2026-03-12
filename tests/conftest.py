@@ -1,7 +1,45 @@
+# tests/conftest.py
 import pytest
+import fakeredis
+from unittest.mock import patch, MagicMock
 from celery_app import celery_app
+
 
 @pytest.fixture(autouse=True, scope="session")
 def celery_eager():
     celery_app.conf.update(task_always_eager=True)
     yield
+
+
+@pytest.fixture()
+def fake_redis_instance():
+    """A standalone fakeredis instance for direct use in tests."""
+    return fakeredis.FakeRedis(decode_responses=True)
+
+
+@pytest.fixture(autouse=True)
+def mock_redis(fake_redis_instance):
+    """Patch get_redis / get_cache globally so no real Redis is needed."""
+    with patch("config.get_redis", return_value=fake_redis_instance), \
+         patch("config.get_cache", return_value=fake_redis_instance):
+        yield fake_redis_instance
+
+
+@pytest.fixture()
+def api_client():
+    """FastAPI TestClient with mocked dependencies."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    return TestClient(app)
+
+
+@pytest.fixture()
+def auth_headers():
+    """Return valid Authorization headers for tests."""
+    from api.auth import create_access_token
+    from datetime import timedelta
+    token = create_access_token(
+        data={"sub": "testadmin", "scopes": ["admin"]},
+        expires_delta=timedelta(minutes=30),
+    )
+    return {"Authorization": f"Bearer {token}"}

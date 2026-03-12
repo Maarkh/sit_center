@@ -1,7 +1,7 @@
 # config.py
 from pathlib import Path
 from pydantic_settings import BaseSettings
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import Field, PostgresDsn
 import logging
 import logging.handlers
@@ -119,6 +119,34 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = Field(..., env="ADMIN_USERNAME") # type: ignore
     ADMIN_PASSWORD: str = Field(..., env="ADMIN_PASSWORD")     # type: ignore
     WEBHOOK_API_KEY: str = Field(..., env="WEBHOOK_API_KEY") # type: ignore
+
+    # --- Kafka ---
+    KAFKA_BOOTSTRAP_SERVERS: str = Field("kafka:9092", env="KAFKA_BOOTSTRAP_SERVERS") # type: ignore
+    KAFKA_ENABLED: bool = Field(False, env="KAFKA_ENABLED") # type: ignore
+
+    # --- ClickHouse ---
+    CLICKHOUSE_HOST: str = Field("clickhouse", env="CLICKHOUSE_HOST") # type: ignore
+    CLICKHOUSE_PORT: int = Field(8123, env="CLICKHOUSE_PORT") # type: ignore
+    CLICKHOUSE_USER: str = Field("default", env="CLICKHOUSE_USER") # type: ignore
+    CLICKHOUSE_PASSWORD: str = Field("", env="CLICKHOUSE_PASSWORD") # type: ignore
+    CLICKHOUSE_DB: str = Field("sit_center", env="CLICKHOUSE_DB") # type: ignore
+    CLICKHOUSE_ENABLED: bool = Field(False, env="CLICKHOUSE_ENABLED") # type: ignore
+
+    # --- LDAP ---
+    LDAP_ENABLED: bool = Field(False, env="LDAP_ENABLED") # type: ignore
+    LDAP_URL: str = Field("ldap://localhost:389", env="LDAP_URL") # type: ignore
+    LDAP_BASE_DN: str = Field("", env="LDAP_BASE_DN") # type: ignore
+    LDAP_BIND_DN: str = Field("", env="LDAP_BIND_DN") # type: ignore
+    LDAP_BIND_PASSWORD: str = Field("", env="LDAP_BIND_PASSWORD") # type: ignore
+    LDAP_USER_SEARCH_FILTER: str = Field("(sAMAccountName={username})", env="LDAP_USER_SEARCH_FILTER") # type: ignore
+    LDAP_GROUP_ROLE_MAP: Dict[str, str] = Field(default_factory=dict, env="LDAP_GROUP_ROLE_MAP") # type: ignore
+
+    # --- OIDC (Keycloak SSO) ---
+    OIDC_ENABLED: bool = Field(False, env="OIDC_ENABLED") # type: ignore
+    OIDC_ISSUER_URL: str = Field("", env="OIDC_ISSUER_URL") # type: ignore
+    OIDC_CLIENT_ID: str = Field("", env="OIDC_CLIENT_ID") # type: ignore
+    OIDC_CLIENT_SECRET: str = Field("", env="OIDC_CLIENT_SECRET") # type: ignore
+    OIDC_BASE_URL: str = Field("http://localhost:8000", env="OIDC_BASE_URL") # type: ignore
 
 
     class Config:

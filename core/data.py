@@ -12,25 +12,25 @@ cache = get_cache()
 CACHE_TTL = settings.cache_ttl
 
 def create_mv():
-    if not cache.exists("data_from_db_1h_zero"):
-        logger.info("Создаем MV для данных из БД")
+    try:
         engine = get_engine()
-        with engine.connect() as conn:
-            conn.execute(text("DROP MATERIALIZED VIEW IF EXISTS mv_hourly_region_metrics;"))
-            conn.execute(text("""
-                CREATE MATERIALIZED VIEW mv_hourly_region_metrics AS
-                    SELECT
-                    date_trunc('hour', timestamp AT TIME ZONE 'UTC') AS hour,
-                    dimensions->>'region' AS region,
-                    metric_name,
-                    AVG(value) AS avg_value,
-                    MAX(value) AS max_value,
-                    COUNT(*) AS sample_count
-                    FROM canonical_metrics
-                    WHERE dimensions ? 'region'
-                    GROUP BY 1, 2, 3;"""))
-
-            conn.execute(text("""CREATE UNIQUE INDEX ON mv_hourly_region_metrics (hour, region, metric_name);"""))
+        with engine.begin() as conn:
+            conn.execute(text(
+                "CALL refresh_continuous_aggregate('cagg_hourly_metrics', NULL, NULL);"
+            ))
+            logger.info("cagg_hourly_metrics refreshed via TimescaleDB")
+            return True
+    except Exception as e:
+        logger.warning(f"TimescaleDB cagg refresh failed, trying legacy MV: {e}")
+        try:
+            engine = get_engine()
+            with engine.begin() as conn:
+                conn.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY cagg_hourly_metrics;"))
+                logger.info("cagg_hourly_metrics refreshed (CONCURRENTLY fallback)")
+                return True
+        except Exception as e2:
+            logger.error(f"MV refresh failed: {e2}")
+            return False
 
 def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.DataFrame:
     """Загружает данные из PostgreSQL с улучшенной обработкой ошибок"""

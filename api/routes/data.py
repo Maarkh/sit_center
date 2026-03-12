@@ -295,6 +295,39 @@ def prometheus_query_range(
         raise HTTPException(500, "Query execution failed")
 
 
+@router.get("/analytics/query_range", response_model=Dict[str, Any])
+def analytics_query_range(
+    metric_name: str = Query(...),
+    start: float = Query(...),
+    end: float = Query(...),
+    aggregation: Literal["avg", "sum", "min", "max", "count"] = "avg",
+    interval: str = Query("1h", pattern=r"^\d+[smhd]$"),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Long-range analytics query routed to ClickHouse when enabled."""
+    from config import settings as cfg
+    start_dt = datetime.fromtimestamp(start, tz=timezone.utc)
+    end_dt = datetime.fromtimestamp(end, tz=timezone.utc)
+
+    if not getattr(cfg, "CLICKHOUSE_ENABLED", False):
+        raise HTTPException(501, "ClickHouse analytics not enabled")
+
+    interval_map = {"s": "SECOND", "m": "MINUTE", "h": "HOUR", "d": "DAY"}
+    num = interval[:-1]
+    unit = interval_map.get(interval[-1], "HOUR")
+    ch_interval = f"{num} {unit}"
+
+    from core.analytics_service import analytics_service
+    data = analytics_service.query_metric_aggregation(
+        metric_name=metric_name,
+        start=start_dt,
+        end=end_dt,
+        aggregation=aggregation,
+        interval=ch_interval,
+    )
+    return {"status": "success", "data": data}
+
+
 @router.post("/query", response_model=DataQueryResponse)
 @limiter.limit("30/minute")
 async def query_data(

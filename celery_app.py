@@ -27,7 +27,10 @@ def make_celery(app_name=__name__):
         result_serializer='json',
         timezone='UTC',
         enable_utc=True,
-        beat_schedule=get_beat_schedule(), 
+        beat_schedule=get_beat_schedule(),
+        task_routes={
+            'core.ml_tasks.*': {'queue': 'ml'},
+        },
     )
     return celery
 
@@ -36,6 +39,8 @@ def get_beat_schedule():
     return beat_schedule
 
 celery_app = make_celery()
+
+import core.celery_metrics  # noqa: F401, E402 — register Celery signal handlers
 
 @worker_shutting_down.connect
 def worker_shutting_down_handler(sig, how, exitcode, **kwargs):
