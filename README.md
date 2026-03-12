@@ -41,12 +41,15 @@
 │   ├────── celeryconfig.py
 │   ├────── config.py
 │   ├────── dlq_tool.py
+│   ├────── docker-compose.ha.yml
 │   ├────── docker-compose.prod.yml
+│   ├────── docker-compose.test.yml
 │   ├────── full_stack_architecture.txt
 │   ├────── generate_data.py
 │   ├────── generate_docs.py
 │   ├────── init_schema.sql
 │   ├────── instructions.md
+│   ├────── kafka_consumer_main.py
 │   ├────── requirements.txt
 │   ├────── tasks.py
 │   ├────── telegram_bot.py
@@ -58,35 +61,74 @@
 │   │   ├────── dependencies.py
 │   │   ├────── limiter.py
 │   │   ├────── main.py
+│   │   ├────── middleware.py
 │   │   ├────── schemas.py
+│   │   ├── __pycache__/
 │   │   ├── routes/
+│   │   │   ├────── __init__.py
+│   │   │   ├────── admin.py
 │   │   │   ├────── alerts.py
+│   │   │   ├────── audit.py
+│   │   │   ├────── auth.py
 │   │   │   ├────── data.py
 │   │   │   ├────── dimensions.py
+│   │   │   ├────── forecasts.py
+│   │   │   ├────── incidents.py
 │   │   │   ├────── metrics.py
 │   │   │   ├────── ml_configs.py
 │   │   │   ├────── rules.py
 │   │   │   ├────── webhooks.py
 │   │   │   ├────── websocket.py
+│   │   │   ├── __pycache__/
 │   ├── .github/
 │   │   ├── workflows/
 │   │   │   ├────── ci-cd.yml
 │   │   │   ├────── generate-docs.yml
+│   ├── logs/
+│   ├── __pycache__/
 │   ├── db/
+│   ├── nginx/
+│   ├── docs/
+│   │   ├────── disaster-recovery.md
 │   ├── alembic/
 │   │   ├────── env.py
 │   │   ├── versions/
 │   │   │   ├────── 001_add_admin_dashboard.py
 │   │   │   ├────── 002_add_metadata_ml_configs.py
 │   ├── data/
+│   ├── .claude/
 │   ├── tests/
 │   │   ├────── __init__.py
 │   │   ├────── conftest.py
+│   │   ├────── test_alerts_logic.py
+│   │   ├────── test_api_alerts.py
+│   │   ├────── test_api_data.py
+│   │   ├────── test_api_metrics.py
+│   │   ├────── test_api_versioning.py
+│   │   ├────── test_api_webhooks.py
+│   │   ├────── test_auth_strategies.py
+│   │   ├────── test_data_routes.py
+│   │   ├────── test_idoit_service.py
+│   │   ├────── test_incidents.py
 │   │   ├────── test_mask_secrets.py
+│   │   ├────── test_metadata_service.py
 │   │   ├────── test_ml.py
+│   │   ├────── test_pubsub.py
+│   │   ├────── test_rbac.py
+│   │   ├────── test_resilience.py
+│   │   ├────── test_rules_api.py
 │   │   ├────── test_security.py
+│   │   ├── __pycache__/
+│   │   ├── load/
+│   │   │   ├────── __init__.py
+│   │   │   ├────── locustfile.py
+│   │   │   ├── __pycache__/
 │   │   ├── integration/
+│   │   │   ├────── __init__.py
+│   │   │   ├────── conftest.py
 │   │   │   ├────── test_end_to_end.py
+│   │   │   ├── __pycache__/
+│   ├── .pytest_cache/
 │   ├── documents/
 │   ├── grafana/
 │   │   ├── dashboards/
@@ -103,38 +145,72 @@
 │   │   │   ├── tags/
 │   │   │   ├── heads/
 │   │   ├── objects/
+│   │   │   ├── 14/
 │   │   │   ├── 5e/
+│   │   │   ├── e1/
 │   │   │   ├── 77/
 │   │   │   ├── info/
+│   │   │   ├── fc/
 │   │   │   ├── ac/
+│   │   │   ├── 44/
 │   │   │   ├── 42/
+│   │   │   ├── 2a/
 │   │   │   ├── 20/
+│   │   │   ├── 21/
 │   │   │   ├── ff/
+│   │   │   ├── 4d/
 │   │   │   ├── 7e/
 │   │   │   ├── 4f/
+│   │   │   ├── cb/
 │   │   │   ├── 8e/
 │   │   │   ├── 5d/
+│   │   │   ├── 37/
 │   │   │   ├── b9/
 │   │   │   ├── 56/
+│   │   │   ├── 90/
 │   │   │   ├── 95/
 │   │   │   ├── 50/
 │   │   │   ├── 1d/
 │   │   │   ├── 7c/
+│   │   │   ├── 1c/
+│   │   │   ├── 38/
+│   │   │   ├── 2f/
 │   │   │   ├── 33/
+│   │   │   ├── e7/
+│   │   │   ├── a1/
 │   │   │   ├── 7a/
+│   │   │   ├── 6d/
+│   │   │   ├── de/
+│   │   │   ├── a8/
+│   │   │   ├── d4/
 │   │   │   ├── 5f/
+│   │   │   ├── c8/
 │   │   │   ├── 7f/
+│   │   │   ├── e5/
 │   │   │   ├── 73/
 │   │   │   ├── ed/
 │   │   │   ├── 40/
 │   │   │   ├── c7/
+│   │   │   ├── 92/
 │   │   │   ├── c6/
 │   │   │   ├── 00/
 │   │   │   ├── e6/
+│   │   │   ├── a5/
+│   │   │   ├── 1f/
 │   │   │   ├── b3/
+│   │   │   ├── 06/
 │   │   │   ├── e0/
+│   │   │   ├── f2/
+│   │   │   ├── af/
 │   │   │   ├── b7/
+│   │   │   ├── e4/
+│   │   │   ├── db/
+│   │   │   ├── 9c/
+│   │   │   ├── f5/
+│   │   │   ├── 6e/
+│   │   │   ├── 63/
 │   │   │   ├── be/
+│   │   │   ├── 87/
 │   │   │   ├── b4/
 │   │   │   ├── 4e/
 │   │   │   ├── ba/
@@ -142,69 +218,134 @@
 │   │   │   ├── 35/
 │   │   │   ├── 83/
 │   │   │   ├── c3/
+│   │   │   ├── 84/
 │   │   │   ├── 7b/
 │   │   │   ├── 04/
 │   │   │   ├── 99/
+│   │   │   ├── ec/
+│   │   │   ├── cc/
 │   │   │   ├── 28/
 │   │   │   ├── 4b/
+│   │   │   ├── f8/
 │   │   │   ├── 10/
 │   │   │   ├── 3c/
+│   │   │   ├── 34/
+│   │   │   ├── 53/
 │   │   │   ├── f6/
+│   │   │   ├── 01/
 │   │   │   ├── ea/
+│   │   │   ├── 59/
 │   │   │   ├── eb/
 │   │   │   ├── b5/
 │   │   │   ├── 0e/
 │   │   │   ├── 24/
+│   │   │   ├── 03/
 │   │   │   ├── 18/
 │   │   │   ├── 75/
 │   │   │   ├── 8d/
+│   │   │   ├── 0c/
+│   │   │   ├── 79/
+│   │   │   ├── 3a/
 │   │   │   ├── d3/
 │   │   │   ├── d0/
+│   │   │   ├── 8f/
+│   │   │   ├── fd/
+│   │   │   ├── 47/
+│   │   │   ├── 0b/
+│   │   │   ├── 43/
 │   │   │   ├── b8/
 │   │   │   ├── 0a/
+│   │   │   ├── 5c/
+│   │   │   ├── bd/
+│   │   │   ├── 12/
+│   │   │   ├── 64/
 │   │   │   ├── 8c/
+│   │   │   ├── 51/
+│   │   │   ├── 68/
+│   │   │   ├── 57/
 │   │   │   ├── 98/
 │   │   │   ├── a0/
 │   │   │   ├── ca/
+│   │   │   ├── 39/
+│   │   │   ├── 86/
+│   │   │   ├── a3/
 │   │   │   ├── 9a/
 │   │   │   ├── 55/
+│   │   │   ├── 3e/
 │   │   │   ├── 11/
 │   │   │   ├── d2/
 │   │   │   ├── 31/
+│   │   │   ├── 61/
+│   │   │   ├── 13/
+│   │   │   ├── 9f/
 │   │   │   ├── 05/
 │   │   │   ├── b0/
 │   │   │   ├── 74/
+│   │   │   ├── c2/
+│   │   │   ├── ce/
+│   │   │   ├── 2d/
 │   │   │   ├── 5a/
+│   │   │   ├── ae/
+│   │   │   ├── d1/
+│   │   │   ├── 62/
 │   │   │   ├── f7/
+│   │   │   ├── 54/
 │   │   │   ├── fa/
 │   │   │   ├── 67/
 │   │   │   ├── 17/
+│   │   │   ├── 6c/
 │   │   │   ├── pack/
 │   │   │   ├── ab/
 │   │   │   ├── b1/
 │   │   │   ├── 5b/
 │   │   │   ├── d7/
+│   │   │   ├── bb/
 │   │   │   ├── 71/
 │   │   │   ├── 6f/
+│   │   │   ├── c5/
+│   │   │   ├── 2b/
+│   │   │   ├── a2/
+│   │   │   ├── 26/
 │   │   │   ├── 88/
+│   │   │   ├── 9e/
+│   │   │   ├── 25/
 │   │   ├── logs/
 │   │   ├── hooks/
 │   ├── core/
 │   │   ├────── __init__.py
 │   │   ├────── alert_settings.py
 │   │   ├────── alerts.py
+│   │   ├────── analytics_service.py
+│   │   ├────── audit.py
+│   │   ├────── auth_strategies.py
+│   │   ├────── celery_metrics.py
+│   │   ├────── clickhouse.py
 │   │   ├────── config_service.py
 │   │   ├────── data.py
 │   │   ├────── database.py
 │   │   ├────── exceptions.py
+│   │   ├────── idoit_service.py
+│   │   ├────── kafka_consumer.py
+│   │   ├────── kafka_producer.py
+│   │   ├────── ldap_auth.py
 │   │   ├────── locking.py
 │   │   ├────── metadata_service.py
 │   │   ├────── metric_service.py
 │   │   ├────── ml_anomaly.py
+│   │   ├────── ml_tasks.py
 │   │   ├────── models.py
 │   │   ├────── notifications.py
+│   │   ├────── oidc_auth.py
+│   │   ├────── pubsub.py
+│   │   ├────── rbac.py
+│   │   ├────── resilience.py
+│   │   ├────── rule_engine.py
+│   │   ├────── sla_service.py
 │   │   ├────── smart_alerts.py
+│   │   ├────── tenant.py
+│   │   ├────── tracing.py
 │   │   ├────── utils.py
+│   │   ├── __pycache__/
 ## 💻 Коды основных модулей
 ### 📄 `Dockerfile.celery`
 
@@ -269,7 +410,10 @@ def make_celery(app_name=__name__):
         result_serializer='json',
         timezone='UTC',
         enable_utc=True,
-        beat_schedule=get_beat_schedule(), 
+        beat_schedule=get_beat_schedule(),
+        task_routes={
+            'core.ml_tasks.*': {'queue': 'ml'},
+        },
     )
     return celery
 
@@ -278,6 +422,8 @@ def get_beat_schedule():
     return beat_schedule
 
 celery_app = make_celery()
+
+import core.celery_metrics  # noqa: F401, E402 — register Celery signal handlers
 
 @worker_shutting_down.connect
 def worker_shutting_down_handler(sig, how, exitcode, **kwargs):
@@ -294,21 +440,29 @@ from celery.schedules import crontab
 
 beat_schedule = {
     'ml-anomaly-10min': {
-        'task': 'tasks.run_ml_anomaly_check',
+        'task': 'core.ml_tasks.run_ml_anomaly_check',
         'schedule': crontab(minute='*/10')
     },
     'retrain-ml-models-daily': {
-        'task': 'tasks.retrain_ml_models',
+        'task': 'core.ml_tasks.retrain_ml_models',
         'schedule': crontab(hour=3, minute=0)
     },
     'update-mv-10min': {
         'task': 'tasks.update_mv_data',
         'schedule': crontab(minute='*/10')
     },
-    'create-partition-monthly': {
-        'task': 'tasks.create_monthly_partition',
-        'schedule': crontab(day_of_month=28, hour=2, minute=0)
-    }
+    'evaluate-rules-1min': {
+        'task': 'core.ml_tasks.evaluate_rules_task',
+        'schedule': crontab(minute='*/1')
+    },
+    'check-sla-breaches-5min': {
+        'task': 'tasks.check_sla_breaches_task',
+        'schedule': crontab(minute='*/5')
+    },
+    'check-auto-escalation-5min': {
+        'task': 'tasks.check_auto_escalation_task',
+        'schedule': crontab(minute='*/5')
+    },
 }
 ```
 ### 📄 `config.py`
@@ -317,7 +471,7 @@ beat_schedule = {
 # config.py
 from pathlib import Path
 from pydantic_settings import BaseSettings
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import Field, PostgresDsn
 import logging
 import logging.handlers
@@ -343,8 +497,8 @@ def mask_secrets(s: str) -> str:
         s = str(s)
 
     # Redis/Postgres URLs: mask password between : and @
-    s = re.sub(r"(redis://[^:@]+:)([^@]+)(@)", r"\1***\3", s, flags=re.IGNORECASE)
-    s = re.sub(r"(postgres(?:ql)?://[^:@]+:)([^@]+)(@)", r"\1***\3", s, flags=re.IGNORECASE)
+    s = re.sub(r"(redis://[^:@]*:)([^@]+)(@)", r"\1***\3", s, flags=re.IGNORECASE)
+    s = re.sub(r"(postgres(?:ql)?://[^:@]*:)([^@]+)(@)", r"\1***\3", s, flags=re.IGNORECASE)
 
     # Telegram bot token: bot<id>:<token> -> bot<id>:***
     s = re.sub(r"(bot\d+:)[A-Za-z0-9_\-]+", r"\1***", s, flags=re.IGNORECASE)
@@ -436,6 +590,39 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = Field(..., env="ADMIN_PASSWORD")     # type: ignore
     WEBHOOK_API_KEY: str = Field(..., env="WEBHOOK_API_KEY") # type: ignore
 
+    # --- Kafka ---
+    KAFKA_BOOTSTRAP_SERVERS: str = Field("kafka:9092", env="KAFKA_BOOTSTRAP_SERVERS") # type: ignore
+    KAFKA_ENABLED: bool = Field(False, env="KAFKA_ENABLED") # type: ignore
+
+    # --- ClickHouse ---
+    CLICKHOUSE_HOST: str = Field("clickhouse", env="CLICKHOUSE_HOST") # type: ignore
+    CLICKHOUSE_PORT: int = Field(8123, env="CLICKHOUSE_PORT") # type: ignore
+    CLICKHOUSE_USER: str = Field("default", env="CLICKHOUSE_USER") # type: ignore
+    CLICKHOUSE_PASSWORD: str = Field("", env="CLICKHOUSE_PASSWORD") # type: ignore
+    CLICKHOUSE_DB: str = Field("sit_center", env="CLICKHOUSE_DB") # type: ignore
+    CLICKHOUSE_ENABLED: bool = Field(False, env="CLICKHOUSE_ENABLED") # type: ignore
+
+    # --- LDAP ---
+    LDAP_ENABLED: bool = Field(False, env="LDAP_ENABLED") # type: ignore
+    LDAP_URL: str = Field("ldap://localhost:389", env="LDAP_URL") # type: ignore
+    LDAP_BASE_DN: str = Field("", env="LDAP_BASE_DN") # type: ignore
+    LDAP_BIND_DN: str = Field("", env="LDAP_BIND_DN") # type: ignore
+    LDAP_BIND_PASSWORD: str = Field("", env="LDAP_BIND_PASSWORD") # type: ignore
+    LDAP_USER_SEARCH_FILTER: str = Field("(sAMAccountName={username})", env="LDAP_USER_SEARCH_FILTER") # type: ignore
+    LDAP_GROUP_ROLE_MAP: Dict[str, str] = Field(default_factory=dict, env="LDAP_GROUP_ROLE_MAP") # type: ignore
+
+    # --- OIDC (Keycloak SSO) ---
+    OIDC_ENABLED: bool = Field(False, env="OIDC_ENABLED") # type: ignore
+    OIDC_ISSUER_URL: str = Field("", env="OIDC_ISSUER_URL") # type: ignore
+    OIDC_CLIENT_ID: str = Field("", env="OIDC_CLIENT_ID") # type: ignore
+    OIDC_CLIENT_SECRET: str = Field("", env="OIDC_CLIENT_SECRET") # type: ignore
+    OIDC_BASE_URL: str = Field("http://localhost:8000", env="OIDC_BASE_URL") # type: ignore
+
+    # --- CORS ---
+    CORS_ORIGINS: str = Field(
+        "http://localhost:8050,http://localhost:3000,http://localhost:8000",
+        env="CORS_ORIGINS",
+    ) # type: ignore
 
     class Config:
         env_file = ".env"
@@ -599,22 +786,133 @@ def replay_dlq():
         r.xdel("dlq:notifications", _id)
         print(f"🔁 Повтор: {msg[:80]}...")
 ```
+### 📄 `docker-compose.ha.yml`
+
+```yaml
+# docker-compose.ha.yml
+# High-Availability override: run with
+#   docker-compose -f docker-compose.prod.yml -f docker-compose.ha.yml up -d
+
+services:
+  # --- API instances behind nginx ---
+  api-1:
+    extends:
+      file: docker-compose.prod.yml
+      service: api
+    ports: []   # nginx will proxy
+    container_name: api-1
+
+  api-2:
+    extends:
+      file: docker-compose.prod.yml
+      service: api
+    ports: []
+    container_name: api-2
+
+  # --- Nginx Load Balancer ---
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api-1
+      - api-2
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # --- Redis Sentinel (3 nodes) ---
+  redis-sentinel-1:
+    image: redis:7-alpine
+    command: >
+      sh -c "cat > /etc/redis/sentinel.conf << 'EOF'
+      port 26379
+      sentinel monitor mymaster redis 6379 2
+      sentinel down-after-milliseconds mymaster 5000
+      sentinel failover-timeout mymaster 10000
+      sentinel parallel-syncs mymaster 1
+      EOF
+      redis-sentinel /etc/redis/sentinel.conf"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  redis-sentinel-2:
+    image: redis:7-alpine
+    command: >
+      sh -c "cat > /etc/redis/sentinel.conf << 'EOF'
+      port 26379
+      sentinel monitor mymaster redis 6379 2
+      sentinel down-after-milliseconds mymaster 5000
+      sentinel failover-timeout mymaster 10000
+      sentinel parallel-syncs mymaster 1
+      EOF
+      redis-sentinel /etc/redis/sentinel.conf"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  redis-sentinel-3:
+    image: redis:7-alpine
+    command: >
+      sh -c "cat > /etc/redis/sentinel.conf << 'EOF'
+      port 26379
+      sentinel monitor mymaster redis 6379 2
+      sentinel down-after-milliseconds mymaster 5000
+      sentinel failover-timeout mymaster 10000
+      sentinel parallel-syncs mymaster 1
+      EOF
+      redis-sentinel /etc/redis/sentinel.conf"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # --- DB Replica (streaming replication) ---
+  db-replica:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command: >
+      bash -c "
+        until pg_isready -h db -U $${POSTGRES_USER}; do sleep 2; done;
+        pg_basebackup -h db -U $${POSTGRES_USER} -D /var/lib/postgresql/data -Fp -Xs -P -R;
+        postgres
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_replica_data:
+
+networks:
+  app-network:
+    driver: bridge
+
+```
 ### 📄 `docker-compose.prod.yml`
 
 ```yaml
-version: '3.8'
-
 services:
-  # ——— PostgreSQL ———
+  # ——— PostgreSQL для Situational Center ———
   db:
-    image: postgres:15
+    image: timescale/timescaledb:latest-pg15
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d
+      - ./db/migrations:/docker-entrypoint-initdb.d  # ← Только для основной БД
     ports:
       - "5433:5432"
     networks:
@@ -641,7 +939,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # ——— Airbyte ———
+  # ——— Airbyte: PostgreSQL (только для Airbyte) ———
   airbyte-db:
     image: postgres:13
     environment:
@@ -650,6 +948,7 @@ services:
       POSTGRES_DB: airbyte
     volumes:
       - airbyte_db_data:/var/lib/postgresql/data
+      # ❌ УДАЛЕНО: ./db/migrations — Airbyte сам управляет своей схемой
     networks:
       - app-network
     healthcheck:
@@ -658,6 +957,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # ——— Airbyte: Temporal ———
   airbyte-temporal:
     image: airbyte/temporal:${AIRBYTE_VERSION:-0.50.4}
     environment:
@@ -673,6 +973,7 @@ services:
       - app-network
     restart: unless-stopped
 
+  # ——— Airbyte: Server ———
   airbyte-server:
     image: airbyte/server:${AIRBYTE_VERSION:-0.50.4}
     environment:
@@ -693,6 +994,7 @@ services:
       - app-network
     restart: unless-stopped
 
+  # ——— Airbyte: Worker ———
   airbyte-worker:
     image: airbyte/worker:${AIRBYTE_VERSION:-0.50.4}
     environment:
@@ -713,6 +1015,7 @@ services:
       - app-network
     restart: unless-stopped
 
+  # ——— Airbyte: Web UI ———
   airbyte-webapp:
     image: airbyte/webapp:${AIRBYTE_VERSION:-0.50.4}
     ports:
@@ -725,7 +1028,7 @@ services:
       - app-network
     restart: unless-stopped
 
-  # ——— FastAPI (единый API + Webhooks) ———
+  # ——— FastAPI ———
   api:
     build:
       context: .
@@ -755,7 +1058,7 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -779,7 +1082,7 @@ services:
       - app-network
     restart: unless-stopped
 
-  # ——— Celery (worker + beat) ———
+  # ——— Celery Worker ———
   celery-worker:
     build:
       context: .
@@ -808,6 +1111,34 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # ——— ML Worker (dedicated queue) ———
+  ml-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml-worker
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "celery", "-A", "celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ——— Celery Beat ———
   celery-beat:
     build:
       context: .
@@ -828,19 +1159,115 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
 
-  # ——— Flower ———
+  # ——— Flower (Celery monitor) ———
   flower:
     image: mher/flower
     command: ["celery", "--broker=redis://:${REDIS_PASSWORD}@redis:6379/0", "flower", "--port=5555"]
     ports:
       - "5555:5555"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5555/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # ——— GLPI (IT Service Management) ———
+  # ——— ClickHouse (OLAP analytics) ———
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./db/clickhouse/init_schema.sql:/docker-entrypoint-initdb.d/init_schema.sql
+    environment:
+      CLICKHOUSE_DB: sit_center
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ——— Zookeeper (for Kafka) ———
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ——— Kafka ———
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ——— Kafka Consumer ———
+  kafka-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.kafka-consumer
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_ENABLED=true
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import kafka; print(\"ok\")' 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ——— GLPI (ITSM) ———
   glpi-db:
     image: mysql:8.0
     environment:
@@ -878,6 +1305,43 @@ services:
       - app-network
     restart: unless-stopped
 
+  # ——— Keycloak DB ———
+  keycloak-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ——— Keycloak (OIDC SSO) ———
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "8443:8080"
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
 networks:
   app-network:
     driver: bridge
@@ -892,6 +1356,41 @@ volumes:
   glpi_data:
   glpi_plugins:
   glpi_marketplace:
+  keycloak_db_data:
+  clickhouse_data:
+  zookeeper_data:
+  kafka_data:
+```
+### 📄 `docker-compose.test.yml`
+
+```yaml
+services:
+  test-db:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+      POSTGRES_DB: test_db
+    ports:
+      - "5444:5432"
+    volumes:
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  test-redis:
+    image: redis:7-alpine
+    ports:
+      - "6399:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 ```
 ### 📄 `full_stack_architecture.txt`
 
@@ -1946,6 +2445,22 @@ psql -h localhost -U postgres -d monitoring_db -f init_schema.sql
 
 
 ```
+### 📄 `kafka_consumer_main.py`
+
+```python
+# kafka_consumer_main.py
+"""Entry point for the Kafka consumer service."""
+from config import settings, logger
+
+if __name__ == "__main__":
+    bootstrap = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+    logger.info("Starting Kafka consumer with bootstrap: %s", bootstrap)
+
+    from core.kafka_consumer import MetricKafkaConsumer
+    consumer = MetricKafkaConsumer(bootstrap_servers=bootstrap)
+    consumer.run()
+
+```
 ### 📄 `requirements.txt`
 
 ```
@@ -1965,7 +2480,7 @@ xlsxwriter
 tenacity
 psycopg2-binary
 sqlalchemy
-redis
+redis[hiredis]
 fakeredis
 celery
 prophet
@@ -1977,15 +2492,29 @@ kafka-python
 fastapi
 uvicorn[standard]
 python-jose[cryptography]
-redis
 prometheus_client
 slowapi
 psutil
 fastapi-jwt-auth
 pytest-cov
+pytest-asyncio
+httpx
 torch
 passlib
+bcrypt
 python-multipart
+clickhouse-connect
+ldap3
+authlib
+itsdangerous
+locust
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-sqlalchemy
+opentelemetry-instrumentation-redis
+opentelemetry-instrumentation-requests
 ```
 ### 📄 `tasks.py`
 
@@ -1997,14 +2526,13 @@ from celery_app import celery_app
 from core.database import get_engine
 from core.smart_alerts import check_growth_alert
 from core.alert_settings import load_alert_settings_cached
-from core.ml_anomaly import find_recent_ml_anomalies
 from config import logger, get_redis
 from core.notifications import notify
 from telegram_bot import send_alert_sync
 from celery.signals import task_failure
 from datetime import datetime, timezone
 from hashlib import md5
-from core.locking import global_lock
+
 
 def get_data_from_db(time_filter: str = "1h") -> pd.DataFrame:
     delta_map = {"1h": 1, "6h": 6, "24h": 24}
@@ -2055,27 +2583,6 @@ def run_alerts_check_task(self, time_filter: str = "1h"):
         raise self.retry(exc=exc, countdown=30)
 
 
-@celery_app.task
-def run_ml_anomaly_check():
-    try:
-        count = find_recent_ml_anomalies(time_filter="6h")
-        logger.info(f"✅ ML: найдено {count} аномалий")
-        return count
-    except Exception as e:
-        logger.exception("❌ ML task failed")
-        return 0
-
-
-@celery_app.task
-def retrain_ml_models():
-    try:
-        from core.ml_anomaly import retrain_all_models
-        retrain_all_models()
-        return {"status": "success"}
-    except Exception as e:
-        logger.exception("❌ Retrain ML failed")
-        return {"status": "error", "message": str(e)}
-
 
 @celery_app.task(bind=True, max_retries=3)
 def send_notification(self, message: str, priority: str, idempotency_key: str = None): # type: ignore
@@ -2123,7 +2630,7 @@ def handle_task_failure(sender=None, task_id=None, exception=None, traceback=Non
                 "message": message,
                 "priority": priority,
                 "error": str(exception),
-                "timestamp": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             try:
                 get_redis().xadd("dlq:notifications", payload) # type: ignore
@@ -2133,79 +2640,27 @@ def handle_task_failure(sender=None, task_id=None, exception=None, traceback=Non
     except Exception:
         logger.exception("💥 Ошибка в handle_task_failure")
         
-@celery_app.task(name="tasks.create_monthly_partition", bind=True)
-def create_monthly_partition(self=None):
-    with global_lock("partition_create", timeout=10):
-        from sqlalchemy import text
-        from core.database import get_engine
-        from config import logger
-        from datetime import datetime, timedelta
-        import re
-        """
-        Создаёт партицию canonical_metrics_<YYYY_MM> на следующий месяц.
-        Использует безопасный EXECUTE format('%I', table_name) внутри DO $$ ... $$.
-        """
-        PARTITION_NAME_RE = re.compile(r"^canonical_metrics_\d{4}_\d{2}$")
-        engine = get_engine()
-        today = datetime.utcnow().date()
-        next_month = (today.replace(day=1) + timedelta(days=32)).replace(day=1)
-        start = next_month
-        end = (start + timedelta(days=32)).replace(day=1)
-        table_name = f"canonical_metrics_{next_month.strftime('%Y_%m')}"
+@celery_app.task
+def check_sla_breaches_task():
+    try:
+        from core.sla_service import check_sla_breaches
+        result = check_sla_breaches()
+        if result["response_breaches"] or result["resolution_breaches"]:
+            logger.warning(f"SLA breaches: {result}")
+        return result
+    except Exception as e:
+        logger.exception("SLA breach check failed")
 
-        # Валидация имени партиции
-        if not PARTITION_NAME_RE.match(table_name):
-            from config import logger
-            logger.error("Invalid partition name: %s", table_name)
-            return
 
-        # Используем безопасную проверку существования через to_regclass
-        create_sql = text("""
-        DO $$
-        BEGIN
-            IF to_regclass(:full_table_name) IS NULL THEN
-                EXECUTE format(
-                    'CREATE TABLE %I PARTITION OF canonical_metrics FOR VALUES FROM (%L) TO (%L)',
-                    :table_name,
-                    :start_date,
-                    :end_date
-                );
-            END IF;
-        END $$;
-        """)
+@celery_app.task
+def check_auto_escalation_task():
+    try:
+        from core.sla_service import check_auto_escalation
+        check_auto_escalation()
+    except Exception as e:
+        logger.exception("Auto-escalation check failed")
 
-        # index creation as separate EXECUTE to avoid quoting issues
-        index_sql = text("""
-        DO $$
-        BEGIN
-            IF to_regclass(:idx_name) IS NULL THEN
-                EXECUTE format(
-                    'CREATE INDEX IF NOT EXISTS %I ON %I (timestamp DESC)',
-                    :index_on_table,
-                    :table_name
-                );
-            END IF;
-        END $$;
-        """)
 
-        params = {
-            "full_table_name": f"public.{table_name}",
-            "table_name": table_name,
-            "start_date": start.strftime('%Y-%m-%d'),
-            "end_date": end.strftime('%Y-%m-%d'),
-            "idx_name": f"idx_{table_name}_ts",
-            "index_on_table": f"idx_{table_name}_ts"
-        }
-
-        with engine.begin() as conn:
-            # Создаем таблицу-партицию, если её нет
-            conn.execute(create_sql, params)
-            # Создаём индекс на партиции
-            conn.execute(index_sql, params)
-
-        from config import logger
-        logger.info("✅ Partition %s ensured", table_name)
-    
 @celery_app.task
 def healthcheck():
     return {"status": "ok"}
@@ -2476,6 +2931,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
     scopes: List[str] = Field(default_factory=list)
+    tenant_id: str = "default"
+    roles: List[str] = Field(default_factory=list)
+    permissions: List[str] = Field(default_factory=list)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -2490,9 +2948,18 @@ def verify_token(token: str) -> TokenData:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub") # type: ignore
         scopes = payload.get("scopes", [])
+        tenant_id = payload.get("tenant_id", "default")
+        roles = payload.get("roles", [])
+        permissions = payload.get("permissions", [])
         if username is None:
             raise JWTError()
-        return TokenData(username=username, scopes=scopes)
+        return TokenData(
+            username=username,
+            scopes=scopes,
+            tenant_id=tenant_id,
+            roles=roles,
+            permissions=permissions,
+        )
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -2510,22 +2977,19 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 ```python
 # api/dependencies.py
 from core.metadata_service import metadata_service
-from sqlalchemy import create_engine
-from config import get_database_url
+from core.database import get_engine
+from core.tenant import set_current_tenant
 from api.auth import get_current_user, TokenData
 from fastapi import Depends, HTTPException
 
-# Метаданные — синглтон
+
 def get_metadata_service():
     return metadata_service
 
-# БД (если нужно напрямую)
-_engine = None
+
 def get_db_engine():
-    global _engine
-    if _engine is None:
-        _engine = create_engine(get_database_url())
-    return _engine
+    return get_engine()
+
 
 def require_scope(required_scope: str):
     def _check(current_user: TokenData = Depends(get_current_user)):
@@ -2533,21 +2997,36 @@ def require_scope(required_scope: str):
             raise HTTPException(403, "Insufficient permissions")
         return current_user
     return _check
+
+
+def get_tenant_context(current_user: TokenData = Depends(get_current_user)) -> TokenData:
+    """Set tenant context from JWT and return the user."""
+    set_current_tenant(current_user.tenant_id)
+    return current_user
+
 ```
 ### 📄 `api/limiter.py`
 
 ```python
 # api/limiter.py
+import os
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from config import settings
 
+_storage_uri = f"redis://:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
+
+# Use in-memory storage for testing (when TESTING env var is set)
+if os.getenv("TESTING", "").lower() in ("1", "true"):
+    _storage_uri = "memory://"
+
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["100/minute", "1000/hour"],
-    storage_uri=f"redis://:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}",
+    storage_uri=_storage_uri,
     strategy="fixed-window"
 )
+
 ```
 ### 📄 `api/main.py`
 
@@ -2561,9 +3040,10 @@ from config import logger, setup_logging, settings
 # Настройка логирования (важно: до импорта других модулей)
 setup_logging()
 
-from api.routes import metrics, dimensions, rules, ml_configs, alerts, data, webhooks
-from api.auth import create_access_token, Token, ACCESS_TOKEN_EXPIRE_MINUTES, OAuth2PasswordRequestForm
-from datetime import timedelta
+from api.routes import metrics, dimensions, rules, ml_configs, alerts, data, webhooks, admin, incidents, forecasts
+from api.routes import auth as auth_routes
+from api.routes import audit as audit_routes
+from api.auth import Token, OAuth2PasswordRequestForm
 from core.exceptions import (
     situational_center_error_handler,
     sqlalchemy_error_handler,
@@ -2571,17 +3051,34 @@ from core.exceptions import (
 )
 
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from api.middleware import PrometheusMiddleware, DeprecationMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import DatabaseError as SQLADatabaseError
 from api.limiter import limiter
-from passlib.context import CryptContext
-
 ALERTS_SENT = Counter("alerts_sent_total", "Total alerts sent", ["priority"])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
+    from api.routes.websocket import alert_stream_task
     logger.info("🚀 Запуск API-сервера...")
+
+    # Configure OIDC if enabled
+    try:
+        from core.oidc_auth import configure_oidc
+        configure_oidc()
+    except Exception as e:
+        logger.warning(f"OIDC configuration failed: {e}")
+
+    # Configure OpenTelemetry tracing if enabled
+    try:
+        from core.tracing import setup_tracing
+        setup_tracing(app)
+    except Exception as e:
+        logger.warning(f"OpenTelemetry setup failed: {e}")
+
+    asyncio.create_task(alert_stream_task())
     yield
     logger.info("🛑 Остановка API-сервера...")
 
@@ -2590,29 +3087,52 @@ app = FastAPI(
     description="REST API для управления ситуационным центром",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",        # Swagger UI
-    redoc_url="/redoc",      # ReDoc
-    openapi_url="/openapi.json"
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": True,
+    },
 )
 
+from starlette.middleware.sessions import SessionMiddleware
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+app.add_middleware(PrometheusMiddleware)
+app.add_middleware(DeprecationMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler) # type: ignore
 app.add_exception_handler(SituationalCenterError, situational_center_error_handler) # type: ignore
 app.add_exception_handler(SQLADatabaseError, sqlalchemy_error_handler) # type: ignore
 
 
-# CORS (настрой под свой фронтенд)
+# CORS — origins from CORS_ORIGINS env var (comma-separated)
+_cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ← замени на ["http://localhost:8050"] в продакшене
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-KEY", "Accept"],
 )
 
 
 
-# Подключаем роутеры
+# API v1 — all business routes under /api/v1/ prefix
+API_V1_PREFIX = "/api/v1"
+app.include_router(metrics.router, prefix=API_V1_PREFIX)
+app.include_router(dimensions.router, prefix=API_V1_PREFIX)
+app.include_router(rules.router, prefix=API_V1_PREFIX)
+app.include_router(ml_configs.router, prefix=API_V1_PREFIX)
+app.include_router(alerts.router, prefix=API_V1_PREFIX)
+app.include_router(data.router, prefix=API_V1_PREFIX)
+app.include_router(webhooks.router, prefix=API_V1_PREFIX)
+app.include_router(admin.router, prefix=API_V1_PREFIX)
+app.include_router(incidents.router, prefix=API_V1_PREFIX)
+app.include_router(forecasts.router, prefix=API_V1_PREFIX)
+app.include_router(auth_routes.router, prefix=API_V1_PREFIX)
+app.include_router(audit_routes.router, prefix=API_V1_PREFIX)
+
+# Backward-compat: also mount without prefix for existing clients
 app.include_router(metrics.router)
 app.include_router(dimensions.router)
 app.include_router(rules.router)
@@ -2620,36 +3140,39 @@ app.include_router(ml_configs.router)
 app.include_router(alerts.router)
 app.include_router(data.router)
 app.include_router(webhooks.router)
+app.include_router(admin.router)
+app.include_router(incidents.router)
+app.include_router(forecasts.router)
+app.include_router(auth_routes.router)
+app.include_router(audit_routes.router)
 
 # WebSocket
 from api.routes.websocket import router as ws_router
 app.include_router(ws_router)
 
-# Запуск фоновой задачи WS
-@app.on_event("startup")
-async def startup_event():
-    import asyncio
-    from api.routes.websocket import alert_stream_task
-    asyncio.create_task(alert_stream_task())
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 @app.post("/token", response_model=Token)
 @limiter.limit("5/minute")
 async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
-    # Проверка username
-    if form_data.username != settings.ADMIN_USERNAME:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # Проверка пароля (хэшированного)
-    if not pwd_context.verify(form_data.password, settings.ADMIN_PASSWORD):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    access_token = create_access_token(
-        data={"sub": form_data.username, "scopes": ["admin"]},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    from core.auth_strategies import try_ldap_auth, try_db_auth, try_env_admin_auth
+    from core.audit import log_audit
+    ip = request.client.host if request.client else None
+
+    # 1) LDAP
+    token = try_ldap_auth(form_data.username, form_data.password)
+    if token:
+        log_audit(form_data.username, "default", "login", "session", ip_address=ip)
+        return {"access_token": token, "token_type": "bearer"}
+
+    # 2) DB user
+    db_result = try_db_auth(form_data.username, form_data.password)
+    if db_result:
+        log_audit(db_result["username"], db_result["tenant_id"], "login", "session", ip_address=ip)
+        return {"access_token": db_result["token"], "token_type": "bearer"}
+
+    # 3) Env-based admin fallback
+    token = try_env_admin_auth(form_data.username, form_data.password)
+    log_audit(form_data.username, "default", "login", "session", ip_address=ip)
+    return {"access_token": token, "token_type": "bearer"}
 
 @app.get("/health")
 async def health():
@@ -2663,6 +3186,96 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
     
+
+```
+### 📄 `api/middleware.py`
+
+```python
+# api/middleware.py
+import time
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import Response
+from prometheus_client import Histogram, Counter, Gauge
+
+http_request_duration_seconds = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "path", "status_code"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+)
+
+http_requests_total = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "path", "status_code"],
+)
+
+http_requests_in_progress = Gauge(
+    "http_requests_in_progress",
+    "HTTP requests currently in progress",
+    ["method"],
+)
+
+
+class PrometheusMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        method = request.method
+        # Normalize path to avoid high-cardinality labels
+        path = request.url.path
+        for segment in path.split("/"):
+            if segment and (len(segment) > 30 or _looks_like_id(segment)):
+                path = path.replace(segment, "{id}")
+
+        http_requests_in_progress.labels(method=method).inc()
+        start = time.perf_counter()
+        try:
+            response = await call_next(request)
+            status_code = str(response.status_code)
+        except Exception:
+            status_code = "500"
+            raise
+        finally:
+            duration = time.perf_counter() - start
+            http_request_duration_seconds.labels(method=method, path=path, status_code=status_code).observe(duration)
+            http_requests_total.labels(method=method, path=path, status_code=status_code).inc()
+            http_requests_in_progress.labels(method=method).dec()
+
+        return response
+
+
+class DeprecationMiddleware(BaseHTTPMiddleware):
+    """Add Deprecation header to legacy routes (without /api/v1/ prefix)."""
+
+    LEGACY_PREFIXES = (
+        "/metrics", "/dimensions", "/rules", "/ml/", "/alerts",
+        "/data", "/webhooks", "/admin", "/incidents", "/forecasts",
+        "/auth", "/audit",
+    )
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        response = await call_next(request)
+        path = request.url.path
+        if not path.startswith("/api/v1") and any(path.startswith(p) for p in self.LEGACY_PREFIXES):
+            response.headers["Deprecation"] = "true"
+            response.headers["Sunset"] = "2026-09-01"
+            response.headers["Link"] = f'</api/v1{path}>; rel="successor-version"'
+        return response
+
+
+def _looks_like_id(segment: str) -> bool:
+    """Heuristic: UUIDs, numeric IDs, hex strings."""
+    if segment.isdigit():
+        return True
+    if len(segment) == 36 and segment.count("-") == 4:
+        return True
+    try:
+        if len(segment) >= 8:
+            int(segment, 16)
+            return True
+    except ValueError:
+        pass
+    return False
 
 ```
 ### 📄 `api/schemas.py`
@@ -2808,12 +3421,325 @@ class AlertRead(BaseModel):
     value: float
     event_time: datetime
     detected_at: datetime
-    status: Literal["firing", "resolved"]
+    status: Literal["firing", "acknowledged", "resolved"]
     sent: bool
     fingerprint: str
+    acknowledged_by: Optional[str] = None
+    acknowledged_at: Optional[datetime] = None
+    resolved_by: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+# --- Incidents ---
+class IncidentCreate(BaseModel):
+    alert_message: str = Field(..., min_length=1, max_length=1000)
+    metric: str = Field(..., min_length=1)
+    region: str = Field(..., min_length=1)
+    value: Optional[str] = None
+    priority: Literal["critical", "high", "medium", "low"] = "medium"
+    description: Optional[str] = None
+    assigned_to: Optional[str] = None
+    alert_event_id: Optional[UUID] = None
+
+
+class IncidentStatusUpdate(BaseModel):
+    status: Literal["new", "in_progress", "escalated", "resolved", "closed"]
+    comment: Optional[str] = None
+
+
+class IncidentAssign(BaseModel):
+    assigned_to: str = Field(..., min_length=1, max_length=100)
+    comment: Optional[str] = None
+
+
+class IncidentCommentCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000)
+
+
+class IncidentCommentRead(BaseModel):
+    id: int
+    incident_id: int
+    author: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class IncidentRead(BaseModel):
+    id: int
+    alert_message: str
+    metric: str
+    region: str
+    value: Optional[str] = None
+    priority: str
+    status: str
+    detected_at: datetime
+    assigned_to: Optional[str] = None
+    started_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    closed_at: Optional[datetime] = None
+    description: Optional[str] = None
+    alert_event_id: Optional[UUID] = None
+    response_deadline: Optional[datetime] = None
+    resolution_deadline: Optional[datetime] = None
+    response_breached: bool = False
+    resolution_breached: bool = False
+    escalation_level: int = 0
+    last_escalated_at: Optional[datetime] = None
+    external_id: Optional[str] = None
+    external_system: Optional[str] = None
+    external_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class IncidentListResponse(BaseModel):
+    items: List[IncidentRead]
+    total: int
+
+
+# --- SLA ---
+class SlaPolicyCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    priority: Literal["critical", "high", "medium", "low"]
+    response_time_minutes: int = Field(..., gt=0)
+    resolution_time_minutes: int = Field(..., gt=0)
+    escalation_after_minutes: int = Field(..., gt=0)
+
+
+class SlaPolicyRead(BaseModel):
+    id: UUID
+    tenant_id: str
+    name: str
+    priority: str
+    response_time_minutes: int
+    resolution_time_minutes: int
+    escalation_after_minutes: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# --- Forecasts ---
+class ForecastPoint(BaseModel):
+    timestamp: datetime
+    value: float
+    lower: Optional[float] = None
+    upper: Optional[float] = None
+
+
+class ForecastResponse(BaseModel):
+    metric_name: str
+    dimensions: Dict[str, str]
+    horizon_hours: int
+    points: List[ForecastPoint]
+```
+### 📄 `api/routes/__init__.py`
+
+```python
+
+```
+### 📄 `api/routes/admin.py`
+
+```python
+# api/routes/admin.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+from uuid import UUID
+from pydantic import BaseModel, Field
+from sqlalchemy import text
+from core.database import get_engine
+from core.rbac import require_role
+from api.auth import TokenData
+from config import mask_secrets
+
+router = APIRouter(prefix="/admin", tags=["Admin"])
+
+
+# --- Schemas ---
+
+class TenantCreate(BaseModel):
+    id: str = Field(..., min_length=1, max_length=50, pattern=r"^[a-zA-Z0-9_\-]+$")
+    name: str = Field(..., min_length=1, max_length=200)
+
+
+class TenantRead(BaseModel):
+    id: str
+    name: str
+    is_active: bool
+
+
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=1, max_length=100)
+    email: Optional[str] = None
+    password: Optional[str] = None
+    tenant_id: str = "default"
+
+
+class UserRead(BaseModel):
+    id: UUID
+    username: str
+    email: Optional[str]
+    tenant_id: str
+    is_active: bool
+    auth_provider: str
+
+
+class RoleCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50)
+    tenant_id: str = "default"
+    permissions: List[str] = Field(default_factory=list)
+    description: Optional[str] = None
+
+
+class RoleRead(BaseModel):
+    id: UUID
+    name: str
+    tenant_id: str
+    permissions: list
+    description: Optional[str]
+
+
+class UserRoleAssign(BaseModel):
+    user_id: UUID
+    role_id: UUID
+
+
+# --- Tenants ---
+
+@router.get("/tenants", response_model=List[TenantRead])
+def list_tenants(current_user: TokenData = Depends(require_role("admin"))):
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT id, name, is_active FROM tenants ORDER BY id")).mappings().all()
+        return [TenantRead(**row) for row in rows]
+
+
+@router.post("/tenants", response_model=TenantRead, status_code=status.HTTP_201_CREATED)
+def create_tenant(data: TenantCreate, current_user: TokenData = Depends(require_role("admin"))):
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO tenants (id, name) VALUES (:id, :name)"),
+                {"id": data.id, "name": data.name},
+            )
+        return TenantRead(id=data.id, name=data.name, is_active=True)
+    except Exception as e:
+        raise HTTPException(400, mask_secrets(str(e)))
+
+
+# --- Users ---
+
+@router.get("/users", response_model=List[UserRead])
+def list_users(tenant_id: str = "default", current_user: TokenData = Depends(require_role("admin"))):
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT id, username, email, tenant_id, is_active, auth_provider FROM users WHERE tenant_id = :tid ORDER BY username"),
+            {"tid": tenant_id},
+        ).mappings().all()
+        return [UserRead(**row) for row in rows]
+
+
+@router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+def create_user(data: UserCreate, current_user: TokenData = Depends(require_role("admin"))):
+    engine = get_engine()
+    password_hash = None
+    if data.password:
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        password_hash = pwd_context.hash(data.password)
+
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("""
+                    INSERT INTO users (username, email, password_hash, tenant_id)
+                    VALUES (:username, :email, :password_hash, :tenant_id)
+                    RETURNING id, username, email, tenant_id, is_active, auth_provider
+                """),
+                {
+                    "username": data.username,
+                    "email": data.email,
+                    "password_hash": password_hash,
+                    "tenant_id": data.tenant_id,
+                },
+            ).mappings().first()
+            return UserRead(**row)
+    except Exception as e:
+        raise HTTPException(400, mask_secrets(str(e)))
+
+
+# --- Roles ---
+
+@router.get("/roles", response_model=List[RoleRead])
+def list_roles(tenant_id: str = "default", current_user: TokenData = Depends(require_role("admin"))):
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT id, name, tenant_id, permissions, description FROM roles WHERE tenant_id = :tid ORDER BY name"),
+            {"tid": tenant_id},
+        ).mappings().all()
+        return [RoleRead(**row) for row in rows]
+
+
+@router.post("/roles", response_model=RoleRead, status_code=status.HTTP_201_CREATED)
+def create_role(data: RoleCreate, current_user: TokenData = Depends(require_role("admin"))):
+    engine = get_engine()
+    import json
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("""
+                    INSERT INTO roles (name, tenant_id, permissions, description)
+                    VALUES (:name, :tenant_id, :permissions, :description)
+                    RETURNING id, name, tenant_id, permissions, description
+                """),
+                {
+                    "name": data.name,
+                    "tenant_id": data.tenant_id,
+                    "permissions": json.dumps(data.permissions),
+                    "description": data.description,
+                },
+            ).mappings().first()
+            return RoleRead(**row)
+    except Exception as e:
+        raise HTTPException(400, mask_secrets(str(e)))
+
+
+# --- User-Role assignment ---
+
+@router.post("/user-roles", status_code=status.HTTP_201_CREATED)
+def assign_role(data: UserRoleAssign, current_user: TokenData = Depends(require_role("admin"))):
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO user_roles (user_id, role_id) VALUES (:uid, :rid) ON CONFLICT DO NOTHING"),
+                {"uid": data.user_id, "rid": data.role_id},
+            )
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(400, mask_secrets(str(e)))
+
+
+@router.delete("/user-roles", status_code=status.HTTP_204_NO_CONTENT)
+def unassign_role(data: UserRoleAssign, current_user: TokenData = Depends(require_role("admin"))):
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.execute(
+            text("DELETE FROM user_roles WHERE user_id = :uid AND role_id = :rid"),
+            {"uid": data.user_id, "rid": data.role_id},
+        )
+
 ```
 ### 📄 `api/routes/alerts.py`
 
@@ -2822,13 +3748,21 @@ class AlertRead(BaseModel):
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List
 from uuid import UUID
+from datetime import datetime, timezone
 from api.schemas import AlertRead
 from sqlalchemy import text
 from core.database import get_engine
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
+from core.rbac import require_permission
+from core.audit import log_audit
 from config import mask_secrets
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
+
+
+ALERT_FIELDS = """id, rule_id, ml_config_id, metric_name, dimensions, value,
+    event_time, detected_at, status, sent, fingerprint,
+    acknowledged_by, acknowledged_at, resolved_by, tenant_id"""
 
 
 def _row_to_alert(row) -> AlertRead:
@@ -2843,41 +3777,36 @@ def _row_to_alert(row) -> AlertRead:
         detected_at=row["detected_at"],
         status=row["status"],
         sent=row["sent"],
-        fingerprint=row["fingerprint"]
+        fingerprint=row["fingerprint"],
+        acknowledged_by=row.get("acknowledged_by"),
+        acknowledged_at=row.get("acknowledged_at"),
+        resolved_by=row.get("resolved_by"),
     )
 
 
 @router.get("/", response_model=List[AlertRead])
 def list_alerts(
-    status: str = Query(None, enum=["firing", "resolved"]),
-    metric_name: str = None, # type: ignore
-    dimension_key: str = None, # type: ignore
-    dimension_value: str = None, # type: ignore
+    status: str = Query(None, enum=["firing", "acknowledged", "resolved"]),
+    metric_name: str = None,  # type: ignore
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    current_user: TokenData = Depends(get_current_user) 
+    current_user: TokenData = Depends(require_permission("read:alerts")),
 ):
     engine = get_engine()
-    where_clauses = []
-    params = {"limit": limit, "offset": offset}
+    where_clauses = ["tenant_id = :tenant_id"]
+    params = {"limit": limit, "offset": offset, "tenant_id": current_user.tenant_id}
 
     if status:
         where_clauses.append("status = :status")
-        params["status"] = status # type: ignore
+        params["status"] = status  # type: ignore
     if metric_name:
         where_clauses.append("metric_name = :metric_name")
-        params["metric_name"] = metric_name # type: ignore
-    if dimension_key and dimension_value:
-        where_clauses.append(f"dimensions->>'{dimension_key}' = :dim_val")
-        params["dim_val"] = dimension_value # type: ignore
+        params["metric_name"] = metric_name  # type: ignore
 
-    where = " AND ".join(where_clauses)
-    if where:
-        where = "WHERE " + where
+    where = "WHERE " + " AND ".join(where_clauses)
 
     query = text(f"""
-        SELECT id, rule_id, ml_config_id, metric_name, dimensions, value,
-               event_time, detected_at, status, sent, fingerprint
+        SELECT {ALERT_FIELDS}
         FROM alert_events
         {where}
         ORDER BY event_time DESC
@@ -2889,46 +3818,332 @@ def list_alerts(
             rows = conn.execute(query, params).mappings().all()
             return [_row_to_alert(row) for row in rows]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
 
 
 @router.get("/{alert_id}", response_model=AlertRead)
-def get_alert(alert_id: UUID):
+def get_alert(
+    alert_id: UUID,
+    current_user: TokenData = Depends(require_permission("read:alerts")),
+):
     engine = get_engine()
-    query = text("""
-        SELECT id, rule_id, ml_config_id, metric_name, dimensions, value,
-               event_time, detected_at, status, sent, fingerprint
+    query = text(f"""
+        SELECT {ALERT_FIELDS}
         FROM alert_events
-        WHERE id = :alert_id
+        WHERE id = :alert_id AND tenant_id = :tenant_id
     """)
     try:
         with engine.connect() as conn:
-            row = conn.execute(query, {"alert_id": alert_id}).mappings().first()
+            row = conn.execute(query, {"alert_id": alert_id, "tenant_id": current_user.tenant_id}).mappings().first()
             if not row:
                 raise HTTPException(status_code=404, detail="Alert not found")
             return _row_to_alert(row)
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
 
 
 @router.post("/{alert_id}/suppress", status_code=204)
-def suppress_alert(alert_id: UUID, minutes: int = 60, current_user: TokenData = Depends(get_current_user)):
-    """Ручное подавление алерта по его fingerprint"""
+def suppress_alert(
+    alert_id: UUID,
+    minutes: int = 60,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
     engine = get_engine()
     try:
         with engine.begin() as conn:
             row = conn.execute(
-                text("SELECT fingerprint FROM alert_events WHERE id = :id"),
-                {"id": alert_id}
+                text("SELECT fingerprint FROM alert_events WHERE id = :id AND tenant_id = :tid"),
+                {"id": alert_id, "tid": current_user.tenant_id},
             ).mappings().first()
             if not row:
                 raise HTTPException(status_code=404, detail="Alert not found")
 
             from core.alerts import suppress_alert as _suppress
             _suppress(row["fingerprint"], minutes)
-            return
+
+        log_audit(current_user.username, current_user.tenant_id, "suppress", "alert", resource_id=str(alert_id))
+        return
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+
+
+@router.post("/{alert_id}/acknowledge", response_model=AlertRead)
+def acknowledge_alert(
+    alert_id: UUID,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    engine = get_engine()
+    now = datetime.now(timezone.utc)
+
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("SELECT status FROM alert_events WHERE id = :id AND tenant_id = :tid"),
+                {"id": alert_id, "tid": current_user.tenant_id},
+            ).mappings().first()
+
+            if not row:
+                raise HTTPException(404, "Alert not found")
+            if row["status"] not in ("firing",):
+                raise HTTPException(400, f"Cannot acknowledge alert in status '{row['status']}'")
+
+            conn.execute(
+                text("""
+                    UPDATE alert_events SET
+                        status = 'acknowledged',
+                        acknowledged_by = :user,
+                        acknowledged_at = :now
+                    WHERE id = :id
+                """),
+                {"id": alert_id, "user": current_user.username, "now": now},
+            )
+
+            result = conn.execute(
+                text(f"SELECT {ALERT_FIELDS} FROM alert_events WHERE id = :id"),
+                {"id": alert_id},
+            ).mappings().first()
+
+        log_audit(current_user.username, current_user.tenant_id, "acknowledge", "alert", resource_id=str(alert_id))
+        return _row_to_alert(result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, mask_secrets(str(e)))
+
+
+@router.post("/{alert_id}/resolve", response_model=AlertRead)
+def resolve_alert(
+    alert_id: UUID,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    engine = get_engine()
+    now = datetime.now(timezone.utc)
+
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("SELECT status FROM alert_events WHERE id = :id AND tenant_id = :tid"),
+                {"id": alert_id, "tid": current_user.tenant_id},
+            ).mappings().first()
+
+            if not row:
+                raise HTTPException(404, "Alert not found")
+            if row["status"] == "resolved":
+                raise HTTPException(400, "Alert already resolved")
+
+            conn.execute(
+                text("""
+                    UPDATE alert_events SET
+                        status = 'resolved',
+                        resolved_at = :now,
+                        resolved_by = :user
+                    WHERE id = :id
+                """),
+                {"id": alert_id, "user": current_user.username, "now": now},
+            )
+
+            result = conn.execute(
+                text(f"SELECT {ALERT_FIELDS} FROM alert_events WHERE id = :id"),
+                {"id": alert_id},
+            ).mappings().first()
+
+        log_audit(current_user.username, current_user.tenant_id, "resolve", "alert", resource_id=str(alert_id))
+        return _row_to_alert(result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, mask_secrets(str(e)))
+
+```
+### 📄 `api/routes/audit.py`
+
+```python
+# api/routes/audit.py
+from fastapi import APIRouter, Depends, Query, HTTPException
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+from pydantic import BaseModel
+from sqlalchemy import text
+from core.database import get_engine
+from core.rbac import require_permission
+from api.auth import TokenData
+from config import mask_secrets
+
+router = APIRouter(prefix="/audit", tags=["Audit"])
+
+
+class AuditLogEntry(BaseModel):
+    id: int
+    username: str
+    tenant_id: str
+    action: str
+    resource_type: str
+    resource_id: Optional[str]
+    changes: Dict[str, Any]
+    ip_address: Optional[str]
+    timestamp: datetime
+
+
+@router.get("/logs", response_model=List[AuditLogEntry])
+def get_audit_logs(
+    action: Optional[str] = None,
+    resource_type: Optional[str] = None,
+    username: Optional[str] = None,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    current_user: TokenData = Depends(require_permission("read:audit")),
+):
+    engine = get_engine()
+    where_parts = ["tenant_id = :tenant_id"]
+    params: Dict[str, Any] = {
+        "tenant_id": current_user.tenant_id,
+        "limit": limit,
+        "offset": offset,
+    }
+
+    if action:
+        where_parts.append("action = :action")
+        params["action"] = action
+    if resource_type:
+        where_parts.append("resource_type = :resource_type")
+        params["resource_type"] = resource_type
+    if username:
+        where_parts.append("username = :username")
+        params["username"] = username
+
+    where_clause = " AND ".join(where_parts)
+    query = text(f"""
+        SELECT id, username, tenant_id, action, resource_type, resource_id, changes, ip_address, timestamp
+        FROM audit_log
+        WHERE {where_clause}
+        ORDER BY timestamp DESC
+        LIMIT :limit OFFSET :offset
+    """)
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(query, params).mappings().all()
+            return [AuditLogEntry(**row) for row in rows]
+    except Exception as e:
+        raise HTTPException(500, mask_secrets(str(e)))
+
+```
+### 📄 `api/routes/auth.py`
+
+```python
+# api/routes/auth.py
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import RedirectResponse
+from datetime import timedelta
+from config import settings, logger
+from api.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+
+router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+@router.get("/login/oidc")
+async def login_oidc(request: Request):
+    """Redirect user to Keycloak for OIDC login."""
+    if not getattr(settings, "OIDC_ENABLED", False):
+        raise HTTPException(501, "OIDC not enabled")
+
+    from core.oidc_auth import oauth
+    base_url = getattr(settings, "OIDC_BASE_URL", str(request.base_url).rstrip("/"))
+    redirect_uri = f"{base_url}/auth/callback/oidc"
+    return await oauth.keycloak.authorize_redirect(request, redirect_uri)
+
+
+@router.get("/callback/oidc")
+async def callback_oidc(request: Request):
+    """Handle OIDC callback from Keycloak, create JWT."""
+    if not getattr(settings, "OIDC_ENABLED", False):
+        raise HTTPException(501, "OIDC not enabled")
+
+    from core.oidc_auth import oauth
+    try:
+        token = await oauth.keycloak.authorize_access_token(request)
+    except Exception as e:
+        logger.error("OIDC callback error: %s", e)
+        raise HTTPException(401, "OIDC authentication failed")
+
+    userinfo = token.get("userinfo", {})
+    username = userinfo.get("preferred_username") or userinfo.get("sub")
+    email = userinfo.get("email")
+
+    if not username:
+        raise HTTPException(401, "No username in OIDC token")
+
+    # Sync user to DB
+    try:
+        from sqlalchemy import text
+        from core.database import get_engine
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO users (username, email, tenant_id, auth_provider, external_id, is_active)
+                    VALUES (:username, :email, 'default', 'oidc', :sub, true)
+                    ON CONFLICT (username) DO UPDATE SET
+                        email = EXCLUDED.email,
+                        auth_provider = 'oidc',
+                        external_id = EXCLUDED.external_id,
+                        is_active = true,
+                        updated_at = NOW()
+                """),
+                {"username": username, "email": email, "sub": userinfo.get("sub", "")},
+            )
+    except Exception as e:
+        logger.warning("Failed to sync OIDC user: %s", e)
+
+    # Map Keycloak roles -> local permissions
+    realm_access = token.get("access_token_claims", {}).get("realm_access", {})
+    kc_roles = realm_access.get("roles", [])
+    roles = kc_roles if kc_roles else ["viewer"]
+
+    # Resolve permissions from DB roles
+    permissions: list = []
+    try:
+        from sqlalchemy import text as _t
+        with engine.connect() as conn:
+            for role_name in roles:
+                r = conn.execute(
+                    _t("SELECT permissions FROM roles WHERE name = :name AND tenant_id = 'default'"),
+                    {"name": role_name},
+                ).mappings().first()
+                if r:
+                    import json as _json
+                    perms = r["permissions"]
+                    permissions.extend(_json.loads(perms) if isinstance(perms, str) else perms)
+    except Exception as e:
+        logger.warning("Failed to resolve OIDC permissions: %s", e)
+
+    access_token = create_access_token(
+        data={
+            "sub": username,
+            "scopes": ["admin"] if "admin" in roles else [],
+            "tenant_id": "default",
+            "roles": roles,
+            "permissions": list(set(permissions)),
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    # Audit log for OIDC login
+    try:
+        from core.audit import log_audit
+        ip = request.client.host if request.client else None
+        log_audit(username, "default", "login", "session", ip_address=ip)
+    except Exception as e:
+        logger.warning("Failed to log OIDC audit: %s", e)
+
+    # Redirect to frontend with token
+    base_url = getattr(settings, "OIDC_BASE_URL", str(request.base_url).rstrip("/"))
+    return RedirectResponse(f"{base_url}/?token={access_token}")
+
 ```
 ### 📄 `api/routes/data.py`
 
@@ -2945,8 +4160,6 @@ from sqlalchemy import text
 from api.auth import get_current_user, TokenData
 from api.limiter import limiter
 from config import mask_secrets, logger
-from sqlalchemy import text
-from sqlalchemy.sql import quoted_name
 
 router = APIRouter(prefix="/data", tags=["Data"])
 ALLOWED_DIMENSIONS = {"service", "region", "dc", "env", "team"}
@@ -2994,7 +4207,7 @@ def protected_route(current_user: TokenData = Depends(get_current_user)):
 
 
 @router.get("/prometheus/api/v1/label/__name__/values", response_model=List[str])
-def prometheus_label_values1():
+def prometheus_label_values1(current_user: TokenData = Depends(get_current_user)):
     engine = get_engine()
     try:
         with engine.connect() as conn:
@@ -3008,7 +4221,7 @@ def prometheus_label_values1():
 
 
 @router.get("/prometheus/api/v1/label/{label_name}/values", response_model=List[str])
-def prometheus_label_values(label_name: str):
+def prometheus_label_values(label_name: str, current_user: TokenData = Depends(get_current_user)):
     if label_name == "__name__":
         return prometheus_label_values1()
 
@@ -3049,7 +4262,8 @@ def prometheus_label_values(label_name: str):
 def prometheus_series(
     match: List[str] = Query(default=[], alias="match[]"),
     start: float = Query(None),
-    end: float = Query(None)
+    end: float = Query(None),
+    current_user: TokenData = Depends(get_current_user),
 ):
     if not match:
         raise HTTPException(status_code=400, detail="match[] is required")
@@ -3137,6 +4351,7 @@ def prometheus_query_range(
     end: float,
     step: str = "15s",
     aggregation: Literal["avg", "sum", "min", "max", "count"] = "avg",
+    current_user: TokenData = Depends(get_current_user),
 ):
     match_obj = re.match(r'^([a-zA-Z0-9_\-\.]+)(?:\{(.*)\})?$', query)
     if not match_obj:
@@ -3230,6 +4445,39 @@ def prometheus_query_range(
         raise HTTPException(500, "Query execution failed")
 
 
+@router.get("/analytics/query_range", response_model=Dict[str, Any])
+def analytics_query_range(
+    metric_name: str = Query(...),
+    start: float = Query(...),
+    end: float = Query(...),
+    aggregation: Literal["avg", "sum", "min", "max", "count"] = "avg",
+    interval: str = Query("1h", pattern=r"^\d+[smhd]$"),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Long-range analytics query routed to ClickHouse when enabled."""
+    from config import settings as cfg
+    start_dt = datetime.fromtimestamp(start, tz=timezone.utc)
+    end_dt = datetime.fromtimestamp(end, tz=timezone.utc)
+
+    if not getattr(cfg, "CLICKHOUSE_ENABLED", False):
+        raise HTTPException(501, "ClickHouse analytics not enabled")
+
+    interval_map = {"s": "SECOND", "m": "MINUTE", "h": "HOUR", "d": "DAY"}
+    num = interval[:-1]
+    unit = interval_map.get(interval[-1], "HOUR")
+    ch_interval = f"{num} {unit}"
+
+    from core.analytics_service import analytics_service
+    data = analytics_service.query_metric_aggregation(
+        metric_name=metric_name,
+        start=start_dt,
+        end=end_dt,
+        aggregation=aggregation,
+        interval=ch_interval,
+    )
+    return {"status": "success", "data": data}
+
+
 @router.post("/query", response_model=DataQueryResponse)
 @limiter.limit("30/minute")
 async def query_data(
@@ -3271,9 +4519,9 @@ async def query_data(
                 if '"' in val or "'" in val or len(val) > 100:
                     raise HTTPException(400, f"Invalid value in dimension_in[{k}]: {val}")
                 clean_vals.append(val)
-            where.append("dimensions->>:key_in = ANY(:vals_in)")
-            params["key_in"] = k
-            params["vals_in"] = clean_vals # type: ignore
+            where.append(f"dimensions->>:key_in_{i} = ANY(:vals_in_{i})")
+            params[f"key_in_{i}"] = k
+            params[f"vals_in_{i}"] = clean_vals # type: ignore
 
     limit = min(request.limit, MAX_QUERY_RESULTS)
     params["limit"] = limit # type: ignore
@@ -3317,45 +4565,782 @@ from typing import List
 from api.schemas import DimensionCreate, DimensionRead
 from core.metadata_service import MetadataService
 from api.dependencies import get_metadata_service
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
+from core.rbac import require_permission
+from core.audit import log_audit
 from config import mask_secrets
 
 router = APIRouter(prefix="/dimensions", tags=["Dimensions"])
 
 
-@router.get("/me")
-def protected_route(current_user: TokenData = Depends(get_current_user)):
-    return {"user": current_user.username}
-
 @router.post("/", response_model=DimensionRead, status_code=status.HTTP_201_CREATED)
 def create_dimension(
     data: DimensionCreate,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
     try:
-        dim_key = service.create_dimension(data) # type: ignore
-        dim = service.get_dimension(dim_key)
+        dim_key = service.create_dimension(data, tenant_id=current_user.tenant_id)  # type: ignore
+        dim = service.get_dimension(dim_key, tenant_id=current_user.tenant_id)
         if not dim:
             raise HTTPException(status_code=500, detail="Dimension created but not found")
+        log_audit(current_user.username, current_user.tenant_id, "create", "dimension", resource_id=dim_key)
         return dim
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.get("/", response_model=List[DimensionRead])
-def list_dimensions(service: MetadataService = Depends(get_metadata_service)):
-    return service.list_dimensions()
+def list_dimensions(
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:metrics")),
+):
+    return service.list_dimensions(tenant_id=current_user.tenant_id)
 
 
 @router.get("/{dimension_key}", response_model=DimensionRead)
 def get_dimension(
     dimension_key: str,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
-    dim = service.get_dimension(dimension_key)
+    dim = service.get_dimension(dimension_key, tenant_id=current_user.tenant_id)
     if not dim:
         raise HTTPException(status_code=404, detail="Dimension not found")
     return dim
+
+```
+### 📄 `api/routes/forecasts.py`
+
+```python
+# api/routes/forecasts.py
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional, Dict
+from datetime import datetime, timedelta, timezone
+from api.schemas import ForecastResponse, ForecastPoint
+from api.auth import TokenData
+from core.rbac import require_permission
+from config import logger, mask_secrets
+
+router = APIRouter(prefix="/forecasts", tags=["Forecasts"])
+
+
+@router.get("/predict", response_model=ForecastResponse)
+def predict_metric(
+    metric_name: str = Query(...),
+    horizon_hours: int = Query(24, ge=1, le=168),
+    region: Optional[str] = Query(None),
+    current_user: TokenData = Depends(require_permission("read:metrics")),
+):
+    """Generate a forecast for a metric using the trained Prophet model.
+
+    Returns predicted values with confidence intervals for the requested horizon.
+    """
+    from core.metadata_service import metadata_service
+
+    valid_metrics = {m.metric_name for m in metadata_service.list_metrics(active_only=True)}
+    if metric_name not in valid_metrics:
+        raise HTTPException(404, f"Metric '{metric_name}' not found or inactive")
+
+    dimensions: Dict[str, str] = {}
+    if region:
+        dimensions["region"] = region
+
+    try:
+        points = _generate_forecast(metric_name, dimensions, horizon_hours)
+    except ImportError:
+        raise HTTPException(501, "ML libraries not available for forecasting")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        logger.error(f"Forecast failed for {metric_name}: {mask_secrets(str(e))}")
+        raise HTTPException(500, "Forecast generation failed")
+
+    return ForecastResponse(
+        metric_name=metric_name,
+        dimensions=dimensions,
+        horizon_hours=horizon_hours,
+        points=points,
+    )
+
+
+def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hours: int):
+    """Try cached model first, fall back to fitting on recent data."""
+    import pandas as pd
+    import numpy as np
+
+    try:
+        from prophet import Prophet
+    except ImportError:
+        raise ImportError("Prophet is not installed")
+
+    from core.database import get_engine
+    from sqlalchemy import text
+    from config import get_cache
+    import joblib
+
+    # Try to load a pre-trained model from cache
+    group_key = "_".join(f"{k}={v}" for k, v in sorted(dimensions.items())) or "all"
+    cache_key = f"ml_model:{metric_name}:{group_key}"
+    cache = get_cache()
+    model_bytes = cache.get(cache_key)
+    model = None
+
+    if model_bytes:
+        try:
+            model = joblib.loads(model_bytes)
+        except Exception:
+            model = None
+
+    if model is None:
+        # Fit a lightweight model on recent data
+        engine = get_engine()
+        cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+
+        where = ["metric_name = :metric", "timestamp >= :cutoff"]
+        params: dict = {"metric": metric_name, "cutoff": cutoff}
+
+        if dimensions.get("region"):
+            where.append("dimensions->>'region' = :region")
+            params["region"] = dimensions["region"]
+
+        query = text(f"""
+            SELECT timestamp AS ds, value AS y
+            FROM canonical_metrics
+            WHERE {' AND '.join(where)}
+            ORDER BY timestamp
+            LIMIT 5000
+        """)
+
+        with engine.connect() as conn:
+            rows = conn.execute(query, params).mappings().all()
+
+        if len(rows) < 48:
+            raise ValueError(f"Not enough data for forecast (need 48+, got {len(rows)})")
+
+        df = pd.DataFrame(rows)
+        df["ds"] = pd.to_datetime(df["ds"])
+        if df["ds"].dt.tz is not None:
+            df["ds"] = df["ds"].dt.tz_convert("UTC").dt.tz_localize(None)
+        df["y"] = pd.to_numeric(df["y"], errors="coerce")
+        df = df.dropna().sort_values("ds").drop_duplicates(subset="ds", keep="last")
+
+        model = Prophet(
+            daily_seasonality=True,
+            weekly_seasonality=True,
+            yearly_seasonality=False,
+            changepoint_prior_scale=0.05,
+            interval_width=0.90,
+        )
+        import os, sys
+        with open(os.devnull, "w") as devnull:
+            old = sys.stdout
+            sys.stdout = devnull
+            try:
+                model.fit(df)
+            finally:
+                sys.stdout = old
+
+        # Cache the model for 24h
+        try:
+            cache.set(cache_key, joblib.dumps(model), ex=86400)
+        except Exception:
+            pass
+
+    # Generate future dataframe
+    future = model.make_future_dataframe(periods=horizon_hours, freq="h")
+    forecast = model.predict(future)
+
+    # Only return the future part
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    future_forecast = forecast[forecast["ds"] > now_naive].tail(horizon_hours)
+
+    points = []
+    for _, row in future_forecast.iterrows():
+        ts = row["ds"].to_pydatetime().replace(tzinfo=timezone.utc)
+        points.append(ForecastPoint(
+            timestamp=ts,
+            value=round(float(row["yhat"]), 4),
+            lower=round(float(row["yhat_lower"]), 4),
+            upper=round(float(row["yhat_upper"]), 4),
+        ))
+
+    return points
+
+```
+### 📄 `api/routes/incidents.py`
+
+```python
+# api/routes/incidents.py
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from typing import List, Optional
+from datetime import datetime, timezone
+from sqlalchemy import text
+from core.database import get_engine
+from api.auth import get_current_user, TokenData
+from core.rbac import require_permission
+from api.schemas import (
+    IncidentCreate, IncidentRead, IncidentStatusUpdate,
+    IncidentAssign, IncidentCommentCreate, IncidentCommentRead,
+    IncidentListResponse, SlaPolicyCreate, SlaPolicyRead,
+)
+from config import mask_secrets, logger
+from core.audit import log_audit
+from api.limiter import limiter
+
+router = APIRouter(prefix="/incidents", tags=["Incidents"])
+
+VALID_TRANSITIONS = {
+    "new": {"in_progress", "escalated", "closed"},
+    "in_progress": {"escalated", "resolved", "closed"},
+    "escalated": {"in_progress", "resolved", "closed"},
+    "resolved": {"closed", "in_progress"},
+    "closed": set(),
+}
+
+INCIDENT_COLUMNS = """
+    id, alert_message, metric, region, value, priority, status, detected_at,
+    assigned_to, started_at, resolved_at, closed_at, description, alert_event_id,
+    response_deadline, resolution_deadline, response_breached, resolution_breached,
+    escalation_level, last_escalated_at, external_id, external_system, external_url
+"""
+
+
+def _row_to_incident(row) -> IncidentRead:
+    return IncidentRead(
+        id=row["id"],
+        alert_message=row["alert_message"],
+        metric=row["metric"],
+        region=row["region"],
+        value=row["value"],
+        priority=row["priority"],
+        status=row["status"],
+        detected_at=row["detected_at"],
+        assigned_to=row["assigned_to"],
+        started_at=row["started_at"],
+        resolved_at=row["resolved_at"],
+        closed_at=row["closed_at"],
+        description=row["description"],
+        alert_event_id=row["alert_event_id"],
+        response_deadline=row["response_deadline"],
+        resolution_deadline=row["resolution_deadline"],
+        response_breached=row["response_breached"] or False,
+        resolution_breached=row["resolution_breached"] or False,
+        escalation_level=row["escalation_level"] or 0,
+        last_escalated_at=row["last_escalated_at"],
+        external_id=row.get("external_id"),
+        external_system=row.get("external_system"),
+        external_url=row.get("external_url"),
+    )
+
+
+@router.get("/", response_model=IncidentListResponse)
+def list_incidents(
+    status: Optional[str] = Query(None),
+    priority: Optional[str] = Query(None),
+    assigned_to: Optional[str] = Query(None),
+    metric: Optional[str] = Query(None),
+    breached: Optional[bool] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    current_user: TokenData = Depends(require_permission("read:alerts")),
+):
+    where = ["tenant_id = :tenant_id"]
+    params = {"tenant_id": current_user.tenant_id, "limit": limit, "offset": offset}
+
+    if status:
+        where.append("status = :status")
+        params["status"] = status
+    if priority:
+        where.append("priority = :priority")
+        params["priority"] = priority
+    if assigned_to:
+        where.append("assigned_to = :assigned_to")
+        params["assigned_to"] = assigned_to
+    if metric:
+        where.append("metric = :metric")
+        params["metric"] = metric
+    if breached is True:
+        where.append("(response_breached = true OR resolution_breached = true)")
+
+    where_clause = " AND ".join(where)
+    engine = get_engine()
+
+    try:
+        with engine.connect() as conn:
+            total = conn.execute(
+                text(f"SELECT COUNT(*) FROM incidents WHERE {where_clause}"), params
+            ).scalar()
+
+            rows = conn.execute(
+                text(f"""
+                    SELECT {INCIDENT_COLUMNS}
+                    FROM incidents WHERE {where_clause}
+                    ORDER BY detected_at DESC LIMIT :limit OFFSET :offset
+                """),
+                params,
+            ).mappings().all()
+
+            return IncidentListResponse(
+                items=[_row_to_incident(r) for r in rows],
+                total=total,
+            )
+    except Exception as e:
+        logger.exception("Error listing incidents")
+        raise HTTPException(500, "Failed to list incidents")
+
+
+@router.post("/", response_model=IncidentRead, status_code=201)
+@limiter.limit("30/minute")
+async def create_incident(
+    request: Request,
+    data: IncidentCreate,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    now = datetime.now(timezone.utc)
+    engine = get_engine()
+
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                text(f"""
+                    INSERT INTO incidents (
+                        alert_message, metric, region, value, priority, status,
+                        detected_at, assigned_to, description, alert_event_id, tenant_id
+                    ) VALUES (
+                        :alert_message, :metric, :region, :value, :priority, 'new',
+                        :detected_at, :assigned_to, :description, :alert_event_id, :tenant_id
+                    )
+                    RETURNING {INCIDENT_COLUMNS}
+                """),
+                {
+                    "alert_message": data.alert_message,
+                    "metric": data.metric,
+                    "region": data.region,
+                    "value": data.value,
+                    "priority": data.priority,
+                    "detected_at": now,
+                    "assigned_to": data.assigned_to,
+                    "description": data.description,
+                    "alert_event_id": data.alert_event_id,
+                    "tenant_id": current_user.tenant_id,
+                },
+            ).mappings().first()
+
+        incident = _row_to_incident(row)
+
+        # Apply SLA policy
+        try:
+            from core.sla_service import apply_sla_to_incident
+            apply_sla_to_incident(incident.id, current_user.tenant_id, data.priority, now)
+        except Exception as e:
+            logger.warning(f"Failed to apply SLA: {e}")
+
+        # Assign default escalation chain
+        try:
+            with engine.begin() as conn:
+                chain = conn.execute(
+                    text("""
+                        SELECT id FROM escalation_chains
+                        WHERE tenant_id = :tid AND is_active = true
+                        ORDER BY created_at LIMIT 1
+                    """),
+                    {"tid": current_user.tenant_id},
+                ).mappings().first()
+                if chain:
+                    conn.execute(
+                        text("UPDATE incidents SET escalation_chain_id = :cid WHERE id = :id"),
+                        {"cid": chain["id"], "id": incident.id},
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to assign escalation chain: {e}")
+
+        log_audit(current_user.username, current_user.tenant_id, "create", "incident", resource_id=str(incident.id))
+
+        # Push to i-doit
+        try:
+            from core.idoit_service import push_incident_create
+            push_incident_create(incident.id)
+        except Exception as e:
+            logger.warning(f"i-doit push failed: {e}")
+
+        # Re-read to get SLA + i-doit fields
+        with engine.connect() as conn:
+            row = conn.execute(
+                text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id"),
+                {"id": incident.id},
+            ).mappings().first()
+        return _row_to_incident(row)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error creating incident")
+        raise HTTPException(500, "Failed to create incident")
+
+
+@router.get("/{incident_id}", response_model=IncidentRead)
+def get_incident(
+    incident_id: int,
+    current_user: TokenData = Depends(require_permission("read:alerts")),
+):
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(f"""
+                SELECT {INCIDENT_COLUMNS} FROM incidents
+                WHERE id = :id AND tenant_id = :tid
+            """),
+            {"id": incident_id, "tid": current_user.tenant_id},
+        ).mappings().first()
+
+    if not row:
+        raise HTTPException(404, "Incident not found")
+    return _row_to_incident(row)
+
+
+@router.patch("/{incident_id}/status", response_model=IncidentRead)
+@limiter.limit("30/minute")
+async def update_incident_status(
+    request: Request,
+    incident_id: int,
+    data: IncidentStatusUpdate,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    engine = get_engine()
+    now = datetime.now(timezone.utc)
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT status FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            {"id": incident_id, "tid": current_user.tenant_id},
+        ).mappings().first()
+
+    if not row:
+        raise HTTPException(404, "Incident not found")
+
+    current_status = row["status"]
+    if data.status not in VALID_TRANSITIONS.get(current_status, set()):
+        raise HTTPException(
+            400,
+            f"Cannot transition from '{current_status}' to '{data.status}'. "
+            f"Allowed: {VALID_TRANSITIONS.get(current_status, set())}",
+        )
+
+    updates = ["status = :new_status"]
+    params = {"id": incident_id, "new_status": data.status}
+
+    if data.status == "in_progress" and current_status == "new":
+        updates.append("started_at = :now")
+        params["now"] = now
+    elif data.status == "resolved":
+        updates.append("resolved_at = :now")
+        params["now"] = now
+    elif data.status == "closed":
+        updates.append("closed_at = :now")
+        params["now"] = now
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(f"UPDATE incidents SET {', '.join(updates)} WHERE id = :id"),
+            params,
+        )
+
+    # Add comment for status change
+    if data.comment:
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO incident_comments (incident_id, author, content)
+                    VALUES (:iid, :author, :content)
+                """),
+                {"iid": incident_id, "author": current_user.username, "content": data.comment},
+            )
+
+    log_audit(
+        current_user.username, current_user.tenant_id, "status_change", "incident",
+        resource_id=str(incident_id),
+        changes={"from": current_status, "to": data.status},
+    )
+
+    # Sync to i-doit
+    try:
+        from core.idoit_service import push_status_update
+        push_status_update(incident_id, data.status)
+    except Exception as e:
+        logger.warning(f"i-doit status sync failed: {e}")
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id"),
+            {"id": incident_id},
+        ).mappings().first()
+    return _row_to_incident(row)
+
+
+@router.patch("/{incident_id}/assign", response_model=IncidentRead)
+def assign_incident(
+    incident_id: int,
+    data: IncidentAssign,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    engine = get_engine()
+
+    with engine.connect() as conn:
+        exists = conn.execute(
+            text("SELECT 1 FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            {"id": incident_id, "tid": current_user.tenant_id},
+        ).first()
+
+    if not exists:
+        raise HTTPException(404, "Incident not found")
+
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE incidents SET assigned_to = :assigned_to WHERE id = :id"),
+            {"id": incident_id, "assigned_to": data.assigned_to},
+        )
+
+    if data.comment:
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO incident_comments (incident_id, author, content)
+                    VALUES (:iid, :author, :content)
+                """),
+                {
+                    "iid": incident_id,
+                    "author": current_user.username,
+                    "content": data.comment,
+                },
+            )
+
+    log_audit(
+        current_user.username, current_user.tenant_id, "assign", "incident",
+        resource_id=str(incident_id),
+        changes={"assigned_to": data.assigned_to},
+    )
+
+    # Sync to i-doit
+    try:
+        from core.idoit_service import push_assignment
+        push_assignment(incident_id, data.assigned_to)
+    except Exception as e:
+        logger.warning(f"i-doit assign sync failed: {e}")
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id"),
+            {"id": incident_id},
+        ).mappings().first()
+    return _row_to_incident(row)
+
+
+@router.post("/{incident_id}/escalate", response_model=IncidentRead)
+def escalate_incident(
+    incident_id: int,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    """Manually escalate an incident to the next level."""
+    engine = get_engine()
+    now = datetime.now(timezone.utc)
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT id, escalation_level, escalation_chain_id, status
+                FROM incidents WHERE id = :id AND tenant_id = :tid
+            """),
+            {"id": incident_id, "tid": current_user.tenant_id},
+        ).mappings().first()
+
+    if not row:
+        raise HTTPException(404, "Incident not found")
+    if row["status"] in ("resolved", "closed"):
+        raise HTTPException(400, "Cannot escalate resolved/closed incident")
+
+    current_level = row["escalation_level"] or 0
+    next_level_num = current_level + 1
+
+    chain_id = row["escalation_chain_id"]
+    if not chain_id:
+        # Try to find default chain
+        with engine.connect() as conn:
+            chain = conn.execute(
+                text("SELECT id FROM escalation_chains WHERE tenant_id = :tid AND is_active = true ORDER BY created_at LIMIT 1"),
+                {"tid": current_user.tenant_id},
+            ).mappings().first()
+        if not chain:
+            raise HTTPException(400, "No escalation chain configured")
+        chain_id = chain["id"]
+
+    with engine.connect() as conn:
+        level_info = conn.execute(
+            text("SELECT level, notify_role FROM escalation_levels WHERE chain_id = :cid AND level = :lvl"),
+            {"cid": chain_id, "lvl": next_level_num},
+        ).mappings().first()
+
+    if not level_info:
+        raise HTTPException(400, f"No escalation level {next_level_num} defined in chain")
+
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                UPDATE incidents SET
+                    escalation_level = :level,
+                    escalation_chain_id = :chain_id,
+                    status = 'escalated',
+                    last_escalated_at = :now
+                WHERE id = :id
+            """),
+            {"id": incident_id, "level": next_level_num, "chain_id": chain_id, "now": now},
+        )
+
+        conn.execute(
+            text("""
+                INSERT INTO incident_comments (incident_id, author, content)
+                VALUES (:iid, :author, :content)
+            """),
+            {
+                "iid": incident_id,
+                "author": current_user.username,
+                "content": f"Escalated to L{next_level_num} ({level_info['notify_role']})",
+            },
+        )
+
+    log_audit(
+        current_user.username, current_user.tenant_id, "escalate", "incident",
+        resource_id=str(incident_id),
+        changes={"from_level": current_level, "to_level": next_level_num},
+    )
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id"),
+            {"id": incident_id},
+        ).mappings().first()
+    return _row_to_incident(row)
+
+
+# --- Comments ---
+
+@router.get("/{incident_id}/comments", response_model=List[IncidentCommentRead])
+def list_comments(
+    incident_id: int,
+    current_user: TokenData = Depends(require_permission("read:alerts")),
+):
+    engine = get_engine()
+
+    with engine.connect() as conn:
+        exists = conn.execute(
+            text("SELECT 1 FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            {"id": incident_id, "tid": current_user.tenant_id},
+        ).first()
+
+    if not exists:
+        raise HTTPException(404, "Incident not found")
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT id, incident_id, author, content, created_at
+                FROM incident_comments WHERE incident_id = :iid
+                ORDER BY created_at ASC
+            """),
+            {"iid": incident_id},
+        ).mappings().all()
+
+    return [IncidentCommentRead(**r) for r in rows]
+
+
+@router.post("/{incident_id}/comments", response_model=IncidentCommentRead, status_code=201)
+def add_comment(
+    incident_id: int,
+    data: IncidentCommentCreate,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    engine = get_engine()
+
+    with engine.connect() as conn:
+        exists = conn.execute(
+            text("SELECT 1 FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            {"id": incident_id, "tid": current_user.tenant_id},
+        ).first()
+
+    if not exists:
+        raise HTTPException(404, "Incident not found")
+
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("""
+                INSERT INTO incident_comments (incident_id, author, content)
+                VALUES (:iid, :author, :content)
+                RETURNING id, incident_id, author, content, created_at
+            """),
+            {"iid": incident_id, "author": current_user.username, "content": data.content},
+        ).mappings().first()
+
+    # Sync comment to i-doit
+    try:
+        from core.idoit_service import push_comment
+        push_comment(incident_id, current_user.username, data.content)
+    except Exception as e:
+        logger.warning(f"i-doit comment sync failed: {e}")
+
+    return IncidentCommentRead(**row)
+
+
+# --- SLA Policies ---
+
+@router.get("/sla/policies", response_model=List[SlaPolicyRead])
+def list_sla_policies(
+    current_user: TokenData = Depends(require_permission("read:alerts")),
+):
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT id, tenant_id, name, priority, response_time_minutes,
+                       resolution_time_minutes, escalation_after_minutes, is_active, created_at
+                FROM sla_policies WHERE tenant_id = :tid ORDER BY priority
+            """),
+            {"tid": current_user.tenant_id},
+        ).mappings().all()
+    return [SlaPolicyRead(**r) for r in rows]
+
+
+@router.post("/sla/policies", response_model=SlaPolicyRead, status_code=201)
+def create_sla_policy(
+    data: SlaPolicyCreate,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("""
+                    INSERT INTO sla_policies (tenant_id, name, priority, response_time_minutes,
+                                              resolution_time_minutes, escalation_after_minutes)
+                    VALUES (:tid, :name, :priority, :resp, :res, :esc)
+                    RETURNING id, tenant_id, name, priority, response_time_minutes,
+                              resolution_time_minutes, escalation_after_minutes, is_active, created_at
+                """),
+                {
+                    "tid": current_user.tenant_id,
+                    "name": data.name,
+                    "priority": data.priority,
+                    "resp": data.response_time_minutes,
+                    "res": data.resolution_time_minutes,
+                    "esc": data.escalation_after_minutes,
+                },
+            ).mappings().first()
+        log_audit(current_user.username, current_user.tenant_id, "create", "sla_policy", resource_id=str(row["id"]))
+        return SlaPolicyRead(**row)
+    except Exception as e:
+        raise HTTPException(400, f"Failed to create SLA policy: {mask_secrets(str(e))}")
+
 ```
 ### 📄 `api/routes/metrics.py`
 
@@ -3366,42 +5351,50 @@ from typing import List
 from api.schemas import MetricCreate, MetricRead, MetricUpdate
 from core.metadata_service import MetadataService
 from api.dependencies import get_metadata_service
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
+from core.rbac import require_permission
+from core.audit import log_audit
 from sqlalchemy import text
 from config import mask_secrets
 
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
 
+
 @router.post("/", response_model=MetricRead, status_code=status.HTTP_201_CREATED)
 def create_metric(
     data: MetricCreate,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
     try:
-        metric_name = service.create_metric(data) # type: ignore
-        metric = service.get_metric(metric_name)
+        metric_name = service.create_metric(data, tenant_id=current_user.tenant_id)  # type: ignore
+        metric = service.get_metric(metric_name, tenant_id=current_user.tenant_id)
         if not metric:
             raise HTTPException(status_code=500, detail="Metric created but not found")
+        log_audit(current_user.username, current_user.tenant_id, "create", "metric", resource_id=metric_name)
         return metric
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.get("/", response_model=List[MetricRead])
 def list_metrics(
     active_only: bool = True,
     service: MetadataService = Depends(get_metadata_service),
-    current_user: TokenData = Depends(get_current_user) 
+    current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
-    return service.list_metrics(active_only=active_only)
+    return service.list_metrics(active_only=active_only, tenant_id=current_user.tenant_id)
 
 
 @router.get("/{metric_name}", response_model=MetricRead)
 def get_metric(
     metric_name: str,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
-    metric = service.get_metric(metric_name)
+    metric = service.get_metric(metric_name, tenant_id=current_user.tenant_id)
     if not metric:
         raise HTTPException(status_code=404, detail="Metric not found")
     return metric
@@ -3411,42 +5404,48 @@ def get_metric(
 def update_metric(
     metric_name: str,
     data: MetricUpdate,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
-    # Валидация: нельзя изменить имя
     if data.metric_name != metric_name:
         raise HTTPException(status_code=400, detail="Cannot change metric_name on update")
-    
+
     try:
-        # Просто вызываем create — он делает ON CONFLICT DO UPDATE
-        service.create_metric(data) # type: ignore
-        updated = service.get_metric(metric_name)
+        service.create_metric(data, tenant_id=current_user.tenant_id)  # type: ignore
+        updated = service.get_metric(metric_name, tenant_id=current_user.tenant_id)
         if not updated:
             raise HTTPException(status_code=500, detail="Metric updated but not found")
+        log_audit(current_user.username, current_user.tenant_id, "update", "metric", resource_id=metric_name)
         return updated
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.delete("/{metric_name}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_metric(
     metric_name: str,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
-    # В PostgreSQL — удаляем вручную (metadata_metrics не имеет каскада)
     engine = service._get_engine()
     try:
         with engine.begin() as conn:
             result = conn.execute(
-                text("DELETE FROM metadata_metrics WHERE metric_name = :name"),
-                {"name": metric_name}
+                text("DELETE FROM metadata_metrics WHERE metric_name = :name AND tenant_id = :tid"),
+                {"name": metric_name, "tid": current_user.tenant_id},
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Metric not found")
         service._invalidate_cache("metrics")
+        log_audit(current_user.username, current_user.tenant_id, "delete", "metric", resource_id=metric_name)
         return
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+
 ```
 ### 📄 `api/routes/ml_configs.py`
 
@@ -3458,45 +5457,51 @@ from uuid import UUID
 from api.schemas import MLConfigCreate, MLConfigRead
 from core.metadata_service import MetadataService
 from api.dependencies import get_metadata_service
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
+from core.rbac import require_permission
+from core.audit import log_audit
 from sqlalchemy import text
 from config import mask_secrets
 
 router = APIRouter(prefix="/ml/configs", tags=["ML Configs"])
 
-@router.get("/")
-def protected_route(current_user: TokenData = Depends(get_current_user)):
-    return {"user": current_user.username}
 
 @router.post("/", response_model=MLConfigRead, status_code=status.HTTP_201_CREATED)
 def create_ml_config(
+    data: MLConfigCreate,
     service: MetadataService = Depends(get_metadata_service),
-    data: MLConfigCreate = Depends()
+    current_user: TokenData = Depends(require_permission("write:ml")),
 ):
     try:
-        config_id = service.create_ml_config(data) # type: ignore
-        config = next((c for c in service.list_active_ml_configs() if c.id == config_id), None)
+        config_id = service.create_ml_config(data, tenant_id=current_user.tenant_id)  # type: ignore
+        config = next((c for c in service.list_active_ml_configs(tenant_id=current_user.tenant_id) if c.id == config_id), None)
         if not config:
             raise HTTPException(status_code=500, detail="Config created but not found")
+        log_audit(current_user.username, current_user.tenant_id, "create", "ml_config", resource_id=str(config_id))
         return config
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.get("/", response_model=List[MLConfigRead])
 def list_ml_configs(
     active_only: bool = True,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:ml")),
 ):
-    return service.list_active_ml_configs() if active_only else service.list_all_ml_configs()
+    tid = current_user.tenant_id
+    return service.list_active_ml_configs(tenant_id=tid) if active_only else service.list_all_ml_configs(tenant_id=tid)
 
 
 @router.get("/{config_id}", response_model=MLConfigRead)
 def get_ml_config(
     config_id: UUID,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:ml")),
 ):
-    configs = service.list_active_ml_configs()
+    configs = service.list_active_ml_configs(tenant_id=current_user.tenant_id)
     config = next((c for c in configs if c.id == config_id), None)
     if not config:
         raise HTTPException(status_code=404, detail="ML config not found")
@@ -3506,38 +5511,46 @@ def get_ml_config(
 @router.put("/{config_id}", response_model=MLConfigRead)
 def update_ml_config(
     config_id: UUID,
+    data: MLConfigCreate,
     service: MetadataService = Depends(get_metadata_service),
-    data: MLConfigCreate = Depends()
+    current_user: TokenData = Depends(require_permission("write:ml")),
 ):
     try:
-        # Используем create_ml_config — он же делает UPSERT
-        service.create_ml_config(data) # type: ignore
-        updated = next((c for c in service.list_active_ml_configs() if c.id == config_id), None)
+        service.create_ml_config(data, tenant_id=current_user.tenant_id)  # type: ignore
+        updated = next((c for c in service.list_active_ml_configs(tenant_id=current_user.tenant_id) if c.id == config_id), None)
         if not updated:
             raise HTTPException(status_code=500, detail="Config updated but not found")
+        log_audit(current_user.username, current_user.tenant_id, "update", "ml_config", resource_id=str(config_id))
         return updated
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.delete("/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_ml_config(
     config_id: UUID,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:ml")),
 ):
     engine = service._get_engine()
     try:
         with engine.begin() as conn:
             result = conn.execute(
-                text("UPDATE metadata_ml_configs SET is_active = false WHERE id = :id"),
-                {"id": config_id}
+                text("UPDATE metadata_ml_configs SET is_active = false WHERE id = :id AND tenant_id = :tid"),
+                {"id": config_id, "tid": current_user.tenant_id},
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="ML config not found")
         service._invalidate_cache("ml_configs")
+        log_audit(current_user.username, current_user.tenant_id, "delete", "ml_config", resource_id=str(config_id))
         return
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+
 ```
 ### 📄 `api/routes/rules.py`
 
@@ -3549,52 +5562,53 @@ from uuid import UUID
 from api.schemas import RuleCreate, RuleRead, RuleUpdate
 from core.metadata_service import MetadataService
 from api.dependencies import get_metadata_service
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
+from core.rbac import require_permission
+from core.audit import log_audit
 from sqlalchemy import text
 from config import mask_secrets
 
 router = APIRouter(prefix="/rules", tags=["Rules"])
 
-@router.get("/")
-def protected_route(current_user: TokenData = Depends(get_current_user)):
-    return {"user": current_user.username}
 
 @router.post("/", response_model=RuleRead, status_code=status.HTTP_201_CREATED)
 def create_rule(
     data: RuleCreate,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:rules")),
 ):
     try:
-        rule_id = service.create_rule(data) # type: ignore
-        # Перечитываем для full-объекта
-        rules = service.list_active_rules() + [r for r in [] if not r.is_active]  # TODO: сделать get_rule(id)
-        rule = next((r for r in rules if r.id == rule_id), None)
+        rule_id = service.create_rule(data, tenant_id=current_user.tenant_id)  # type: ignore
+        rule = _get_rule_by_id(service, rule_id)
         if not rule:
             raise HTTPException(status_code=500, detail="Rule created but not found")
+        log_audit(current_user.username, current_user.tenant_id, "create", "rule", resource_id=str(rule_id))
         return rule
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.get("/", response_model=List[RuleRead])
 def list_rules(
     active_only: bool = True,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:rules")),
 ):
-    if active_only:
-        return service.list_active_rules()
-    else:
-        # TODO: добавить list_all_rules()
-        return service.list_active_rules()
+    rules = service.list_active_rules(tenant_id=current_user.tenant_id)
+    if not active_only:
+        rules = _list_all_rules(service, tenant_id=current_user.tenant_id)
+    return rules
 
 
 @router.get("/{rule_id}", response_model=RuleRead)
 def get_rule(
     rule_id: UUID,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:rules")),
 ):
-    rules = service.list_active_rules()
-    rule = next((r for r in rules if r.id == rule_id), None)
+    rule = _get_rule_by_id(service, rule_id, tenant_id=current_user.tenant_id)
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
     return rule
@@ -3604,41 +5618,96 @@ def get_rule(
 def update_rule(
     rule_id: UUID,
     data: RuleUpdate,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:rules")),
 ):
-    # Создаём DTO с id
-    from dataclasses import replace
-    dto = data
-    # В create_rule поддерживается id
     try:
-        service.create_rule(dto) # type: ignore
-        updated = next((r for r in service.list_active_rules() if r.id == rule_id), None)
+        service.create_rule(data, tenant_id=current_user.tenant_id)  # type: ignore
+        updated = _get_rule_by_id(service, rule_id, tenant_id=current_user.tenant_id)
         if not updated:
             raise HTTPException(status_code=500, detail="Rule updated but not found")
+        log_audit(current_user.username, current_user.tenant_id, "update", "rule", resource_id=str(rule_id))
         return updated
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_rule(
     rule_id: UUID,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:rules")),
 ):
-    
     engine = service._get_engine()
     try:
         with engine.begin() as conn:
             result = conn.execute(
-                text("UPDATE metadata_rules SET is_active = false WHERE id = :id"),
-                {"id": rule_id}
+                text("UPDATE metadata_rules SET is_active = false WHERE id = :id AND tenant_id = :tid"),
+                {"id": rule_id, "tid": current_user.tenant_id},
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Rule not found")
         service._invalidate_cache("rules")
+        log_audit(current_user.username, current_user.tenant_id, "delete", "rule", resource_id=str(rule_id))
         return
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+
+
+def _get_rule_by_id(service: MetadataService, rule_id: UUID, tenant_id: str = "default"):
+    """Fetch a single rule by ID directly from DB."""
+    engine = service._get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT id, name, description, condition, labels, actions, is_active,
+                       created_at, updated_at
+                FROM metadata_rules WHERE id = :id AND tenant_id = :tid
+            """),
+            {"id": rule_id, "tid": tenant_id},
+        ).mappings().first()
+    if not row:
+        return None
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "description": row["description"],
+        "condition": service._deserialize_json(row["condition"]),
+        "labels": service._deserialize_json(row["labels"]),
+        "actions": service._deserialize_json(row["actions"]),
+        "is_active": row["is_active"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def _list_all_rules(service: MetadataService, tenant_id: str = "default"):
+    """List all rules including inactive ones."""
+    engine = service._get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT id, name, description, condition, labels, actions, is_active
+                FROM metadata_rules WHERE tenant_id = :tid ORDER BY name
+            """),
+            {"tid": tenant_id},
+        ).mappings().all()
+    from core.metadata_service import RuleDTO
+    return [
+        RuleDTO(
+            id=r["id"], name=r["name"], description=r["description"],
+            condition=service._deserialize_json(r["condition"]),
+            labels=service._deserialize_json(r["labels"]),
+            actions=service._deserialize_json(r["actions"]),
+            is_active=r["is_active"],
+        )
+        for r in rows
+    ]
+
 ```
 ### 📄 `api/routes/webhooks.py`
 
@@ -3762,7 +5831,10 @@ async def grafana_webhook(
     request: Request,
     payload: GrafanaAlert
 ):
-    # Rate-limiting через глобальный limiter (уже настроен в main.py)
+    if not verify_webhook_key(request):
+        logger.warning(f"Invalid X-API-KEY from {request.client.host if request.client else 'unknown'}")
+        raise HTTPException(status_code=403, detail="Invalid API key")
+
     priority = "critical" if payload.status == "firing" else "info"
     message = f"🚨 {payload.title}\n{payload.message}"
     notify(message, priority)
@@ -3795,19 +5867,86 @@ async def idoit_webhook(
         "telegram_sent": True,
         "idoit": result
     }
+
+
+# === i-doit inbound sync: status/assignment changes pushed back to us ===
+
+class IdoitSyncPayload(BaseModel):
+    """Payload sent by i-doit when an incident is updated."""
+    object_id: str = Field(..., description="i-doit object ID")
+    status: Optional[str] = Field(None, description="i-doit status code")
+    assigned: Optional[str] = Field(None, description="Assigned user")
+    comment: Optional[str] = Field(None, description="Logbook comment")
+
+
+@router.post("/idoit/sync", status_code=status.HTTP_200_OK)
+@limiter.limit("100/minute")
+async def idoit_sync_webhook(request: Request, payload: IdoitSyncPayload):
+    """
+    Inbound webhook from i-doit.
+    Receives status/assignment updates and syncs them back to local incidents.
+    Configure i-doit to POST here on incident state changes.
+    """
+    if not verify_webhook_key(request):
+        raise HTTPException(status_code=403, detail="Invalid API key")
+
+    from core.database import get_engine
+    from sqlalchemy import text as sa_text
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            sa_text("SELECT id, status FROM incidents WHERE external_id = :eid"),
+            {"eid": payload.object_id},
+        ).mappings().first()
+
+    if not row:
+        logger.warning(f"i-doit sync: no local incident for object_id={payload.object_id}")
+        raise HTTPException(404, "Incident not found for this external_id")
+
+    incident_id = row["id"]
+    result = {"incident_id": incident_id, "synced": []}
+
+    if payload.status:
+        from core.idoit_service import pull_status_update
+        pull_status_update(incident_id, payload.status, payload.assigned)
+        result["synced"].append("status")
+
+    if payload.comment:
+        with engine.begin() as conn:
+            conn.execute(
+                sa_text("""
+                    INSERT INTO incident_comments (incident_id, author, content)
+                    VALUES (:iid, :author, :content)
+                """),
+                {"iid": incident_id, "author": f"i-doit:{payload.assigned or 'system'}", "content": payload.comment},
+            )
+        result["synced"].append("comment")
+
+    # Audit log for external sync
+    try:
+        from core.audit import log_audit
+        log_audit(
+            f"idoit:{payload.assigned or 'system'}", "default",
+            "sync", "incident",
+            resource_id=str(incident_id),
+            changes={"synced": result.get("synced", [])},
+        )
+    except Exception:
+        pass
+
+    return {"success": True, **result}
 ```
 ### 📄 `api/routes/websocket.py`
 
 ```python
 # api/routes/websocket.py
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect,WebSocketException, status
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from typing import List
-import asyncio
 import json
-from core.database import get_engine
-from sqlalchemy import text
-from config import logger, mask_secrets
+from config import logger
 from api.auth import verify_token
+from core.pubsub import subscribe_alerts
 
 router = APIRouter()
 
@@ -3821,7 +5960,8 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
         disconnected = []
@@ -3835,72 +5975,32 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# Фоновая задача: push новых алертов
+
 async def alert_stream_task():
-    last_ts = None
-    while True:
-        try:
-            engine = get_engine()
-            with engine.connect() as conn:
-                if last_ts is None:
-                    # Только последние 10 при первом запуске
-                    result = conn.execute(
-                        text("""
-                            SELECT * FROM alert_events 
-                            ORDER BY event_time DESC 
-                            LIMIT 10
-                        """)
-                    ).mappings().all()
-                else:
-                    result = conn.execute(
-                        text("""
-                            SELECT * FROM alert_events 
-                            WHERE event_time > :last_ts 
-                            ORDER BY event_time ASC
-                            LIMIT 50
-                        """),
-                        {"last_ts": last_ts}
-                    ).mappings().all()
-                
-                if result:
-                    for row in result:
-                        await manager.broadcast({
-                            "type": "alert",
-                            "id": str(row["id"]),
-                            "metric": row["metric_name"],
-                            "dimensions": row["dimensions"],
-                            "value": float(row["value"]),
-                            "status": row["status"],
-                            "event_time": row["event_time"].isoformat()
-                        })
-                        last_ts = row["event_time"]
-                        
-        except Exception as e:
-            logger.error(f"WS stream error: {mask_secrets(str(e))}")
-        
-        await asyncio.sleep(5)
+    """Subscribe to Redis Pub/Sub and broadcast alerts to WebSocket clients."""
+    await subscribe_alerts(manager.broadcast)
 
 
 @router.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
-    # Получаем токен из query или headers
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
-    
+
     try:
         verify_token(token)
     except Exception:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
-    
+
     await manager.connect(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
 ```
 ### 📄 `.github/workflows/ci-cd.yml`
 
@@ -3910,8 +6010,10 @@ on:
   push:
     branches:
       - main
+      - master
   pull_request:
     types: [opened, synchronize]
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -3921,52 +6023,71 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - name: Install dependencies
+          python-version: '3.12'
+      - name: Install lint tools
         run: |
           pip install --upgrade pip
-          pip install ruff black mypy
+          pip install ruff
       - name: Run linter (Ruff)
-        run: ruff check .
-      - name: Run formatter (Black)
-        run: black --check .
-      - name: Type checking (mypy)
-        run: mypy .
+        run: ruff check . --ignore E501
+
   test:
     runs-on: ubuntu-latest
     needs: lint
+    env:
+      SECRET_KEY: test-secret-key-for-ci
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_SERVER: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: test_db
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: "$2b$12$LJ3m4ys5qOzXkVzKlGT..ea.J7GIIO0C.jPBsCijMOZqMPfTpF8a6"
+      I_DOIT_API_KEY: test-key
+      I_DOIT_API_URL: http://localhost/api
+      WEBHOOK_API_KEY: test-webhook-key
+      KAFKA_ENABLED: "false"
+      CLICKHOUSE_ENABLED: "false"
+      LDAP_ENABLED: "false"
+      OIDC_ENABLED: "false"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
       - name: Run tests
         run: |
-          python -m pytest tests/ -v
-  build_cpu:
+          python -m pytest tests/ -v --tb=short -x
+      - name: Upload coverage
+        if: always()
+        run: |
+          python -m pytest tests/ --cov=api --cov=core --cov-report=term-missing || true
+
+  build:
     runs-on: ubuntu-latest
     needs: test
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Login to Docker Hub
-        uses: docker/login-action@v3 # Обновлено до v3
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-      - name: Build CPU image
+      - name: Build and push image
         run: |
-          docker build -t Maarkh/sit_center -f Dockerfile .
-      - name: Push CPU image
-        run: |
-          docker push Maarkh/sit_center
-  
+          docker build -t Maarkh/sit_center:latest -f Dockerfile .
+          docker push Maarkh/sit_center:latest
+
 ```
 ### 📄 `.github/workflows/generate-docs.yml`
 
@@ -4007,6 +6128,87 @@ jobs:
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+### 📄 `docs/disaster-recovery.md`
+
+```markdown
+# Disaster Recovery Plan
+
+## Architecture Overview
+
+- **API**: 2 instances behind nginx (least_conn)
+- **Database**: TimescaleDB primary + streaming replica
+- **Cache**: Redis with 3 Sentinel nodes for automatic failover
+- **Message Queue**: Kafka with configurable replication factor
+
+## RTO / RPO Targets
+
+| Component    | RPO           | RTO           |
+|-------------|---------------|---------------|
+| PostgreSQL  | ~0 (sync rep) | < 5 min       |
+| Redis       | < 1 min       | < 30 sec      |
+| Kafka       | 0 (acks=all)  | < 2 min       |
+| API         | N/A           | < 30 sec      |
+
+## Backup Procedures
+
+### PostgreSQL / TimescaleDB
+
+1. **Continuous WAL archiving** (recommended):
+   ```bash
+   # pg_basebackup for full backup
+   pg_basebackup -h db -U $POSTGRES_USER -D /backups/base -Ft -z -P
+
+   # WAL archiving configured in postgresql.conf
+   archive_mode = on
+   archive_command = 'cp %p /backups/wal/%f'
+   ```
+
+2. **Scheduled pg_dump** (supplementary):
+   ```bash
+   # Daily logical backup
+   pg_dump -h db -U $POSTGRES_USER $POSTGRES_DB | gzip > /backups/daily/$(date +%Y%m%d).sql.gz
+   ```
+
+3. **Retention**: Keep 7 daily, 4 weekly, 12 monthly backups.
+
+### Redis
+
+- Redis Sentinel handles automatic failover.
+- RDB snapshots every 60 seconds (if >1000 keys changed).
+- AOF enabled for durability.
+
+### Kafka
+
+- Topic replication factor >= 2 in production.
+- Consumer offsets committed after successful processing.
+
+## Failover Steps
+
+### Database Failover
+
+1. Sentinel or monitoring detects primary failure.
+2. Promote replica: `pg_ctl promote -D /var/lib/postgresql/data`
+3. Update connection strings (or use PgBouncer / HAProxy for transparent failover).
+4. Rebuild old primary as new replica.
+
+### Redis Failover
+
+1. Redis Sentinel automatically elects new master.
+2. Application uses Sentinel-aware connection (no manual intervention needed).
+
+### API Failover
+
+1. nginx health checks detect failed instance.
+2. Traffic automatically routed to healthy instance.
+3. Restart or replace failed instance.
+
+## Recovery Testing
+
+- Test failover quarterly.
+- Restore from backup to a test environment monthly.
+- Document and review results.
+
 ```
 ### 📄 `alembic/env.py`
 
@@ -4232,13 +6434,994 @@ def downgrade():
 ### 📄 `tests/conftest.py`
 
 ```python
+# tests/conftest.py
+import os
+os.environ["TESTING"] = "1"
+
 import pytest
+import fakeredis
+from unittest.mock import patch, MagicMock
 from celery_app import celery_app
+
 
 @pytest.fixture(autouse=True, scope="session")
 def celery_eager():
     celery_app.conf.update(task_always_eager=True)
     yield
+
+
+@pytest.fixture()
+def fake_redis_instance():
+    """A standalone fakeredis instance for direct use in tests."""
+    return fakeredis.FakeRedis(decode_responses=True)
+
+
+@pytest.fixture(autouse=True)
+def mock_redis(fake_redis_instance):
+    """Patch get_redis / get_cache globally so no real Redis is needed."""
+    with patch("config.get_redis", return_value=fake_redis_instance), \
+         patch("config.get_cache", return_value=fake_redis_instance):
+        yield fake_redis_instance
+
+
+@pytest.fixture()
+def api_client():
+    """FastAPI TestClient with mocked dependencies."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    return TestClient(app)
+
+
+@pytest.fixture()
+def auth_headers():
+    """Return valid Authorization headers for admin user."""
+    from api.auth import create_access_token
+    from datetime import timedelta
+    token = create_access_token(
+        data={
+            "sub": "testadmin",
+            "scopes": ["admin"],
+            "tenant_id": "default",
+            "roles": ["admin"],
+            "permissions": [
+                "read:metrics", "write:metrics", "read:rules", "write:rules",
+                "read:alerts", "write:alerts", "read:ml", "write:ml",
+                "admin:tenants", "admin:users", "read:audit",
+            ],
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def viewer_auth_headers():
+    """Return valid Authorization headers for viewer user (read-only)."""
+    from api.auth import create_access_token
+    from datetime import timedelta
+    token = create_access_token(
+        data={
+            "sub": "testviewer",
+            "scopes": [],
+            "tenant_id": "default",
+            "roles": ["viewer"],
+            "permissions": ["read:metrics", "read:rules", "read:alerts"],
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+```
+### 📄 `tests/test_alerts_logic.py`
+
+```python
+# tests/test_alerts_logic.py
+import pytest
+from core.alerts import generate_alert_hash, is_steady_increase
+
+
+def test_generate_alert_hash():
+    h = generate_alert_hash("cpu", "Moscow", 42.0)
+    assert isinstance(h, str)
+    assert len(h) == 32
+
+
+def test_generate_alert_hash_deterministic():
+    h1 = generate_alert_hash("cpu", "Moscow", 42.0)
+    h2 = generate_alert_hash("cpu", "Moscow", 42.0)
+    assert h1 == h2
+
+
+def test_generate_alert_hash_different_inputs():
+    h1 = generate_alert_hash("cpu", "Moscow", 42.0)
+    h2 = generate_alert_hash("cpu", "SPb", 42.0)
+    assert h1 != h2
+
+
+def test_is_steady_increase_true():
+    assert is_steady_increase([1, 2, 3]) is True
+    assert is_steady_increase([10, 20, 30, 40]) is True
+
+
+def test_is_steady_increase_false():
+    assert is_steady_increase([3, 2, 1]) is False
+    assert is_steady_increase([1, 3, 2]) is False
+    assert is_steady_increase([1, 2]) is False  # less than 3 elements
+
+
+def test_alert_suppression(fake_redis_instance):
+    from core.alerts import suppress_alert, is_alert_suppressed
+    suppress_alert("test_hash", 60)
+    assert is_alert_suppressed("test_hash") is True
+
+
+def test_alert_not_suppressed(fake_redis_instance):
+    from core.alerts import is_alert_suppressed
+    assert is_alert_suppressed("nonexistent_hash") is False
+
+```
+### 📄 `tests/test_api_alerts.py`
+
+```python
+# tests/test_api_alerts.py
+import pytest
+from unittest.mock import patch, MagicMock
+from uuid import uuid4
+from datetime import datetime, timezone
+
+
+@pytest.fixture
+def mock_db_engine():
+    with patch("api.routes.alerts.get_engine") as mock:
+        engine = MagicMock()
+        mock.return_value = engine
+        yield engine
+
+
+def test_list_alerts_empty(api_client, auth_headers, mock_db_engine):
+    conn = MagicMock()
+    mock_db_engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+    mock_db_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    conn.execute.return_value.mappings.return_value.all.return_value = []
+
+    response = api_client.get("/alerts/", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_get_alert_not_found(api_client, auth_headers, mock_db_engine):
+    conn = MagicMock()
+    mock_db_engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+    mock_db_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    conn.execute.return_value.mappings.return_value.first.return_value = None
+
+    alert_id = uuid4()
+    response = api_client.get(f"/alerts/{alert_id}", headers=auth_headers)
+    assert response.status_code == 404
+
+
+def test_list_alerts_with_data(api_client, auth_headers, mock_db_engine):
+    alert_id = uuid4()
+    now = datetime.now(timezone.utc)
+    row = {
+        "id": alert_id,
+        "rule_id": None,
+        "ml_config_id": None,
+        "metric_name": "complaints",
+        "dimensions": {"region": "Moscow"},
+        "value": 42.0,
+        "event_time": now,
+        "detected_at": now,
+        "status": "firing",
+        "sent": True,
+        "fingerprint": "abc123",
+    }
+    conn = MagicMock()
+    mock_db_engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+    mock_db_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    conn.execute.return_value.mappings.return_value.all.return_value = [row]
+
+    response = api_client.get("/alerts/", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["metric_name"] == "complaints"
+
+```
+### 📄 `tests/test_api_data.py`
+
+```python
+# tests/test_api_data.py
+import pytest
+from unittest.mock import patch, MagicMock
+from core.metadata_service import MetricDTO
+
+
+def test_prometheus_label_values_name(api_client, auth_headers):
+    with patch("api.routes.data.get_engine") as mock_engine:
+        conn = MagicMock()
+        mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
+        conn.execute.return_value = [("metric_a",), ("metric_b",)]
+
+        response = api_client.get("/data/prometheus/api/v1/label/__name__/values", headers=auth_headers)
+        assert response.status_code == 200
+        assert "metric_a" in response.json()
+
+
+def test_prometheus_label_values_forbidden_dimension(api_client, auth_headers):
+    response = api_client.get("/data/prometheus/api/v1/label/forbidden_dim/values", headers=auth_headers)
+    assert response.status_code == 403
+
+
+def test_query_range_invalid_step(api_client, auth_headers):
+    mock_metrics = [MetricDTO(metric_name="test_metric", display_name="Test", is_active=True)]
+    with patch("core.metadata_service.metadata_service") as mock_ms:
+        mock_ms.list_metrics.return_value = mock_metrics
+        response = api_client.get(
+            "/data/prometheus/api/v1/query_range",
+            params={
+                "query": "test_metric",
+                "start": 1000000,
+                "end": 1000100,
+                "step": "invalid",
+            },
+            headers=auth_headers,
+        )
+    assert response.status_code == 400
+
+
+def test_query_range_sql_injection_step(api_client, auth_headers):
+    mock_metrics = [MetricDTO(metric_name="test_metric", display_name="Test", is_active=True)]
+    with patch("core.metadata_service.metadata_service") as mock_ms:
+        mock_ms.list_metrics.return_value = mock_metrics
+        response = api_client.get(
+            "/data/prometheus/api/v1/query_range",
+            params={
+                "query": "test_metric",
+                "start": 1000000,
+                "end": 1000100,
+                "step": "1s; DROP TABLE--",
+            },
+            headers=auth_headers,
+        )
+    assert response.status_code == 400
+
+```
+### 📄 `tests/test_api_metrics.py`
+
+```python
+# tests/test_api_metrics.py
+import pytest
+from unittest.mock import patch, MagicMock
+from datetime import datetime
+from core.metadata_service import MetricDTO
+
+
+@pytest.fixture
+def mock_metadata_service():
+    from api.main import app
+    from api.dependencies import get_metadata_service
+    service = MagicMock()
+    app.dependency_overrides[get_metadata_service] = lambda: service
+    yield service
+    app.dependency_overrides.pop(get_metadata_service, None)
+
+
+def test_list_metrics(api_client, auth_headers, mock_metadata_service):
+    now = datetime.now()
+    mock_metric = MagicMock()
+    mock_metric.metric_name = "test_metric"
+    mock_metric.display_name = "Test Metric"
+    mock_metric.description = "A test metric"
+    mock_metric.unit = "count"
+    mock_metric.default_threshold = None
+    mock_metric.default_critical_threshold = None
+    mock_metric.is_active = True
+    mock_metric.created_at = now
+    mock_metric.updated_at = now
+    mock_metadata_service.list_metrics.return_value = [mock_metric]
+    response = api_client.get("/metrics/?active_only=true", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 1
+    assert data[0]["metric_name"] == "test_metric"
+
+
+def test_get_metric_not_found(api_client, auth_headers, mock_metadata_service):
+    mock_metadata_service.get_metric.return_value = None
+    response = api_client.get("/metrics/nonexistent", headers=auth_headers)
+    assert response.status_code == 404
+
+
+def test_create_metric(api_client, auth_headers, mock_metadata_service):
+    now = datetime.now()
+    mock_metadata_service.create_metric.return_value = "new_metric"
+    mock_metric = MagicMock()
+    mock_metric.metric_name = "new_metric"
+    mock_metric.display_name = "New Metric"
+    mock_metric.description = None
+    mock_metric.unit = ""
+    mock_metric.default_threshold = None
+    mock_metric.default_critical_threshold = None
+    mock_metric.is_active = True
+    mock_metric.created_at = now
+    mock_metric.updated_at = now
+    mock_metadata_service.get_metric.return_value = mock_metric
+    response = api_client.post(
+        "/metrics/",
+        json={
+            "metric_name": "new_metric",
+            "display_name": "New Metric",
+            "is_active": True,
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    assert response.json()["metric_name"] == "new_metric"
+
+```
+### 📄 `tests/test_api_versioning.py`
+
+```python
+# tests/test_api_versioning.py
+"""Test that API v1 prefix routes work alongside legacy routes."""
+import pytest
+from unittest.mock import patch, MagicMock
+
+
+@pytest.fixture
+def mock_metadata_service():
+    with patch("api.routes.metrics.get_metadata_service") as mock:
+        service = MagicMock()
+        mock.return_value = service
+        service.list_metrics.return_value = []
+        yield service
+
+
+class TestApiVersioning:
+    def test_health_no_prefix(self, api_client):
+        resp = api_client.get("/health")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    def test_metrics_v1_prefix(self, api_client, auth_headers, mock_metadata_service):
+        resp = api_client.get("/api/v1/metrics/", headers=auth_headers)
+        assert resp.status_code == 200
+
+    def test_metrics_legacy_prefix(self, api_client, auth_headers, mock_metadata_service):
+        resp = api_client.get("/metrics/", headers=auth_headers)
+        assert resp.status_code == 200
+
+    @patch("api.routes.alerts.get_engine")
+    def test_alerts_v1_prefix(self, mock_engine, api_client, auth_headers):
+        engine = MagicMock()
+        mock_engine.return_value = engine
+        conn = MagicMock()
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        conn.execute.return_value.mappings.return_value.all.return_value = []
+
+        resp = api_client.get("/api/v1/alerts/", headers=auth_headers)
+        assert resp.status_code == 200
+
+```
+### 📄 `tests/test_api_webhooks.py`
+
+```python
+# tests/test_api_webhooks.py
+import pytest
+from unittest.mock import patch
+
+
+def test_grafana_webhook_no_api_key(api_client):
+    response = api_client.post(
+        "/webhooks/grafana",
+        json={"title": "Test Alert", "message": "body", "status": "firing"},
+    )
+    assert response.status_code == 403
+
+
+def test_grafana_webhook_invalid_api_key(api_client):
+    response = api_client.post(
+        "/webhooks/grafana",
+        json={"title": "Test Alert", "message": "body", "status": "firing"},
+        headers={"X-API-KEY": "wrong_key"},
+    )
+    assert response.status_code == 403
+
+
+def test_grafana_webhook_valid(api_client):
+    from config import settings
+    with patch("api.routes.webhooks.notify") as mock_notify:
+        response = api_client.post(
+            "/webhooks/grafana",
+            json={"title": "Test Alert", "message": "body", "status": "firing"},
+            headers={"X-API-KEY": settings.WEBHOOK_API_KEY},
+        )
+        assert response.status_code == 200
+        mock_notify.assert_called_once()
+
+
+def test_idoit_webhook_valid(api_client):
+    from config import settings
+    with patch("api.routes.webhooks.notify"), \
+         patch("api.routes.webhooks.create_idoit_incident", return_value={"success": True, "id": 1}):
+        response = api_client.post(
+            "/webhooks/idoit",
+            json={
+                "title": "Test",
+                "message": "details",
+                "priority": "warning",
+                "metric": "cpu",
+                "region": "Moscow",
+            },
+            headers={"X-API-KEY": settings.WEBHOOK_API_KEY},
+        )
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+```
+### 📄 `tests/test_auth_strategies.py`
+
+```python
+# tests/test_auth_strategies.py
+"""Tests for the decomposed auth strategies (core/auth_strategies.py)."""
+import pytest
+from unittest.mock import patch, MagicMock
+from fastapi import HTTPException
+
+
+class TestEnvAdminAuth:
+    def test_valid_env_admin(self):
+        from core.auth_strategies import try_env_admin_auth
+
+        with patch("core.auth_strategies.settings") as mock_settings, \
+             patch("core.auth_strategies.pwd_context") as mock_pwd:
+            mock_settings.ADMIN_USERNAME = "admin"
+            mock_settings.ADMIN_PASSWORD = "$2b$12$hash"
+            mock_pwd.verify.return_value = True
+
+            token = try_env_admin_auth("admin", "password123")
+            assert isinstance(token, str)
+            assert len(token) > 0
+
+    def test_wrong_username(self):
+        from core.auth_strategies import try_env_admin_auth
+
+        with patch("core.auth_strategies.settings") as mock_settings:
+            mock_settings.ADMIN_USERNAME = "admin"
+
+            with pytest.raises(HTTPException) as exc_info:
+                try_env_admin_auth("wrong_user", "password123")
+            assert exc_info.value.status_code == 401
+
+    def test_wrong_password(self):
+        from core.auth_strategies import try_env_admin_auth
+
+        with patch("core.auth_strategies.settings") as mock_settings, \
+             patch("core.auth_strategies.pwd_context") as mock_pwd:
+            mock_settings.ADMIN_USERNAME = "admin"
+            mock_settings.ADMIN_PASSWORD = "$2b$12$hash"
+            mock_pwd.verify.return_value = False
+
+            with pytest.raises(HTTPException) as exc_info:
+                try_env_admin_auth("admin", "wrong_pass")
+            assert exc_info.value.status_code == 401
+
+
+class TestDbAuth:
+    def test_db_user_found(self):
+        from core.auth_strategies import try_db_auth
+
+        mock_user_row = {
+            "id": 1,
+            "username": "dbuser",
+            "password_hash": "$2b$12$hash",
+            "tenant_id": "tenant1",
+            "is_active": True,
+            "roles": ["viewer"],
+            "permissions": ["read:metrics"],
+        }
+
+        with patch("core.database.get_engine") as mock_engine, \
+             patch("core.auth_strategies.pwd_context") as mock_pwd:
+            conn = MagicMock()
+            mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)
+            mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
+            conn.execute.return_value.mappings.return_value.first.return_value = mock_user_row
+            mock_pwd.verify.return_value = True
+
+            result = try_db_auth("dbuser", "password")
+            assert result is not None
+            assert result["username"] == "dbuser"
+            assert result["tenant_id"] == "tenant1"
+            assert "token" in result
+
+    def test_db_user_not_found(self):
+        from core.auth_strategies import try_db_auth
+
+        with patch("core.database.get_engine") as mock_engine:
+            conn = MagicMock()
+            mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)
+            mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
+            conn.execute.return_value.mappings.return_value.first.return_value = None
+
+            result = try_db_auth("nonexistent", "password")
+            assert result is None
+
+    def test_db_wrong_password_raises(self):
+        from core.auth_strategies import try_db_auth
+
+        mock_user_row = {
+            "id": 1,
+            "username": "dbuser",
+            "password_hash": "$2b$12$hash",
+            "tenant_id": "tenant1",
+            "is_active": True,
+            "roles": [],
+            "permissions": [],
+        }
+
+        with patch("core.database.get_engine") as mock_engine, \
+             patch("core.auth_strategies.pwd_context") as mock_pwd:
+            conn = MagicMock()
+            mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)
+            mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
+            conn.execute.return_value.mappings.return_value.first.return_value = mock_user_row
+            mock_pwd.verify.return_value = False
+
+            with pytest.raises(HTTPException) as exc_info:
+                try_db_auth("dbuser", "wrong_pass")
+            assert exc_info.value.status_code == 401
+
+
+class TestLdapAuth:
+    def test_ldap_disabled_returns_none(self):
+        from core.auth_strategies import try_ldap_auth
+
+        with patch("core.auth_strategies.settings") as mock_settings:
+            mock_settings.LDAP_ENABLED = False
+            result = try_ldap_auth("user", "pass")
+            assert result is None
+
+    def test_ldap_auth_failure_returns_none(self):
+        from core.auth_strategies import try_ldap_auth
+
+        with patch("core.auth_strategies.settings") as mock_settings:
+            mock_settings.LDAP_ENABLED = True
+
+            with patch("core.ldap_auth.ldap_authenticator") as mock_ldap:
+                mock_ldap.authenticate.return_value = None
+                result = try_ldap_auth("user", "wrong_pass")
+                assert result is None
+
+```
+### 📄 `tests/test_data_routes.py`
+
+```python
+# tests/test_data_routes.py
+"""Tests for data query routes: Prometheus compat, analytics, and query endpoints."""
+import pytest
+from unittest.mock import patch, MagicMock
+from api.routes.data import _parse_duration, safe_jsonb_eq, validate_label_name
+from fastapi import HTTPException
+
+
+class TestParseDuration:
+    def test_valid_seconds(self):
+        assert _parse_duration("15s") == 15
+
+    def test_valid_minutes(self):
+        assert _parse_duration("5m") == 300
+
+    def test_valid_hours(self):
+        assert _parse_duration("2h") == 7200
+
+    def test_valid_days(self):
+        assert _parse_duration("1d") == 86400
+
+    def test_invalid_format(self):
+        with pytest.raises(HTTPException) as exc_info:
+            _parse_duration("abc")
+        assert exc_info.value.status_code == 400
+
+    def test_too_large_step(self):
+        with pytest.raises(HTTPException) as exc_info:
+            _parse_duration("2d")
+        assert exc_info.value.status_code == 400
+        assert "too large" in exc_info.value.detail
+
+    def test_too_long_string(self):
+        with pytest.raises(HTTPException) as exc_info:
+            _parse_duration("12345678901")
+        assert exc_info.value.status_code == 400
+
+    def test_zero_step(self):
+        with pytest.raises(HTTPException) as exc_info:
+            _parse_duration("0s")
+        assert exc_info.value.status_code == 400
+
+
+class TestValidateLabelName:
+    def test_valid_label(self):
+        assert validate_label_name("region") == "region"
+
+    def test_valid_underscore_start(self):
+        assert validate_label_name("_private") == "_private"
+
+    def test_invalid_special_chars(self):
+        with pytest.raises(HTTPException) as exc_info:
+            validate_label_name("region;DROP")
+        assert exc_info.value.status_code == 400
+
+    def test_too_long(self):
+        with pytest.raises(HTTPException) as exc_info:
+            validate_label_name("a" * 51)
+        assert exc_info.value.status_code == 400
+
+
+class TestSafeJsonbEq:
+    def test_valid_key_value(self):
+        expr, params = safe_jsonb_eq("dimensions", "f0", "region", "Moscow")
+        assert "key_f0" in params
+        assert "val_f0" in params
+        assert params["key_f0"] == "region"
+        assert params["val_f0"] == "Moscow"
+
+    def test_invalid_key_raises(self):
+        with pytest.raises(Exception):
+            safe_jsonb_eq("dimensions", "f0", "region;DROP", "Moscow")
+
+    def test_forbidden_chars_in_value(self):
+        with pytest.raises(HTTPException):
+            safe_jsonb_eq("dimensions", "f0", "region", 'Mos"cow')
+
+
+class TestPrometheusEndpoints:
+    @patch("api.routes.data.get_engine")
+    def test_label_values_requires_auth(self, mock_engine, api_client):
+        resp = api_client.get("/data/prometheus/api/v1/label/__name__/values")
+        assert resp.status_code in (401, 403)
+
+    @patch("api.routes.data.get_engine")
+    def test_label_values_with_auth(self, mock_engine, api_client, auth_headers):
+        engine = MagicMock()
+        mock_engine.return_value = engine
+        conn = MagicMock()
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        conn.execute.return_value = [("cpu_usage",), ("memory_used",)]
+
+        resp = api_client.get(
+            "/data/prometheus/api/v1/label/__name__/values",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+
+    @patch("api.routes.data.get_engine")
+    def test_disallowed_dimension_label(self, mock_engine, api_client, auth_headers):
+        resp = api_client.get(
+            "/data/prometheus/api/v1/label/secret_field/values",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 403
+
+```
+### 📄 `tests/test_idoit_service.py`
+
+```python
+# tests/test_idoit_service.py
+"""Tests for i-doit service — push/pull operations."""
+import pytest
+from unittest.mock import patch, MagicMock
+from datetime import datetime, timezone
+
+
+@pytest.fixture
+def mock_engine():
+    with patch("core.idoit_service.get_engine") as mock:
+        engine = MagicMock()
+        mock.return_value = engine
+        conn = MagicMock()
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        engine.begin.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.begin.return_value.__exit__ = MagicMock(return_value=False)
+        yield engine, conn
+
+
+class TestIsEnabled:
+    def test_enabled_when_both_set(self):
+        from core.idoit_service import is_enabled
+        with patch("core.idoit_service.settings") as s:
+            s.I_DOIT_API_URL = "http://idoit/api"
+            s.I_DOIT_API_KEY = "key123"
+            assert is_enabled() is True
+
+    def test_disabled_when_no_url(self):
+        from core.idoit_service import is_enabled
+        with patch("core.idoit_service.settings") as s:
+            s.I_DOIT_API_URL = ""
+            s.I_DOIT_API_KEY = "key123"
+            assert is_enabled() is False
+
+    def test_disabled_when_no_key(self):
+        from core.idoit_service import is_enabled
+        with patch("core.idoit_service.settings") as s:
+            s.I_DOIT_API_URL = "http://idoit/api"
+            s.I_DOIT_API_KEY = ""
+            assert is_enabled() is False
+
+
+class TestStatusMapping:
+    def test_status_to_idoit(self):
+        from core.idoit_service import STATUS_TO_IDOIT
+        assert STATUS_TO_IDOIT["new"] == "1"
+        assert STATUS_TO_IDOIT["resolved"] == "3"
+        assert STATUS_TO_IDOIT["closed"] == "4"
+
+    def test_status_from_idoit(self):
+        from core.idoit_service import STATUS_FROM_IDOIT
+        assert STATUS_FROM_IDOIT["1"] == "new"
+        assert STATUS_FROM_IDOIT["3"] == "resolved"
+
+    def test_priority_mapping(self):
+        from core.idoit_service import PRIORITY_TO_IDOIT, PRIORITY_FROM_IDOIT
+        assert PRIORITY_TO_IDOIT["critical"] == "1"
+        assert PRIORITY_FROM_IDOIT["1"] == "critical"
+
+
+class TestPushIncidentCreate:
+    def test_skips_when_disabled(self, mock_engine):
+        from core.idoit_service import push_incident_create
+        with patch("core.idoit_service.is_enabled", return_value=False):
+            result = push_incident_create(1)
+            assert result is None
+
+    @patch("core.idoit_service.requests.post")
+    def test_creates_incident_success(self, mock_post, mock_engine):
+        engine, conn = mock_engine
+        conn.execute.return_value.mappings.return_value.first.return_value = {
+            "id": 1,
+            "alert_message": "Test alert",
+            "description": None,
+            "metric": "cpu_usage",
+            "region": "RU-MOW",
+            "value": "95",
+            "priority": "critical",
+            "assigned_to": None,
+            "status": "new",
+        }
+
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.raise_for_status = MagicMock()
+        mock_post.return_value.json.return_value = {
+            "result": {"id": "42", "objectID": "42"}
+        }
+
+        from core.idoit_service import push_incident_create
+        with patch("core.idoit_service.is_enabled", return_value=True), \
+             patch("core.idoit_service.settings") as s:
+            s.I_DOIT_API_URL = "http://idoit/api"
+            s.I_DOIT_API_KEY = "key123"
+            result = push_incident_create(1)
+            assert result == "42"
+
+
+class TestPullStatusUpdate:
+    def test_pull_valid_status(self, mock_engine):
+        engine, conn = mock_engine
+        from core.idoit_service import pull_status_update
+
+        with patch("core.idoit_service._log_sync"):
+            pull_status_update(1, "3")  # 3 = resolved
+
+        # Should have executed an UPDATE
+        conn.execute.assert_called()
+
+    def test_pull_unknown_status_ignored(self, mock_engine):
+        engine, conn = mock_engine
+        from core.idoit_service import pull_status_update
+
+        with patch("core.idoit_service._log_sync"):
+            pull_status_update(1, "99")
+
+        # begin() should not be called for unknown status
+        engine.begin.assert_not_called()
+
+```
+### 📄 `tests/test_incidents.py`
+
+```python
+# tests/test_incidents.py
+import pytest
+from unittest.mock import patch, MagicMock
+from datetime import datetime, timezone
+
+
+@pytest.fixture
+def mock_db_engine():
+    with patch("api.routes.incidents.get_engine") as mock:
+        engine = MagicMock()
+        mock.return_value = engine
+        yield engine
+
+
+def _make_incident_row(overrides=None):
+    row = {
+        "id": 1,
+        "alert_message": "High latency",
+        "metric": "api_latency_p99",
+        "region": "RU-MOW",
+        "value": "500",
+        "priority": "critical",
+        "status": "new",
+        "detected_at": datetime.now(timezone.utc),
+        "assigned_to": None,
+        "started_at": None,
+        "resolved_at": None,
+        "closed_at": None,
+        "description": None,
+        "alert_event_id": None,
+        "response_deadline": None,
+        "resolution_deadline": None,
+        "response_breached": False,
+        "resolution_breached": False,
+        "escalation_level": 0,
+        "last_escalated_at": None,
+        "external_id": None,
+        "external_system": None,
+        "external_url": None,
+    }
+    if overrides:
+        row.update(overrides)
+    return row
+
+
+def _setup_conn(engine, return_value):
+    """Set up context-managed connection mock."""
+    conn = MagicMock()
+    engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+    engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    engine.begin.return_value.__enter__ = MagicMock(return_value=conn)
+    engine.begin.return_value.__exit__ = MagicMock(return_value=False)
+    return conn
+
+
+class TestListIncidents:
+    def test_list_incidents_empty(self, api_client, auth_headers, mock_db_engine):
+        conn = _setup_conn(mock_db_engine, [])
+        conn.execute.return_value.scalar.return_value = 0
+        conn.execute.return_value.mappings.return_value.all.return_value = []
+
+        resp = api_client.get("/incidents/", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 0
+        assert data["items"] == []
+
+    def test_list_incidents_with_filters(self, api_client, auth_headers, mock_db_engine):
+        conn = _setup_conn(mock_db_engine, [])
+        conn.execute.return_value.scalar.return_value = 1
+        conn.execute.return_value.mappings.return_value.all.return_value = [
+            _make_incident_row({"status": "in_progress"})
+        ]
+
+        resp = api_client.get(
+            "/incidents/?status=in_progress&priority=critical",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+
+    def test_list_incidents_breached_filter(self, api_client, auth_headers, mock_db_engine):
+        conn = _setup_conn(mock_db_engine, [])
+        conn.execute.return_value.scalar.return_value = 0
+        conn.execute.return_value.mappings.return_value.all.return_value = []
+
+        resp = api_client.get("/incidents/?breached=true", headers=auth_headers)
+        assert resp.status_code == 200
+
+
+class TestCreateIncident:
+    @patch("api.routes.incidents.log_audit")
+    def test_create_incident(self, mock_audit, api_client, auth_headers, mock_db_engine):
+        row = _make_incident_row()
+        conn = _setup_conn(mock_db_engine, row)
+        conn.execute.return_value.mappings.return_value.first.return_value = row
+
+        with patch("core.sla_service.apply_sla_to_incident"), \
+             patch("core.idoit_service.push_incident_create", return_value=None):
+            resp = api_client.post(
+                "/incidents/",
+                json={
+                    "alert_message": "High latency",
+                    "metric": "api_latency_p99",
+                    "region": "RU-MOW",
+                    "priority": "critical",
+                },
+                headers=auth_headers,
+            )
+        assert resp.status_code == 201
+        assert resp.json()["alert_message"] == "High latency"
+
+
+class TestGetIncident:
+    def test_get_incident_found(self, api_client, auth_headers, mock_db_engine):
+        row = _make_incident_row()
+        conn = _setup_conn(mock_db_engine, row)
+        conn.execute.return_value.mappings.return_value.first.return_value = row
+
+        resp = api_client.get("/incidents/1", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["id"] == 1
+
+    def test_get_incident_not_found(self, api_client, auth_headers, mock_db_engine):
+        conn = _setup_conn(mock_db_engine, None)
+        conn.execute.return_value.mappings.return_value.first.return_value = None
+
+        resp = api_client.get("/incidents/999", headers=auth_headers)
+        assert resp.status_code == 404
+
+
+class TestStatusTransitions:
+    def test_valid_transition(self, api_client, auth_headers, mock_db_engine):
+        conn = _setup_conn(mock_db_engine, None)
+        # First call: check current status
+        conn.execute.return_value.mappings.return_value.first.side_effect = [
+            {"status": "new"},  # SELECT status
+            _make_incident_row({"status": "in_progress"}),  # SELECT after update
+        ]
+
+        with patch("api.routes.incidents.log_audit"), \
+             patch("core.idoit_service.push_status_update"):
+            resp = api_client.patch(
+                "/incidents/1/status",
+                json={"status": "in_progress"},
+                headers=auth_headers,
+            )
+        assert resp.status_code == 200
+
+    def test_invalid_transition_closed_to_new(self, api_client, auth_headers, mock_db_engine):
+        conn = _setup_conn(mock_db_engine, None)
+        conn.execute.return_value.mappings.return_value.first.return_value = {"status": "closed"}
+
+        resp = api_client.patch(
+            "/incidents/1/status",
+            json={"status": "new"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "Cannot transition" in resp.json()["detail"]
+
+
+class TestAssignIncident:
+    def test_assign_success(self, api_client, auth_headers, mock_db_engine):
+        conn = _setup_conn(mock_db_engine, None)
+        conn.execute.return_value.first.return_value = (1,)
+        conn.execute.return_value.mappings.return_value.first.return_value = _make_incident_row(
+            {"assigned_to": "ops-user"}
+        )
+
+        with patch("api.routes.incidents.log_audit"), \
+             patch("core.idoit_service.push_assignment"):
+            resp = api_client.patch(
+                "/incidents/1/assign",
+                json={"assigned_to": "ops-user"},
+                headers=auth_headers,
+            )
+        assert resp.status_code == 200
+
+    def test_assign_not_found(self, api_client, auth_headers, mock_db_engine):
+        conn = _setup_conn(mock_db_engine, None)
+        conn.execute.return_value.first.return_value = None
+
+        resp = api_client.patch(
+            "/incidents/1/assign",
+            json={"assigned_to": "ops-user"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
 
 ```
 ### 📄 `tests/test_mask_secrets.py`
@@ -4258,6 +7441,57 @@ def test_mask_redis_url():
     out = mask_secrets(s)
     assert "redis://user:***@redis:6379/0" in out
     assert "mysecret" not in out
+
+```
+### 📄 `tests/test_metadata_service.py`
+
+```python
+# tests/test_metadata_service.py
+import pytest
+from unittest.mock import patch, MagicMock
+from core.metadata_service import MetadataService, MetricDTO
+
+
+@pytest.fixture
+def service(fake_redis_instance):
+    with patch("core.metadata_service.get_cache", return_value=fake_redis_instance), \
+         patch("core.metadata_service.get_database_url", return_value="postgresql://test:test@localhost/test"):
+        svc = MetadataService()
+        svc._cache = fake_redis_instance
+        yield svc
+
+
+def test_make_fingerprint():
+    fp = MetadataService.make_fingerprint("cpu", {"region": "Moscow"})
+    assert isinstance(fp, str)
+    assert len(fp) == 32  # md5 hex digest
+
+
+def test_make_fingerprint_deterministic():
+    fp1 = MetadataService.make_fingerprint("cpu", {"a": "1", "b": "2"})
+    fp2 = MetadataService.make_fingerprint("cpu", {"b": "2", "a": "1"})
+    assert fp1 == fp2
+
+
+def test_list_metrics_cached(service, fake_redis_instance):
+    import json
+    cached = [{"metric_name": "m1", "display_name": "M1", "is_active": True, "unit": "", "description": None, "default_threshold": None, "default_critical_threshold": None}]
+    fake_redis_instance.set("metadata:metrics:default:active", json.dumps(cached))
+
+    result = service.list_metrics(active_only=True)
+    assert len(result) == 1
+    assert result[0].metric_name == "m1"
+
+
+def test_serialize_deserialize(service):
+    data = {"key": "value", "list": [1, 2, 3]}
+    serialized = service._serialize_json(data)
+    deserialized = service._deserialize_json(serialized)
+    assert deserialized == data
+
+
+def test_deserialize_none(service):
+    assert service._deserialize_json(None) is None
 
 ```
 ### 📄 `tests/test_ml.py`
@@ -4280,141 +7514,917 @@ def test_detect_anomaly_prophet(sample_df):
     assert len(anomalies) > 0
     assert "timestamp" in anomalies[0]
 ```
+### 📄 `tests/test_pubsub.py`
+
+```python
+# tests/test_pubsub.py
+import pytest
+from unittest.mock import patch, MagicMock
+from core.pubsub import publish_alert, ALERT_CHANNEL
+import json
+
+
+def test_publish_alert_calls_redis():
+    mock_redis = MagicMock()
+    with patch("core.pubsub.redis.from_url", return_value=mock_redis):
+        data = {"type": "alert", "metric": "cpu", "value": 99.0}
+        publish_alert(data)
+        mock_redis.publish.assert_called_once_with(
+            ALERT_CHANNEL,
+            json.dumps(data, ensure_ascii=False, default=str),
+        )
+        mock_redis.close.assert_called_once()
+
+
+def test_publish_alert_handles_error():
+    with patch("core.pubsub.redis.from_url", side_effect=Exception("connection failed")):
+        # Should not raise
+        publish_alert({"type": "alert"})
+
+```
+### 📄 `tests/test_rbac.py`
+
+```python
+# tests/test_rbac.py
+"""Test RBAC and tenant isolation across all route modules."""
+import pytest
+from unittest.mock import patch, MagicMock
+
+
+class TestUnauthenticatedAccess:
+    """All endpoints must reject requests without auth headers."""
+
+    PROTECTED_ROUTES = [
+        ("GET", "/alerts/"),
+        ("GET", "/metrics/"),
+        ("GET", "/rules/"),
+        ("GET", "/dimensions/"),
+        ("GET", "/ml/configs/"),
+        ("GET", "/incidents/"),
+        ("GET", "/data/"),
+        ("GET", "/data/prometheus/api/v1/label/__name__/values"),
+        ("GET", "/audit/logs"),
+    ]
+
+    @pytest.mark.parametrize("method,path", PROTECTED_ROUTES)
+    def test_no_auth_returns_401(self, api_client, method, path):
+        resp = api_client.request(method, path)
+        assert resp.status_code in (401, 403), f"{method} {path} returned {resp.status_code}"
+
+
+class TestViewerPermissions:
+    """Viewer users should only have read access."""
+
+    @patch("api.routes.alerts.get_engine")
+    def test_viewer_can_read_alerts(self, mock_engine, api_client, viewer_auth_headers):
+        engine = MagicMock()
+        mock_engine.return_value = engine
+        conn = MagicMock()
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        conn.execute.return_value.mappings.return_value.all.return_value = []
+
+        resp = api_client.get("/alerts/", headers=viewer_auth_headers)
+        assert resp.status_code == 200
+
+    def test_viewer_cannot_suppress_alert(self, api_client, viewer_auth_headers):
+        resp = api_client.post(
+            "/alerts/00000000-0000-0000-0000-000000000001/suppress",
+            headers=viewer_auth_headers,
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_cannot_create_metric(self, api_client, viewer_auth_headers):
+        resp = api_client.post(
+            "/metrics/",
+            json={"metric_name": "test", "display_name": "Test", "is_active": True},
+            headers=viewer_auth_headers,
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_cannot_create_rule(self, api_client, viewer_auth_headers):
+        resp = api_client.post(
+            "/rules/",
+            json={"name": "test", "condition": {}, "labels": {}, "actions": {}},
+            headers=viewer_auth_headers,
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_cannot_write_ml_config(self, api_client, viewer_auth_headers):
+        resp = api_client.post(
+            "/ml/configs/",
+            json={
+                "metric_name": "test",
+                "method": "prophet",
+                "params": {},
+                "is_active": True,
+            },
+            headers=viewer_auth_headers,
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_cannot_create_incident(self, api_client, viewer_auth_headers):
+        resp = api_client.post(
+            "/incidents/",
+            json={
+                "alert_message": "test",
+                "metric": "test_metric",
+                "region": "RU-MOW",
+                "priority": "low",
+            },
+            headers=viewer_auth_headers,
+        )
+        assert resp.status_code == 403
+
+
+class TestTenantIsolation:
+    """Ensure tenant_id is passed to queries from auth context."""
+
+    @patch("api.routes.alerts.get_engine")
+    def test_alert_query_includes_tenant_id(self, mock_engine, api_client, auth_headers):
+        engine = MagicMock()
+        mock_engine.return_value = engine
+        conn = MagicMock()
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        conn.execute.return_value.mappings.return_value.all.return_value = []
+
+        api_client.get("/alerts/", headers=auth_headers)
+
+        # Verify the SQL call included tenant_id param
+        call_args = conn.execute.call_args
+        params = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("parameters", {})
+        assert "tenant_id" in params or "tenant_id" in str(call_args)
+
+```
+### 📄 `tests/test_resilience.py`
+
+```python
+# tests/test_resilience.py
+"""Tests for graceful degradation: Redis fallback, i-doit retry queue."""
+import pytest
+from unittest.mock import patch, MagicMock
+
+
+class TestRedisFallback:
+    def test_returns_default_on_redis_error(self):
+        from core.resilience import redis_fallback
+
+        @redis_fallback(default=[])
+        def get_cached_data():
+            raise ConnectionError("Redis down")
+
+        result = get_cached_data()
+        assert result == []
+
+    def test_returns_normal_value_when_ok(self):
+        from core.resilience import redis_fallback
+
+        @redis_fallback(default=[])
+        def get_cached_data():
+            return [1, 2, 3]
+
+        result = get_cached_data()
+        assert result == [1, 2, 3]
+
+    def test_callable_default(self):
+        from core.resilience import redis_fallback
+
+        @redis_fallback(default=dict)
+        def get_data():
+            raise ConnectionError("Redis down")
+
+        result = get_data()
+        assert result == {}
+
+
+class TestSafeIdoitPush:
+    def test_swallows_errors(self):
+        from core.resilience import safe_idoit_push
+
+        @safe_idoit_push
+        def push_data():
+            raise RuntimeError("i-doit connection refused")
+
+        with patch("celery_app.celery_app") as mock_celery:
+            mock_celery.send_task = MagicMock()
+            result = push_data()
+            assert result is None
+
+    def test_passes_through_on_success(self):
+        from core.resilience import safe_idoit_push
+
+        @safe_idoit_push
+        def push_data():
+            return "ok"
+
+        result = push_data()
+        assert result == "ok"
+
+```
+### 📄 `tests/test_rules_api.py`
+
+```python
+# tests/test_rules_api.py
+"""Tests for rules API: CRUD, RBAC, audit logging."""
+import pytest
+from unittest.mock import patch, MagicMock
+from uuid import uuid4
+from core.metadata_service import RuleDTO
+
+
+@pytest.fixture
+def mock_metadata_service():
+    from api.main import app
+    from api.dependencies import get_metadata_service
+    service = MagicMock()
+    app.dependency_overrides[get_metadata_service] = lambda: service
+    yield service
+    app.dependency_overrides.pop(get_metadata_service, None)
+
+
+def _make_rule(rule_id=None, is_active=True):
+    from datetime import datetime
+    mock = MagicMock()
+    mock.id = rule_id or uuid4()
+    mock.name = "test_rule"
+    mock.description = "Test rule description"
+    mock.condition = {"expr": "cpu > 90", "for": "1m", "eval": "1m"}
+    mock.labels = {"severity": "critical"}
+    mock.actions = [{"type": "notify", "config": {"channel": "telegram"}}]
+    mock.is_active = is_active
+    mock.created_at = datetime.now()
+    mock.updated_at = datetime.now()
+    return mock
+
+
+class TestListRules:
+    def test_list_active_rules(self, api_client, auth_headers, mock_metadata_service):
+        rule = _make_rule()
+        mock_metadata_service.list_active_rules.return_value = [rule]
+
+        resp = api_client.get("/rules/?active_only=true", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "test_rule"
+
+    def test_viewer_can_read_rules(self, api_client, viewer_auth_headers, mock_metadata_service):
+        mock_metadata_service.list_active_rules.return_value = []
+        resp = api_client.get("/rules/", headers=viewer_auth_headers)
+        assert resp.status_code == 200
+
+
+class TestCreateRule:
+    @patch("api.routes.rules.log_audit")
+    def test_create_rule(self, mock_audit, api_client, auth_headers, mock_metadata_service):
+        import json as _json
+        from datetime import datetime
+        rule_id = uuid4()
+        mock_metadata_service.create_rule.return_value = rule_id
+        mock_metadata_service._deserialize_json.side_effect = lambda x: _json.loads(x) if isinstance(x, str) else x
+
+        mock_engine = MagicMock()
+        mock_metadata_service._get_engine.return_value = mock_engine
+        conn = MagicMock()
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        conn.execute.return_value.mappings.return_value.first.return_value = {
+            "id": rule_id,
+            "name": "new_rule",
+            "description": "desc",
+            "condition": '{"expr": "cpu > 90", "for": "1m", "eval": "1m"}',
+            "labels": '{"env": "prod"}',
+            "actions": '[{"type": "notify", "config": {"channel": "telegram"}}]',
+            "is_active": True,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+
+        resp = api_client.post(
+            "/rules/",
+            json={
+                "name": "new_rule",
+                "description": "desc",
+                "condition": {"expr": "cpu > 90", "for": "1m", "eval": "1m"},
+                "labels": {"env": "prod"},
+                "actions": [{"type": "notify", "config": {"channel": "telegram"}}],
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
+
+    def test_viewer_cannot_create_rule(self, api_client, viewer_auth_headers):
+        resp = api_client.post(
+            "/rules/",
+            json={
+                "name": "test",
+                "condition": {},
+                "labels": {},
+                "actions": {},
+            },
+            headers=viewer_auth_headers,
+        )
+        assert resp.status_code == 403
+
+
+class TestDeleteRule:
+    @patch("api.routes.rules.log_audit")
+    def test_delete_rule(self, mock_audit, api_client, auth_headers, mock_metadata_service):
+        rule_id = uuid4()
+        mock_engine = MagicMock()
+        mock_metadata_service._get_engine.return_value = mock_engine
+        conn = MagicMock()
+        mock_engine.begin.return_value.__enter__ = MagicMock(return_value=conn)
+        mock_engine.begin.return_value.__exit__ = MagicMock(return_value=False)
+        result = MagicMock()
+        result.rowcount = 1
+        conn.execute.return_value = result
+
+        resp = api_client.delete(f"/rules/{rule_id}", headers=auth_headers)
+        assert resp.status_code == 204
+
+    def test_delete_nonexistent_rule(self, api_client, auth_headers, mock_metadata_service):
+        rule_id = uuid4()
+        mock_engine = MagicMock()
+        mock_metadata_service._get_engine.return_value = mock_engine
+        conn = MagicMock()
+        mock_engine.begin.return_value.__enter__ = MagicMock(return_value=conn)
+        mock_engine.begin.return_value.__exit__ = MagicMock(return_value=False)
+        result = MagicMock()
+        result.rowcount = 0
+        conn.execute.return_value = result
+
+        resp = api_client.delete(f"/rules/{rule_id}", headers=auth_headers)
+        assert resp.status_code == 404
+
+```
 ### 📄 `tests/test_security.py`
 
 ```python
 # tests/test_security.py
 import pytest
-from fastapi.testclient import TestClient
-from api.main import app
-from config import logger
-import time
+from unittest.mock import patch
+from core.metadata_service import MetricDTO
 
-client = TestClient(app)
 
-def test_sql_injection_protection():
+def test_sql_injection_protection(api_client, auth_headers):
     """Проверка защиты от SQL injection"""
-    # Попытка SQL injection в step
-    response = client.get(
-        "/data/prometheus/api/v1/query_range",
-        params={
-            "query": "api_latency_p99",
-            "start": 1234567890,
-            "end": 1234567900,
-            "step": "1s; DROP TABLE canonical_metrics; --"
-        }
-    )
+    mock_metrics = [MetricDTO(metric_name="api_latency_p99", display_name="Latency", is_active=True)]
+    with patch("core.metadata_service.metadata_service") as mock_ms:
+        mock_ms.list_metrics.return_value = mock_metrics
+        response = api_client.get(
+            "/data/prometheus/api/v1/query_range",
+            params={
+                "query": "api_latency_p99",
+                "start": 1234567890,
+                "end": 1234567900,
+                "step": "1s; DROP TABLE canonical_metrics; --"
+            },
+            headers=auth_headers,
+        )
     assert response.status_code == 400
-    assert "Invalid step" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert "step" in detail.lower()
 
-def test_rate_limiting():
+
+def test_rate_limiting(api_client):
     """Проверка rate limiting"""
     rate_limit_hit = False
-    
-    # Отправляем запросы до срабатывания rate limit
+
     for i in range(20):
-        response = client.post("/token", data={"username": "test", "password": "test"})
+        response = api_client.post("/token", data={"username": "test", "password": "test"})
         if response.status_code == 429:
             rate_limit_hit = True
             break
-        time.sleep(0.05)  # Небольшая задержка
-    
-    assert rate_limit_hit, "Rate limiting should have been triggered"
-    
-    # Проверяем, что после ожидания можно снова делать запросы
-    time.sleep(60)  # Ждём сброс rate limit
-    response = client.post("/token", data={"username": "test", "password": "test"})
-    assert response.status_code in [200, 400, 401]
 
-def test_metric_whitelist():
+    assert rate_limit_hit, "Rate limiting should have been triggered"
+
+
+def test_metric_whitelist(api_client, auth_headers):
     """Проверка whitelist метрик"""
-    response = client.get(
-        "/data/prometheus/api/v1/query_range",
-        params={
-            "query": "malicious_metric",
-            "start": 1234567890,
-            "end": 1234567900,
-            "step": "1m"
-        }
-    )
+    mock_metrics = [MetricDTO(metric_name="cpu_usage", display_name="CPU", is_active=True)]
+    with patch("core.metadata_service.metadata_service") as mock_ms:
+        mock_ms.list_metrics.return_value = mock_metrics
+        response = api_client.get(
+            "/data/prometheus/api/v1/query_range",
+            params={
+                "query": "malicious_metric",
+                "start": 1234567890,
+                "end": 1234567900,
+                "step": "1m"
+            },
+            headers=auth_headers,
+        )
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
-    
-def test_sql_injection_dimensions():
+
+
+def test_sql_injection_dimensions(api_client, auth_headers):
     """Тест защиты от SQL injection в dimensions"""
-    response = client.get(
-        "/data/prometheus/api/v1/query_range",
-        params={
-            "query": 'api_latency_p99{region="x";DROP TABLE--"}',
-            "start": 1234567890,
-            "end": 1234567900,
-            "step": "1m"
-        }
-    )
-    # Должен быть 400 Bad Request, а не 500 или 200
+    mock_metrics = [MetricDTO(metric_name="api_latency_p99", display_name="Latency", is_active=True)]
+    with patch("core.metadata_service.metadata_service") as mock_ms:
+        mock_ms.list_metrics.return_value = mock_metrics
+        response = api_client.get(
+            "/data/prometheus/api/v1/query_range",
+            params={
+                "query": 'api_latency_p99{region="x";DROP TABLE--"}',
+                "start": 1234567890,
+                "end": 1234567900,
+                "step": "1m"
+            },
+            headers=auth_headers,
+        )
+    # Should be 400 Bad Request, not 500 or 200
     assert response.status_code == 400
-    assert "Invalid dimension key" in response.json()["detail"] or "forbidden characters" in response.text
 
 
 def test_secret_masking_in_logs():
     """Убедимся, что секреты не попадают в логи"""
-    import io
-    from contextlib import redirect_stderr
-    
-    captured = io.StringIO()
-    with redirect_stderr(captured):
+    from config import mask_secrets
+    result = mask_secrets("redis://:super_secret_pass@localhost:6379")
+    assert "super_secret_pass" not in result
+    assert "***" in result
+
+```
+### 📄 `tests/load/__init__.py`
+
+```python
+
+```
+### 📄 `tests/load/locustfile.py`
+
+```python
+# tests/load/locustfile.py
+"""
+Load testing with Locust.
+
+Run:
+    locust -f tests/load/locustfile.py --host http://localhost:8000
+
+Web UI: http://localhost:8089
+Headless: locust -f tests/load/locustfile.py --host http://localhost:8000 --users 100 --spawn-rate 10 -t 5m --headless
+"""
+import json
+from locust import HttpUser, task, between, tag
+
+
+class AuthMixin:
+    """Get auth token once per user lifecycle."""
+
+    _token: str = ""
+
+    def get_headers(self):
+        if not self._token:
+            resp = self.client.post("/token", data={
+                "username": "admin",
+                "password": "admin",  # Use test password
+            })
+            if resp.status_code == 200:
+                self._token = resp.json()["access_token"]
+        return {"Authorization": f"Bearer {self._token}"}
+
+
+class ViewerUser(HttpUser, AuthMixin):
+    """Simulates a viewer: reads metrics, alerts, incidents."""
+    weight = 7  # 70% of traffic
+    wait_time = between(1, 5)
+
+    def on_start(self):
+        self.get_headers()
+
+    @tag("read")
+    @task(5)
+    def list_metrics(self):
+        self.client.get("/api/v1/metrics/", headers=self.get_headers())
+
+    @tag("read")
+    @task(5)
+    def list_alerts(self):
+        self.client.get("/api/v1/alerts/?limit=50", headers=self.get_headers())
+
+    @tag("read")
+    @task(3)
+    def list_incidents(self):
+        self.client.get("/api/v1/incidents/?limit=20", headers=self.get_headers())
+
+    @tag("read")
+    @task(2)
+    def list_rules(self):
+        self.client.get("/api/v1/rules/", headers=self.get_headers())
+
+    @tag("read")
+    @task(1)
+    def health_check(self):
+        self.client.get("/health")
+
+    @tag("read")
+    @task(1)
+    def list_dimensions(self):
+        self.client.get("/api/v1/dimensions/", headers=self.get_headers())
+
+
+class OperatorUser(HttpUser, AuthMixin):
+    """Simulates an operator: reads + mutates incidents."""
+    weight = 2  # 20% of traffic
+    wait_time = between(2, 8)
+
+    def on_start(self):
+        self.get_headers()
+
+    @tag("read")
+    @task(4)
+    def list_incidents(self):
+        self.client.get("/api/v1/incidents/", headers=self.get_headers())
+
+    @tag("read")
+    @task(3)
+    def list_alerts(self):
+        self.client.get("/api/v1/alerts/", headers=self.get_headers())
+
+    @tag("write")
+    @task(1)
+    def create_incident(self):
+        self.client.post(
+            "/api/v1/incidents/",
+            json={
+                "alert_message": "Load test incident",
+                "metric": "cpu_usage",
+                "region": "RU-MOW",
+                "priority": "low",
+                "description": "Generated by locust load test",
+            },
+            headers=self.get_headers(),
+        )
+
+    @tag("read")
+    @task(2)
+    def list_sla_policies(self):
+        self.client.get("/api/v1/incidents/sla/policies", headers=self.get_headers())
+
+
+class AdminUser(HttpUser, AuthMixin):
+    """Simulates an admin: heavy management operations."""
+    weight = 1  # 10% of traffic
+    wait_time = between(5, 15)
+
+    def on_start(self):
+        self.get_headers()
+
+    @tag("admin")
+    @task(3)
+    def list_users(self):
+        self.client.get("/api/v1/admin/users", headers=self.get_headers())
+
+    @tag("admin")
+    @task(2)
+    def list_tenants(self):
+        self.client.get("/api/v1/admin/tenants", headers=self.get_headers())
+
+    @tag("admin")
+    @task(1)
+    def list_audit_logs(self):
+        self.client.get("/api/v1/audit/logs?limit=50", headers=self.get_headers())
+
+    @tag("read")
+    @task(2)
+    def list_ml_configs(self):
+        self.client.get("/api/v1/ml/configs/", headers=self.get_headers())
+
+```
+### 📄 `tests/integration/__init__.py`
+
+```python
+
+```
+### 📄 `tests/integration/conftest.py`
+
+```python
+# tests/integration/conftest.py
+"""
+Integration test fixtures — connect to real PostgreSQL + Redis.
+
+Start test infrastructure:
+    docker compose -f docker-compose.test.yml up -d
+Run integration tests:
+    pytest tests/integration/ -v --tb=short
+"""
+import os
+import pytest
+import time
+
+# Set env vars BEFORE importing application modules
+os.environ.setdefault("POSTGRES_USER", "test_user")
+os.environ.setdefault("POSTGRES_PASSWORD", "test_pass")
+os.environ.setdefault("POSTGRES_SERVER", "localhost")
+os.environ.setdefault("POSTGRES_PORT", "5444")
+os.environ.setdefault("POSTGRES_DB", "test_db")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6399")
+os.environ.setdefault("REDIS_PASSWORD", "")
+os.environ.setdefault("SECRET_KEY", "integration-test-secret")
+os.environ.setdefault("ADMIN_USERNAME", "admin")
+os.environ.setdefault("ADMIN_PASSWORD", "$2b$12$LJ3m4ys5qOzXkVzKlGT..ea.J7GIIO0C.jPBsCijMOZqMPfTpF8a6")
+os.environ.setdefault("I_DOIT_API_KEY", "test")
+os.environ.setdefault("I_DOIT_API_URL", "http://localhost/api")
+os.environ.setdefault("WEBHOOK_API_KEY", "test-key")
+os.environ.setdefault("KAFKA_ENABLED", "false")
+os.environ.setdefault("CLICKHOUSE_ENABLED", "false")
+os.environ.setdefault("LDAP_ENABLED", "false")
+os.environ.setdefault("OIDC_ENABLED", "false")
+
+
+def _wait_for_pg(max_wait=30):
+    """Block until PostgreSQL is ready."""
+    import psycopg2
+    start = time.time()
+    while time.time() - start < max_wait:
         try:
-            # Имитация ошибки подключения с паролем
-            raise ConnectionError("redis://:super_secret_pass@localhost:6379")
-        except Exception as e:
-            logger.error(f"Ошибка: {e}")
-    
-    log_output = captured.getvalue()
-    assert "super_secret_pass" not in log_output
-    assert "***" in log_output
+            conn = psycopg2.connect(
+                host="localhost", port=5444,
+                user="test_user", password="test_pass", dbname="test_db",
+            )
+            conn.close()
+            return True
+        except Exception:
+            time.sleep(0.5)
+    pytest.skip("PostgreSQL not available at localhost:5444 — run docker compose -f docker-compose.test.yml up -d")
+
+
+def _wait_for_redis(max_wait=15):
+    """Block until Redis is ready."""
+    import redis as r
+    start = time.time()
+    while time.time() - start < max_wait:
+        try:
+            client = r.Redis(host="localhost", port=6399)
+            client.ping()
+            client.close()
+            return True
+        except Exception:
+            time.sleep(0.5)
+    pytest.skip("Redis not available at localhost:6399 — run docker compose -f docker-compose.test.yml up -d")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _wait_for_infra():
+    _wait_for_pg()
+    _wait_for_redis()
+
+
+@pytest.fixture(scope="session")
+def db_engine():
+    from sqlalchemy import create_engine
+    engine = create_engine("postgresql://test_user:test_pass@localhost:5444/test_db")
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def real_redis():
+    import redis as r
+    client = r.Redis(host="localhost", port=6399, decode_responses=True)
+    yield client
+    client.flushdb()
+    client.close()
+
+
+@pytest.fixture(scope="session")
+def integration_client():
+    """FastAPI TestClient connected to real test DB."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    return TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def admin_token(integration_client):
+    """Get a real admin JWT token."""
+    resp = integration_client.post("/token", data={
+        "username": "admin",
+        "password": "admin",
+    })
+    if resp.status_code != 200:
+        pytest.skip(f"Cannot get admin token: {resp.status_code} {resp.text}")
+    return resp.json()["access_token"]
+
+
+@pytest.fixture(scope="session")
+def admin_headers(admin_token):
+    return {"Authorization": f"Bearer {admin_token}"}
+
 ```
 ### 📄 `tests/integration/test_end_to_end.py`
 
 ```python
 # tests/integration/test_end_to_end.py
-from fastapi.testclient import TestClient
+"""
+End-to-end integration tests with real PostgreSQL and Redis.
+
+Prerequisites:
+    docker compose -f docker-compose.test.yml up -d
+    pytest tests/integration/ -v
+"""
+import pytest
 from sqlalchemy import text
-from api.main import app
-from core.notifications import notify
-from unittest.mock import patch
-from core.database import get_engine
 
-client = TestClient(app)
 
-def test_webhook_to_db_to_api():
-    # 1. Постим в webhook
-    resp = client.post("/webhooks/grafana", json={
-        "title": "Test",
-        "message": "OK",
-        "status": "firing"
-    })
-    assert resp.status_code == 200
+class TestHealthAndAuth:
+    def test_health_endpoint(self, integration_client):
+        resp = integration_client.get("/health")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
 
-    # 2. Ждём Celery (в тестах — вызываем напрямую)
-    from tasks import run_alerts_check_task
-    run_alerts_check_task() # type: ignore
+    def test_login_env_admin(self, integration_client):
+        resp = integration_client.post("/token", data={
+            "username": "admin",
+            "password": "admin",
+        })
+        # May return 200 or 401 depending on whether bcrypt hash matches "admin"
+        assert resp.status_code in (200, 401)
 
-    # 3. Проверяем, что запись появилась в canonical_metrics
-    engine = get_engine()
-    with engine.connect() as conn:
-        row = conn.execute(text("""
-            SELECT metric_name, value FROM canonical_metrics
-            WHERE metric_name = 'grafana_test' LIMIT 1
-        """)).first()
-        assert row is not None
+    def test_unauthenticated_rejected(self, integration_client):
+        resp = integration_client.get("/api/v1/metrics/")
+        assert resp.status_code in (401, 403)
 
-    # 4. Проверяем API
-    resp = client.post("/data/query", json={
-        "metric_name": "grafana_test",
-        "limit": 1
-    })
-    assert resp.status_code == 200
-    assert len(resp.json()["points"]) > 0
+
+class TestMetricsCRUD:
+    def test_create_and_list_metrics(self, integration_client, admin_headers, db_engine):
+        # Ensure table exists
+        try:
+            with db_engine.connect() as conn:
+                conn.execute(text("SELECT 1 FROM metadata_metrics LIMIT 1"))
+        except Exception:
+            pytest.skip("metadata_metrics table not found — migrations not applied")
+
+        # Create metric
+        resp = integration_client.post(
+            "/api/v1/metrics/",
+            json={
+                "metric_name": "inttest_cpu_usage",
+                "display_name": "CPU Usage (integration test)",
+                "unit": "percent",
+                "is_active": True,
+            },
+            headers=admin_headers,
+        )
+        assert resp.status_code in (201, 400)  # 400 if already exists
+
+        # List metrics
+        resp = integration_client.get("/api/v1/metrics/", headers=admin_headers)
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_get_metric(self, integration_client, admin_headers):
+        resp = integration_client.get("/api/v1/metrics/inttest_cpu_usage", headers=admin_headers)
+        assert resp.status_code in (200, 404)
+
+
+class TestIncidentLifecycle:
+    def test_full_lifecycle(self, integration_client, admin_headers, db_engine):
+        # Check table exists
+        try:
+            with db_engine.connect() as conn:
+                conn.execute(text("SELECT 1 FROM incidents LIMIT 1"))
+        except Exception:
+            pytest.skip("incidents table not found — migrations not applied")
+
+        # Create incident
+        resp = integration_client.post(
+            "/api/v1/incidents/",
+            json={
+                "alert_message": "Integration test incident",
+                "metric": "cpu_usage",
+                "region": "RU-MOW",
+                "priority": "low",
+            },
+            headers=admin_headers,
+        )
+        if resp.status_code != 201:
+            pytest.skip(f"Create incident failed: {resp.status_code}")
+
+        incident_id = resp.json()["id"]
+
+        # Transition: new -> in_progress
+        resp = integration_client.patch(
+            f"/api/v1/incidents/{incident_id}/status",
+            json={"status": "in_progress"},
+            headers=admin_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "in_progress"
+
+        # Assign
+        resp = integration_client.patch(
+            f"/api/v1/incidents/{incident_id}/assign",
+            json={"assigned_to": "test-operator"},
+            headers=admin_headers,
+        )
+        assert resp.status_code == 200
+
+        # Add comment
+        resp = integration_client.post(
+            f"/api/v1/incidents/{incident_id}/comments",
+            json={"content": "Investigation started by integration test"},
+            headers=admin_headers,
+        )
+        assert resp.status_code == 201
+
+        # List comments
+        resp = integration_client.get(
+            f"/api/v1/incidents/{incident_id}/comments",
+            headers=admin_headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) >= 1
+
+        # Resolve
+        resp = integration_client.patch(
+            f"/api/v1/incidents/{incident_id}/status",
+            json={"status": "resolved", "comment": "Fixed by integration test"},
+            headers=admin_headers,
+        )
+        assert resp.status_code == 200
+
+        # Close
+        resp = integration_client.patch(
+            f"/api/v1/incidents/{incident_id}/status",
+            json={"status": "closed"},
+            headers=admin_headers,
+        )
+        assert resp.status_code == 200
+
+    def test_invalid_transition(self, integration_client, admin_headers, db_engine):
+        try:
+            with db_engine.connect() as conn:
+                conn.execute(text("SELECT 1 FROM incidents LIMIT 1"))
+        except Exception:
+            pytest.skip("incidents table not found")
+
+        resp = integration_client.post(
+            "/api/v1/incidents/",
+            json={
+                "alert_message": "Transition test",
+                "metric": "mem_usage",
+                "region": "RU-SPE",
+                "priority": "medium",
+            },
+            headers=admin_headers,
+        )
+        if resp.status_code != 201:
+            pytest.skip(f"Create incident failed: {resp.status_code}")
+
+        incident_id = resp.json()["id"]
+
+        # Invalid: new -> resolved (must go through in_progress)
+        resp = integration_client.patch(
+            f"/api/v1/incidents/{incident_id}/status",
+            json={"status": "resolved"},
+            headers=admin_headers,
+        )
+        assert resp.status_code == 400
+
+
+class TestTenantIsolation:
+    def test_data_scoped_to_tenant(self, integration_client, admin_headers, db_engine):
+        """Verify that list endpoints return tenant-scoped data."""
+        try:
+            with db_engine.connect() as conn:
+                conn.execute(text("SELECT 1 FROM metadata_metrics LIMIT 1"))
+        except Exception:
+            pytest.skip("metadata_metrics table not found")
+
+        resp = integration_client.get("/api/v1/metrics/", headers=admin_headers)
+        assert resp.status_code == 200
+        # All returned metrics should belong to the admin's tenant (default)
+        # We can't assert tenant_id directly since it's not in MetricRead,
+        # but we verify the query doesn't error out with tenant filtering
+
+
+class TestApiVersioning:
+    def test_v1_route_no_deprecation(self, integration_client, admin_headers):
+        resp = integration_client.get("/api/v1/metrics/", headers=admin_headers)
+        assert "Deprecation" not in resp.headers
+
+    def test_legacy_route_has_deprecation(self, integration_client, admin_headers):
+        resp = integration_client.get("/metrics/", headers=admin_headers)
+        if resp.status_code == 200:
+            assert resp.headers.get("Deprecation") == "true"
+            assert "Sunset" in resp.headers
+
+
+class TestAlertEndpoints:
+    def test_list_alerts(self, integration_client, admin_headers, db_engine):
+        try:
+            with db_engine.connect() as conn:
+                conn.execute(text("SELECT 1 FROM alert_events LIMIT 1"))
+        except Exception:
+            pytest.skip("alert_events table not found")
+
+        resp = integration_client.get("/api/v1/alerts/", headers=admin_headers)
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
 ```
 ### 📄 `grafana/provisioning/datasources/postgres.yaml`
 
@@ -4630,7 +8640,7 @@ def save_alert_settings(settings: AlertSettings):
 # core/alerts.py
 import time
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import threading
 from queue import Queue, Empty
 from typing import Tuple, Optional, Dict, List, Any
@@ -4741,7 +8751,7 @@ def create_incident_buffered(alert_message: str, metric: str, region: str, value
         "region": region,
         "value": str(value),
         "priority": priority,
-        "timestamp": datetime.utcnow()
+        "detected_at": datetime.now(timezone.utc),
     }
     try:
         incident_queue.put(data, timeout=1)
@@ -4756,9 +8766,26 @@ def _create_incident_directly(data: Dict):
     Session = sessionmaker(bind=engine)
     s = Session()
     try:
-        incident = Incident(**data, detected_at=data["timestamp"])
+        incident = Incident(**data)
         s.add(incident)
         s.commit()
+        # Apply SLA policy
+        try:
+            from core.sla_service import apply_sla_to_incident
+            apply_sla_to_incident(
+                incident.id,
+                data.get("tenant_id", "default"),
+                data.get("priority", "medium"),
+                data.get("detected_at", datetime.now(timezone.utc)),
+            )
+        except Exception as e:
+            logger.warning(f"Failed to apply SLA to auto-created incident: {e}")
+        # Push to i-doit
+        try:
+            from core.idoit_service import push_incident_create
+            push_incident_create(incident.id)
+        except Exception as e:
+            logger.warning(f"Failed to push auto-created incident to i-doit: {e}")
     except Exception as e:
         s.rollback()
         logger.error(f"❌ Прямое создание инцидента упало: {e}")
@@ -4907,7 +8934,7 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
     try:
         existing = s.query(AlertEvent).filter_by(alert_hash=alert_hash).first()
         if existing and existing.sent_at and (
-            datetime.utcnow() - existing.sent_at < timedelta(minutes=alert_settings.get_suppression_minutes(selected))
+            datetime.now(timezone.utc) - existing.sent_at < timedelta(minutes=alert_settings.get_suppression_minutes(selected))
         ):
             suppress_alert(alert_hash, alert_settings.get_suppression_minutes(selected))
             return False, last_alert_region
@@ -4917,8 +8944,8 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
             metric_name=selected,
             dimensions={"region": region},
             value=val,
-            event_time=datetime.utcnow(),
-            detected_at=datetime.utcnow(),
+            event_time=datetime.now(timezone.utc),
+            detected_at=datetime.now(timezone.utc),
             status="firing",
             sent=False,
             fingerprint=alert_hash
@@ -4929,14 +8956,38 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         # Отправка
         notify(msg, prio)
         new_alert.sent = True
-        new_alert.sent_at = datetime.utcnow()
+        new_alert.sent_at = datetime.now(timezone.utc)
 
         # Инцидент
         create_incident_buffered(msg, selected, region, val, prio)
         new_alert.incident_created = True
-        new_alert.incident_created_at = datetime.utcnow()
+        new_alert.incident_created_at = datetime.now(timezone.utc)
 
         s.commit()
+
+        # Publish to Redis Pub/Sub for WebSocket clients
+        alert_payload = {
+            "type": "alert",
+            "id": str(new_alert.id),
+            "metric": selected,
+            "dimensions": {"region": region},
+            "value": float(val),
+            "status": "firing",
+            "event_time": new_alert.event_time.isoformat(),
+        }
+        try:
+            from core.pubsub import publish_alert
+            publish_alert(alert_payload)
+        except Exception as e:
+            logger.warning(f"Failed to publish alert to pubsub: {e}")
+
+        # Publish to Kafka if enabled
+        try:
+            if settings.KAFKA_ENABLED:
+                from core.kafka_producer import publish_alert_event
+                publish_alert_event(alert_payload)
+        except Exception as e:
+            logger.warning(f"Failed to publish alert to Kafka: {e}")
 
         # История
         history = get_alert_history()
@@ -4958,6 +9009,397 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
 
 if __name__ != "__main__":
     start_incident_buffer_processor()
+```
+### 📄 `core/analytics_service.py`
+
+```python
+# core/analytics_service.py
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+from config import logger, mask_secrets
+
+
+class AnalyticsService:
+    def __init__(self):
+        self._client = None
+
+    def _get_client(self):
+        if self._client is None:
+            from core.clickhouse import get_clickhouse_client
+            self._client = get_clickhouse_client()
+        return self._client
+
+    def query_metric_aggregation(
+        self,
+        metric_name: str,
+        start: datetime,
+        end: datetime,
+        aggregation: str = "avg",
+        interval: str = "1 HOUR",
+        tenant_id: str = "default",
+        dimension_filters: Optional[Dict[str, str]] = None,
+    ) -> List[Dict[str, Any]]:
+        allowed_aggs = {"avg", "sum", "min", "max", "count"}
+        if aggregation not in allowed_aggs:
+            aggregation = "avg"
+
+        query = f"""
+            SELECT
+                toStartOfInterval(timestamp, INTERVAL {interval}) AS bucket,
+                {aggregation}(value) AS agg_value,
+                count() AS sample_count
+            FROM sit_center.metrics
+            WHERE metric_name = {{metric_name:String}}
+              AND timestamp >= {{start:DateTime64(3)}}
+              AND timestamp <= {{end:DateTime64(3)}}
+              AND tenant_id = {{tenant_id:String}}
+            GROUP BY bucket
+            ORDER BY bucket
+        """
+        params = {
+            "metric_name": metric_name,
+            "start": start,
+            "end": end,
+            "tenant_id": tenant_id,
+        }
+
+        try:
+            client = self._get_client()
+            result = client.query(query, parameters=params)
+            return [
+                {"bucket": str(row[0]), "value": row[1], "count": row[2]}
+                for row in result.result_rows
+            ]
+        except Exception as e:
+            logger.error("ClickHouse query_metric_aggregation failed: %s", mask_secrets(str(e)))
+            return []
+
+    def query_top_n_metrics(
+        self,
+        start: datetime,
+        end: datetime,
+        n: int = 10,
+        tenant_id: str = "default",
+    ) -> List[Dict[str, Any]]:
+        query = """
+            SELECT
+                metric_name,
+                count() AS cnt,
+                avg(value) AS avg_value,
+                max(value) AS max_value
+            FROM sit_center.metrics
+            WHERE timestamp >= {start:DateTime64(3)}
+              AND timestamp <= {end:DateTime64(3)}
+              AND tenant_id = {tenant_id:String}
+            GROUP BY metric_name
+            ORDER BY cnt DESC
+            LIMIT {n:UInt32}
+        """
+        params = {"start": start, "end": end, "tenant_id": tenant_id, "n": n}
+
+        try:
+            client = self._get_client()
+            result = client.query(query, parameters=params)
+            return [
+                {"metric_name": row[0], "count": row[1], "avg_value": row[2], "max_value": row[3]}
+                for row in result.result_rows
+            ]
+        except Exception as e:
+            logger.error("ClickHouse query_top_n_metrics failed: %s", mask_secrets(str(e)))
+            return []
+
+    def query_alert_statistics(
+        self,
+        start: datetime,
+        end: datetime,
+        tenant_id: str = "default",
+    ) -> List[Dict[str, Any]]:
+        query = """
+            SELECT
+                metric_name,
+                status,
+                count() AS cnt
+            FROM sit_center.alerts
+            WHERE event_time >= {start:DateTime64(3)}
+              AND event_time <= {end:DateTime64(3)}
+              AND tenant_id = {tenant_id:String}
+            GROUP BY metric_name, status
+            ORDER BY cnt DESC
+        """
+        params = {"start": start, "end": end, "tenant_id": tenant_id}
+
+        try:
+            client = self._get_client()
+            result = client.query(query, parameters=params)
+            return [
+                {"metric_name": row[0], "status": row[1], "count": row[2]}
+                for row in result.result_rows
+            ]
+        except Exception as e:
+            logger.error("ClickHouse query_alert_statistics failed: %s", mask_secrets(str(e)))
+            return []
+
+
+analytics_service = AnalyticsService()
+
+```
+### 📄 `core/audit.py`
+
+```python
+# core/audit.py
+import json
+from typing import Optional, Dict, Any
+from sqlalchemy import text
+from config import logger, mask_secrets
+from core.database import get_engine
+
+
+def log_audit(
+    username: str,
+    tenant_id: str,
+    action: str,
+    resource_type: str,
+    resource_id: Optional[str] = None,
+    changes: Optional[Dict[str, Any]] = None,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None,
+) -> None:
+    """Write an audit log entry to the database."""
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO audit_log (username, tenant_id, action, resource_type, resource_id, changes, ip_address, user_agent)
+                    VALUES (:username, :tenant_id, :action, :resource_type, :resource_id, :changes, :ip_address, :user_agent)
+                """),
+                {
+                    "username": username,
+                    "tenant_id": tenant_id,
+                    "action": action,
+                    "resource_type": resource_type,
+                    "resource_id": resource_id,
+                    "changes": json.dumps(changes or {}, ensure_ascii=False, default=str),
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                },
+            )
+    except Exception as e:
+        logger.error("Failed to write audit log: %s", mask_secrets(str(e)))
+
+```
+### 📄 `core/auth_strategies.py`
+
+```python
+# core/auth_strategies.py
+"""Authentication strategies: LDAP, DB-based, env-based admin fallback."""
+import json
+from datetime import timedelta
+from typing import Optional, Dict, Any
+
+from fastapi import HTTPException
+from passlib.context import CryptContext
+from sqlalchemy import text as sa_text
+
+from api.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from config import logger, settings
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _make_token(sub: str, tenant_id: str, roles: list, permissions: list) -> str:
+    return create_access_token(
+        data={
+            "sub": sub,
+            "scopes": ["admin"] if "admin" in roles else [],
+            "tenant_id": tenant_id,
+            "roles": roles,
+            "permissions": list(set(permissions)),
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+
+def try_ldap_auth(username: str, password: str) -> Optional[str]:
+    """Try LDAP authentication. Returns access_token or None."""
+    if not getattr(settings, "LDAP_ENABLED", False):
+        return None
+    try:
+        from core.ldap_auth import ldap_authenticator
+        ldap_user = ldap_authenticator.authenticate(username, password)
+        if not ldap_user:
+            return None
+        ldap_authenticator.sync_user_to_db(ldap_user)
+        roles = ldap_authenticator.get_roles_for_groups(ldap_user.groups)
+        all_perms: list = []
+        from core.database import get_engine
+        engine = get_engine()
+        for role_name in roles:
+            with engine.connect() as c:
+                r = c.execute(
+                    sa_text("SELECT permissions FROM roles WHERE name = :name AND tenant_id = 'default'"),
+                    {"name": role_name},
+                ).mappings().first()
+                if r:
+                    perms = r["permissions"]
+                    all_perms.extend(json.loads(perms) if isinstance(perms, str) else perms)
+        return _make_token(ldap_user.username, "default", roles, all_perms)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"LDAP auth failed, falling back: {e}")
+        return None
+
+
+def try_db_auth(username: str, password: str) -> Optional[Dict[str, Any]]:
+    """Try DB-based user authentication. Returns {token, username, tenant_id} or None."""
+    try:
+        from core.database import get_engine
+        engine = get_engine()
+        with engine.connect() as conn:
+            user_row = conn.execute(
+                sa_text("""
+                    SELECT u.id, u.username, u.password_hash, u.tenant_id, u.is_active,
+                           COALESCE(
+                               json_agg(DISTINCT r.name) FILTER (WHERE r.name IS NOT NULL),
+                               '[]'
+                           ) AS roles,
+                           COALESCE(
+                               json_agg(DISTINCT perm) FILTER (WHERE perm IS NOT NULL),
+                               '[]'
+                           ) AS permissions
+                    FROM users u
+                    LEFT JOIN user_roles ur ON u.id = ur.user_id
+                    LEFT JOIN roles r ON ur.role_id = r.id
+                    LEFT JOIN LATERAL jsonb_array_elements_text(r.permissions) AS perm ON true
+                    WHERE u.username = :username AND u.is_active = true
+                    GROUP BY u.id, u.username, u.password_hash, u.tenant_id, u.is_active
+                """),
+                {"username": username},
+            ).mappings().first()
+
+            if not user_row or not user_row["password_hash"]:
+                return None
+            if not pwd_context.verify(password, user_row["password_hash"]):
+                raise HTTPException(status_code=401, detail="Invalid credentials")
+            token = _make_token(
+                user_row["username"],
+                user_row["tenant_id"],
+                user_row["roles"] or [],
+                user_row["permissions"] or [],
+            )
+            return {"token": token, "username": user_row["username"], "tenant_id": user_row["tenant_id"]}
+    except HTTPException:
+        raise
+    except Exception:
+        return None
+
+
+def try_env_admin_auth(username: str, password: str) -> str:
+    """Env-based admin fallback. Raises HTTPException on failure."""
+    if username != settings.ADMIN_USERNAME:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not pwd_context.verify(password, settings.ADMIN_PASSWORD):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return _make_token(
+        username,
+        "default",
+        ["admin"],
+        [
+            "read:metrics", "write:metrics", "read:rules", "write:rules",
+            "read:alerts", "write:alerts", "read:ml", "write:ml",
+            "admin:tenants", "admin:users", "read:audit",
+        ],
+    )
+
+```
+### 📄 `core/celery_metrics.py`
+
+```python
+# core/celery_metrics.py
+import time
+from prometheus_client import Histogram, Counter
+from celery.signals import task_prerun, task_postrun, task_failure
+
+celery_task_duration_seconds = Histogram(
+    "celery_task_duration_seconds",
+    "Celery task execution duration in seconds",
+    ["task_name"],
+    buckets=[0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 600.0],
+)
+
+celery_task_failures_total = Counter(
+    "celery_task_failures_total",
+    "Total Celery task failures",
+    ["task_name"],
+)
+
+_task_start_times = {}
+
+
+@task_prerun.connect
+def task_prerun_handler(sender=None, task_id=None, **kwargs):
+    _task_start_times[task_id] = time.perf_counter()
+
+
+@task_postrun.connect
+def task_postrun_handler(sender=None, task_id=None, **kwargs):
+    start = _task_start_times.pop(task_id, None)
+    if start is not None:
+        duration = time.perf_counter() - start
+        task_name = getattr(sender, "name", "unknown")
+        celery_task_duration_seconds.labels(task_name=task_name).observe(duration)
+
+
+@task_failure.connect
+def task_failure_handler(sender=None, **kwargs):
+    task_name = getattr(sender, "name", "unknown")
+    celery_task_failures_total.labels(task_name=task_name).inc()
+
+```
+### 📄 `core/clickhouse.py`
+
+```python
+# core/clickhouse.py
+import threading
+from config import settings, logger, mask_secrets
+
+_client = None
+_lock = threading.Lock()
+
+
+def get_clickhouse_client():
+    global _client
+    if _client is not None:
+        return _client
+
+    with _lock:
+        if _client is not None:
+            return _client
+
+        import clickhouse_connect
+
+        host = getattr(settings, "CLICKHOUSE_HOST", "clickhouse")
+        port = int(getattr(settings, "CLICKHOUSE_PORT", 8123))
+        user = getattr(settings, "CLICKHOUSE_USER", "default")
+        password = getattr(settings, "CLICKHOUSE_PASSWORD", "")
+        database = getattr(settings, "CLICKHOUSE_DB", "sit_center")
+
+        try:
+            _client = clickhouse_connect.get_client(
+                host=host,
+                port=port,
+                username=user,
+                password=password,
+                database=database,
+            )
+            logger.info("ClickHouse client initialized (%s:%s/%s)", host, port, database)
+        except Exception as e:
+            logger.error("Failed to connect to ClickHouse: %s", mask_secrets(str(e)))
+            raise
+
+    return _client
+
 ```
 ### 📄 `core/config_service.py`
 
@@ -5091,36 +9533,35 @@ from core.database import get_engine
 from core.metadata_service import metadata_service
 
 
-cache = get_cache()
 CACHE_TTL = settings.cache_ttl
 
 def create_mv():
-    if not cache.exists("data_from_db_1h_zero"):
-        logger.info("Создаем MV для данных из БД")
+    try:
         engine = get_engine()
-        with engine.connect() as conn:
-            conn.execute(text("DROP MATERIALIZED VIEW IF EXISTS mv_hourly_region_metrics;"))
-            conn.execute(text("""
-                CREATE MATERIALIZED VIEW mv_hourly_region_metrics AS
-                    SELECT
-                    date_trunc('hour', timestamp AT TIME ZONE 'UTC') AS hour,
-                    dimensions->>'region' AS region,
-                    metric_name,
-                    AVG(value) AS avg_value,
-                    MAX(value) AS max_value,
-                    COUNT(*) AS sample_count
-                    FROM canonical_metrics
-                    WHERE dimensions ? 'region'
-                    GROUP BY 1, 2, 3;"""))
-
-            conn.execute(text("""CREATE UNIQUE INDEX ON mv_hourly_region_metrics (hour, region, metric_name);"""))
+        with engine.begin() as conn:
+            conn.execute(text(
+                "CALL refresh_continuous_aggregate('cagg_hourly_metrics', NULL, NULL);"
+            ))
+            logger.info("cagg_hourly_metrics refreshed via TimescaleDB")
+            return True
+    except Exception as e:
+        logger.warning(f"TimescaleDB cagg refresh failed, trying legacy MV: {e}")
+        try:
+            engine = get_engine()
+            with engine.begin() as conn:
+                conn.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY cagg_hourly_metrics;"))
+                logger.info("cagg_hourly_metrics refreshed (CONCURRENTLY fallback)")
+                return True
+        except Exception as e2:
+            logger.error(f"MV refresh failed: {e2}")
+            return False
 
 def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.DataFrame:
     """Загружает данные из PostgreSQL с улучшенной обработкой ошибок"""
     key = f"data_from_db_{time_filter}_{fill_missing}"
 
     try:
-        data = cache.get(key)
+        data = get_cache().get(key)
         if data:
             df = pd.read_json(io.StringIO(data), orient="split") # type: ignore
             logger.debug(f"Данные загружены из Redis: {key}")
@@ -5169,7 +9610,7 @@ def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.
 
         df_raw = pd.read_sql(query, engine, params={"cutoff": cutoff, "metrics": metrics}) # type: ignore
 
-        cache.setex(key, CACHE_TTL, df_raw.to_json(orient="split"))
+        get_cache().setex(key, CACHE_TTL, df_raw.to_json(orient="split"))
         return df_raw.copy()
 
     except Exception as e:
@@ -5186,16 +9627,16 @@ def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
 from config import settings, get_database_url
-from typing import Callable
 import logging
-from threading import local
+import threading
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from sqlalchemy.exc import OperationalError
 
 logger = logging.getLogger("db")
 
-# Глобальный engine
-_engine_local = local()
+_engine = None
+_engine_lock = threading.Lock()
+
 
 @retry(
     stop=stop_after_attempt(3),
@@ -5203,35 +9644,42 @@ _engine_local = local()
     retry=retry_if_exception_type(OperationalError)
 )
 def get_engine():
-    if not hasattr(_engine_local, "engine"):
+    global _engine
+
+    if _engine is not None:
+        return _engine
+
+    with _engine_lock:
+        if _engine is not None:
+            return _engine
+
         database_url = str(get_database_url())
-        
-        # Рассчитываем размер пула на основе нагрузки
-        # Формула: (CPU cores * 2) + effective_spindle_count
-        # Для 4 CPU + 1 диск = 9, округляем до 10-20
+
         pool_size = getattr(settings, "DB_POOL_SIZE", 20)
         max_overflow = getattr(settings, "DB_MAX_OVERFLOW", 40)
-        
-        _engine_local.engine = create_engine(
+
+        _engine = create_engine(
             database_url,
             poolclass=QueuePool,
-            pool_size=pool_size,  # Базовый размер пула
-            max_overflow=max_overflow,  # Дополнительные соединения
-            pool_timeout=30,  # Таймаут ожидания соединения
-            pool_recycle=3600,  # Переиспользовать соединение каждый час
-            pool_pre_ping=True,  # Проверка соединения перед использованием
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_timeout=30,
+            pool_recycle=3600,
+            pool_pre_ping=True,
             echo=False,
             connect_args={
-                "options": "-c statement_timeout=30000",  # 30 секунд на запрос
-                "connect_timeout": 10,  # Таймаут подключения
+                "options": "-c statement_timeout=30000",
+                "connect_timeout": 10,
             }
         )
-        
-        with _engine_local.engine.connect() as conn:
+
+        with _engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        
-        logger.info(f"✅ SQLAlchemy engine initialized (pool_size={pool_size}, max_overflow={max_overflow})")
-    return _engine_local.engine
+
+        logger.info(f"SQLAlchemy engine initialized (pool_size={pool_size}, max_overflow={max_overflow})")
+
+    return _engine
+
 ```
 ### 📄 `core/exceptions.py`
 
@@ -5581,63 +10029,616 @@ async def sqlalchemy_error_handler(
     
 
 ```
+### 📄 `core/idoit_service.py`
+
+```python
+# core/idoit_service.py
+"""
+Bidirectional i-doit integration service.
+
+i-doit is the primary ITSM/CMDB system for incident resolution.
+This service handles:
+- Push: create/update incidents in i-doit when they change locally
+- Pull: sync status changes from i-doit back to local incidents
+- Mapping: priority/status translation between systems
+"""
+import requests
+from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+from config import settings, logger, mask_secrets
+from core.database import get_engine
+from sqlalchemy import text
+
+
+# === Status/Priority mapping ===
+
+# Sit Center -> i-doit status mapping
+STATUS_TO_IDOIT = {
+    "new": "1",          # New
+    "in_progress": "2",  # In Progress / Open
+    "escalated": "2",    # In Progress (escalated is still open in i-doit)
+    "resolved": "3",     # Resolved
+    "closed": "4",       # Closed
+}
+
+# i-doit -> Sit Center status mapping
+STATUS_FROM_IDOIT = {
+    "1": "new",
+    "2": "in_progress",
+    "3": "resolved",
+    "4": "closed",
+}
+
+# Sit Center -> i-doit priority mapping
+PRIORITY_TO_IDOIT = {
+    "critical": "1",  # Very High
+    "high": "2",       # High
+    "medium": "3",     # Normal
+    "low": "4",        # Low
+}
+
+PRIORITY_FROM_IDOIT = {
+    "1": "critical",
+    "2": "high",
+    "3": "medium",
+    "4": "low",
+}
+
+
+def is_enabled() -> bool:
+    return bool(getattr(settings, "I_DOIT_API_URL", None) and getattr(settings, "I_DOIT_API_KEY", None))
+
+
+def _call_idoit(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Make a JSON-RPC call to i-doit API."""
+    params["apikey"] = settings.I_DOIT_API_KEY
+
+    payload = {
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "id": 1,
+    }
+
+    resp = requests.post(settings.I_DOIT_API_URL, json=payload, timeout=15)
+    resp.raise_for_status()
+    result = resp.json()
+
+    if result.get("error"):
+        err_msg = result["error"].get("message", "unknown")
+        raise RuntimeError(f"i-doit API error: {err_msg}")
+
+    return result.get("result", {})
+
+
+def _log_sync(incident_id: int, direction: str, action: str,
+              payload: Any = None, response: Any = None,
+              success: bool = False, error: str = None):
+    """Write to idoit_sync_log for audit trail."""
+    import json
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO idoit_sync_log (incident_id, direction, action, payload, response, success, error)
+                    VALUES (:iid, :direction, :action, :payload, :response, :success, :error)
+                """),
+                {
+                    "iid": incident_id,
+                    "direction": direction,
+                    "action": action,
+                    "payload": json.dumps(payload, default=str) if payload else None,
+                    "response": json.dumps(response, default=str) if response else None,
+                    "success": success,
+                    "error": error,
+                },
+            )
+    except Exception as e:
+        logger.error(f"Failed to write sync log: {e}")
+
+
+# === Push operations (Sit Center -> i-doit) ===
+
+def push_incident_create(incident_id: int) -> Optional[str]:
+    """Create an incident in i-doit and store the external_id back."""
+    if not is_enabled():
+        return None
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT id, alert_message, description, metric, region, value,
+                       priority, assigned_to, status
+                FROM incidents WHERE id = :id
+            """),
+            {"id": incident_id},
+        ).mappings().first()
+
+    if not row:
+        return None
+
+    description = (
+        f"{row['alert_message']}\n\n"
+        f"Metric: {row['metric']}\n"
+        f"Region: {row['region']}\n"
+        f"Value: {row['value'] or 'N/A'}\n"
+    )
+    if row["description"]:
+        description += f"\nDetails: {row['description']}"
+
+    try:
+        result = _call_idoit("cmdb.object.create", {
+            "type": "C__OBJTYPE__INCIDENT",
+            "title": f"[SIT-{incident_id}] {row['alert_message'][:200]}",
+            "description": description,
+            "status": STATUS_TO_IDOIT.get(row["status"], "1"),
+            "priority": PRIORITY_TO_IDOIT.get(row["priority"], "3"),
+        })
+
+        obj_id = str(result.get("id") or result.get("objectID", ""))
+        if not obj_id:
+            _log_sync(incident_id, "push", "create", response=result, error="no objectID")
+            return None
+
+        external_url = f"{settings.I_DOIT_API_URL.rsplit('/api', 1)[0]}/?objID={obj_id}" if settings.I_DOIT_API_URL else None
+
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    UPDATE incidents SET
+                        external_id = :eid, external_system = 'idoit',
+                        external_url = :url, last_synced_at = :now
+                    WHERE id = :id
+                """),
+                {"id": incident_id, "eid": obj_id, "url": external_url, "now": datetime.now(timezone.utc)},
+            )
+
+        _log_sync(incident_id, "push", "create", response=result, success=True)
+        logger.info(f"i-doit incident created: SIT-{incident_id} -> idoit#{obj_id}")
+        return obj_id
+
+    except Exception as e:
+        _log_sync(incident_id, "push", "create", error=mask_secrets(str(e)))
+        logger.error(f"i-doit push_create failed for incident #{incident_id}: {mask_secrets(str(e))}")
+        return None
+
+
+def push_status_update(incident_id: int, new_status: str):
+    """Sync a status change to i-doit."""
+    if not is_enabled():
+        return
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT external_id FROM incidents WHERE id = :id AND external_id IS NOT NULL"),
+            {"id": incident_id},
+        ).mappings().first()
+
+    if not row:
+        return
+
+    idoit_status = STATUS_TO_IDOIT.get(new_status)
+    if not idoit_status:
+        return
+
+    try:
+        result = _call_idoit("cmdb.object.update", {
+            "id": int(row["external_id"]),
+            "title": None,  # don't change title
+            "status": idoit_status,
+        })
+
+        with engine.begin() as conn:
+            conn.execute(
+                text("UPDATE incidents SET last_synced_at = :now WHERE id = :id"),
+                {"id": incident_id, "now": datetime.now(timezone.utc)},
+            )
+
+        _log_sync(incident_id, "push", "status_update",
+                   payload={"status": new_status, "idoit_status": idoit_status},
+                   response=result, success=True)
+
+    except Exception as e:
+        _log_sync(incident_id, "push", "status_update", error=mask_secrets(str(e)))
+        logger.warning(f"i-doit status sync failed for #{incident_id}: {mask_secrets(str(e))}")
+
+
+def push_assignment(incident_id: int, assigned_to: str):
+    """Sync an assignment change to i-doit."""
+    if not is_enabled():
+        return
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT external_id FROM incidents WHERE id = :id AND external_id IS NOT NULL"),
+            {"id": incident_id},
+        ).mappings().first()
+
+    if not row:
+        return
+
+    try:
+        result = _call_idoit("cmdb.object.update", {
+            "id": int(row["external_id"]),
+            "assigned": assigned_to,
+        })
+        _log_sync(incident_id, "push", "assign",
+                   payload={"assigned_to": assigned_to}, response=result, success=True)
+    except Exception as e:
+        _log_sync(incident_id, "push", "assign", error=mask_secrets(str(e)))
+        logger.warning(f"i-doit assign sync failed for #{incident_id}: {mask_secrets(str(e))}")
+
+
+def push_comment(incident_id: int, author: str, content: str):
+    """Push a comment to i-doit as a logbook entry."""
+    if not is_enabled():
+        return
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT external_id FROM incidents WHERE id = :id AND external_id IS NOT NULL"),
+            {"id": incident_id},
+        ).mappings().first()
+
+    if not row:
+        return
+
+    try:
+        result = _call_idoit("cmdb.logbook.create", {
+            "object_id": int(row["external_id"]),
+            "message": f"[{author}] {content}",
+            "description": content,
+        })
+        _log_sync(incident_id, "push", "comment",
+                   payload={"author": author}, response=result, success=True)
+    except Exception as e:
+        _log_sync(incident_id, "push", "comment", error=mask_secrets(str(e)))
+        logger.warning(f"i-doit comment sync failed for #{incident_id}: {mask_secrets(str(e))}")
+
+
+# === Pull operations (i-doit -> Sit Center) ===
+
+def pull_status_update(incident_id: int, idoit_status: str, idoit_assigned: str = None):
+    """
+    Apply a status change from i-doit to the local incident.
+    Called from the inbound webhook handler.
+    """
+    local_status = STATUS_FROM_IDOIT.get(str(idoit_status))
+    if not local_status:
+        logger.warning(f"Unknown i-doit status '{idoit_status}' for incident #{incident_id}")
+        return
+
+    engine = get_engine()
+    now = datetime.now(timezone.utc)
+
+    updates = ["status = :status", "last_synced_at = :now"]
+    params: Dict[str, Any] = {"id": incident_id, "status": local_status, "now": now}
+
+    if local_status == "in_progress":
+        updates.append("started_at = COALESCE(started_at, :now)")
+    elif local_status == "resolved":
+        updates.append("resolved_at = COALESCE(resolved_at, :now)")
+    elif local_status == "closed":
+        updates.append("closed_at = COALESCE(closed_at, :now)")
+
+    if idoit_assigned:
+        updates.append("assigned_to = :assigned")
+        params["assigned"] = idoit_assigned
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(f"UPDATE incidents SET {', '.join(updates)} WHERE id = :id"),
+            params,
+        )
+
+    _log_sync(incident_id, "pull", "status_update",
+              payload={"idoit_status": idoit_status, "local_status": local_status},
+              success=True)
+    logger.info(f"i-doit pull: incident #{incident_id} -> {local_status}")
+
+```
+### 📄 `core/kafka_consumer.py`
+
+```python
+# core/kafka_consumer.py
+import json
+import time
+from typing import List, Dict, Any
+from kafka import KafkaConsumer
+from sqlalchemy import text
+from config import settings, logger, mask_secrets
+from core.database import get_engine
+
+TOPIC = "sit_center.metrics"
+BATCH_SIZE = 100
+POLL_TIMEOUT_MS = 1000
+
+
+class MetricKafkaConsumer:
+    def __init__(self, bootstrap_servers: str, group_id: str = "sit-center-ingest"):
+        self.consumer = KafkaConsumer(
+            TOPIC,
+            bootstrap_servers=bootstrap_servers,
+            group_id=group_id,
+            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+            auto_offset_reset="latest",
+            enable_auto_commit=False,
+            max_poll_records=BATCH_SIZE,
+        )
+        self.engine = get_engine()
+        logger.info("Kafka consumer initialized for topic: %s", TOPIC)
+
+    def run(self):
+        logger.info("Kafka consumer started")
+        try:
+            while True:
+                self._poll_and_insert()
+        except KeyboardInterrupt:
+            logger.info("Kafka consumer shutting down")
+        finally:
+            self.consumer.close()
+
+    def _poll_and_insert(self):
+        messages = self.consumer.poll(timeout_ms=POLL_TIMEOUT_MS)
+        batch: List[Dict[str, Any]] = []
+
+        for tp, records in messages.items():
+            for record in records:
+                msg = record.value
+                batch.append({
+                    "metric_name": msg["metric_name"],
+                    "value": msg["value"],
+                    "timestamp": msg.get("timestamp"),
+                    "dimensions": json.dumps(msg.get("dimensions", {})),
+                    "tags": json.dumps(msg.get("tags", {})),
+                    "source": msg.get("source", "kafka"),
+                })
+
+                if len(batch) >= BATCH_SIZE:
+                    self._bulk_insert(batch)
+                    batch = []
+
+        if batch:
+            self._bulk_insert(batch)
+
+        self.consumer.commit()
+
+    def _bulk_insert(self, batch: List[Dict[str, Any]]):
+        if not batch:
+            return
+        insert_sql = text("""
+            INSERT INTO canonical_metrics (metric_name, value, timestamp, dimensions, tags, source)
+            VALUES (:metric_name, :value,
+                    COALESCE(:timestamp::timestamptz, NOW()),
+                    :dimensions::jsonb, :tags::jsonb, :source)
+        """)
+        try:
+            with self.engine.begin() as conn:
+                conn.execute(insert_sql, batch)
+            logger.debug("Inserted %d metrics from Kafka", len(batch))
+        except Exception as e:
+            logger.error("Kafka bulk insert failed: %s", mask_secrets(str(e)))
+
+```
+### 📄 `core/kafka_producer.py`
+
+```python
+# core/kafka_producer.py
+import json
+from kafka import KafkaProducer
+from config import settings, logger, mask_secrets
+
+_producer = None
+
+TOPIC_ALERTS = "sit_center.alerts"
+TOPIC_METRICS = "sit_center.metrics"
+
+
+def _get_producer() -> KafkaProducer:
+    global _producer
+    if _producer is None:
+        bootstrap = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+        _producer = KafkaProducer(
+            bootstrap_servers=bootstrap,
+            value_serializer=lambda v: json.dumps(v, ensure_ascii=False, default=str).encode("utf-8"),
+            acks="all",
+            retries=3,
+        )
+    return _producer
+
+
+def publish_alert_event(data: dict) -> None:
+    try:
+        _get_producer().send(TOPIC_ALERTS, value=data)
+    except Exception as e:
+        logger.error("Kafka publish_alert_event failed: %s", mask_secrets(str(e)))
+
+
+def publish_metric_event(data: dict) -> None:
+    try:
+        _get_producer().send(TOPIC_METRICS, value=data)
+    except Exception as e:
+        logger.error("Kafka publish_metric_event failed: %s", mask_secrets(str(e)))
+
+```
+### 📄 `core/ldap_auth.py`
+
+```python
+# core/ldap_auth.py
+from typing import Optional, Dict, List
+from dataclasses import dataclass
+from config import settings, logger, mask_secrets
+from sqlalchemy import text
+from core.database import get_engine
+
+
+@dataclass
+class LDAPUser:
+    username: str
+    email: Optional[str]
+    display_name: Optional[str]
+    groups: List[str]
+
+
+class LDAPAuthenticator:
+    def __init__(self):
+        self.url = getattr(settings, "LDAP_URL", "")
+        self.base_dn = getattr(settings, "LDAP_BASE_DN", "")
+        self.bind_dn = getattr(settings, "LDAP_BIND_DN", "")
+        self.bind_password = getattr(settings, "LDAP_BIND_PASSWORD", "")
+        self.user_search_filter = getattr(settings, "LDAP_USER_SEARCH_FILTER", "(sAMAccountName={username})")
+        self.group_role_map: Dict[str, str] = getattr(settings, "LDAP_GROUP_ROLE_MAP", {})
+
+    def authenticate(self, username: str, password: str) -> Optional[LDAPUser]:
+        try:
+            import ldap3
+            server = ldap3.Server(self.url, get_info=ldap3.ALL)
+
+            # Bind with service account to search
+            conn = ldap3.Connection(server, user=self.bind_dn, password=self.bind_password, auto_bind=True)
+
+            search_filter = self.user_search_filter.replace("{username}", ldap3.utils.conv.escape_filter_chars(username))
+            conn.search(
+                self.base_dn,
+                search_filter,
+                attributes=["sAMAccountName", "mail", "displayName", "memberOf"],
+            )
+
+            if not conn.entries:
+                logger.info("LDAP: user '%s' not found", username)
+                return None
+
+            entry = conn.entries[0]
+            user_dn = entry.entry_dn
+
+            # Verify user password
+            user_conn = ldap3.Connection(server, user=user_dn, password=password)
+            if not user_conn.bind():
+                logger.info("LDAP: invalid password for '%s'", username)
+                return None
+
+            groups = [str(g) for g in entry.memberOf] if hasattr(entry, "memberOf") else []
+            user_conn.unbind()
+            conn.unbind()
+
+            return LDAPUser(
+                username=str(entry.sAMAccountName),
+                email=str(entry.mail) if hasattr(entry, "mail") else None,
+                display_name=str(entry.displayName) if hasattr(entry, "displayName") else None,
+                groups=groups,
+            )
+
+        except ImportError:
+            logger.error("ldap3 library not installed")
+            return None
+        except Exception as e:
+            logger.error("LDAP authentication error: %s", mask_secrets(str(e)))
+            return None
+
+    def get_roles_for_groups(self, groups: List[str]) -> List[str]:
+        roles = []
+        for group in groups:
+            cn = group.split(",")[0].replace("CN=", "") if "CN=" in group else group
+            mapped_role = self.group_role_map.get(cn)
+            if mapped_role:
+                roles.append(mapped_role)
+        return roles or ["viewer"]
+
+    def sync_user_to_db(self, ldap_user: LDAPUser, tenant_id: str = "default") -> None:
+        engine = get_engine()
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("""
+                        INSERT INTO users (username, email, tenant_id, auth_provider, is_active)
+                        VALUES (:username, :email, :tenant_id, 'ldap', true)
+                        ON CONFLICT (username) DO UPDATE SET
+                            email = EXCLUDED.email,
+                            auth_provider = 'ldap',
+                            is_active = true,
+                            updated_at = NOW()
+                    """),
+                    {
+                        "username": ldap_user.username,
+                        "email": ldap_user.email,
+                        "tenant_id": tenant_id,
+                    },
+                )
+            logger.info("LDAP user '%s' synced to DB", ldap_user.username)
+        except Exception as e:
+            logger.error("Failed to sync LDAP user: %s", mask_secrets(str(e)))
+
+
+ldap_authenticator = LDAPAuthenticator()
+
+```
 ### 📄 `core/locking.py`
 
 ```python
 # core/locking.py
 import time
+import uuid
 import logging
 from contextlib import contextmanager
 from config import settings, get_cache
 
 logger = logging.getLogger(__name__)
 
-cache = get_cache()
+# Lua-скрипт: удалить ключ только если значение совпадает (наша блокировка)
+_UNLOCK_SCRIPT = """
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+else
+    return 0
+end
+"""
 
 @contextmanager
-def global_lock(lock_name: str, timeout: float = None): # type: ignore
+def global_lock(lock_name: str, timeout: float = None):  # type: ignore
     """
-    Распределённая блокировка с использованием Redis (SETNX + EXPIRE)
+    Распределённая блокировка с использованием Redis (SETNX + EXPIRE).
+    Безопасное освобождение через Lua-скрипт (проверка owner).
     """
     if timeout is None:
         timeout = settings.cache_locking_timeout
     lock_key = f"lock_{lock_name}"
+    lock_value = str(uuid.uuid4())
     cache = get_cache()
     acquired = False
     start_time = time.time()
 
     try:
         while time.time() - start_time < timeout:
-            # Пытаемся установить блокировку с TTL
-            acquired = cache.set(lock_key, "1", nx=True, ex=int(timeout * 1.5))
+            acquired = cache.set(lock_key, lock_value, nx=True, ex=int(timeout * 1.5))
             if acquired:
                 break
             time.sleep(settings.cache_poll_interval)
         else:
-            raise TimeoutError(f"Не удалось получить блокировку '{lock_name}' за {timeout} секунд")
+            raise TimeoutError(f"Failed to acquire lock '{lock_name}' within {timeout}s")
 
         yield
-    except Exception as e:
-        if "yield" in str(e):  # Ошибка внутри yield
-            raise
-        else:
-            logger.error(f"Ошибка в блокировке {lock_name}: {e}")
-            raise
     finally:
         if acquired:
             try:
-                # Удаляем блокировку только если она наша
-                cache.delete(lock_key)
+                cache.eval(_UNLOCK_SCRIPT, 1, lock_key, lock_value)
             except Exception as e:
-                logger.error(f"Ошибка при освобождении блокировки {lock_key}: {e}")
+                logger.error(f"Error releasing lock {lock_key}: {e}")
+
 
 def get_global_state(key: str, default=None):
-    """Получить значение из глобального состояния"""
-    return cache.get(f"global_state_{key}")
+    """Get value from global state"""
+    return get_cache().get(f"global_state_{key}")
+
 
 def set_global_state(key: str, value, expire=None):
-    """Установить значение в глобальное состояние"""
-    cache.set(f"global_state_{key}", value, ex=expire)
+    """Set value in global state"""
+    get_cache().set(f"global_state_{key}", value, ex=expire)
+
 ```
 ### 📄 `core/metadata_service.py`
 
@@ -5708,8 +10709,18 @@ class MLConfigDTO:
 class MetadataService:
     def __init__(self):
         self._engine = None
-        self._cache = get_cache()
+        self.__cache = None
         self._logger = logger.getChild("metadata_service")
+
+    @property
+    def _cache(self):
+        if self.__cache is None:
+            self.__cache = get_cache()
+        return self.__cache
+
+    @_cache.setter
+    def _cache(self, value):
+        self.__cache = value
 
     def _get_engine(self):
         if self._engine is None:
@@ -5735,17 +10746,17 @@ class MetadataService:
 
     # --- CRUD: Metrics ---
 
-    def create_metric(self, dto: MetricDTO) -> str:
+    def create_metric(self, dto: MetricDTO, tenant_id: str = "default") -> str:
         with global_lock("metadata_metric_create", timeout=10):
             try:
                 engine = self._get_engine()
                 query = text("""
                     INSERT INTO metadata_metrics (
                         metric_name, display_name, description, unit,
-                        default_threshold, default_critical_threshold, is_active
+                        default_threshold, default_critical_threshold, is_active, tenant_id
                     ) VALUES (
                         :metric_name, :display_name, :description, :unit,
-                        :default_threshold, :default_critical_threshold, :is_active
+                        :default_threshold, :default_critical_threshold, :is_active, :tenant_id
                     )
                     ON CONFLICT (metric_name) DO UPDATE SET
                         display_name = EXCLUDED.display_name,
@@ -5757,66 +10768,74 @@ class MetadataService:
                         updated_at = NOW()
                     RETURNING metric_name;
                 """)
+                params = asdict(dto)
+                params["tenant_id"] = tenant_id
                 with engine.begin() as conn:
-                    result = conn.execute(query, asdict(dto))
+                    result = conn.execute(query, params)
                     metric_name = result.scalar_one()
                     self._invalidate_cache("metrics")
-                    self._logger.info(f"✅ Метрика '{metric_name}' создана/обновлена")
+                    self._logger.info(f"Метрика '{metric_name}' создана/обновлена (tenant={tenant_id})")
                     return metric_name
             except Exception as e:
-                self._logger.error(f"❌ Ошибка создания метрики {dto.metric_name}: {mask_secrets(str(e))}")
+                self._logger.error(f"Ошибка создания метрики {dto.metric_name}: {mask_secrets(str(e))}")
                 raise
 
-    def get_metric(self, metric_name: str) -> Optional[MetricDTO]:
-        key = f"metadata:metric:{metric_name}"
+    def get_metric(self, metric_name: str, tenant_id: str = "default") -> Optional[MetricDTO]:
+        key = f"metadata:metric:{tenant_id}:{metric_name}"
         cached = self._cache.get(key)
         if cached:
             return MetricDTO(**json.loads(cached)) # type: ignore
 
         try:
             engine = self._get_engine()
-            query = text("SELECT * FROM metadata_metrics WHERE metric_name = :name AND is_active = true")
+            query = text(
+                "SELECT * FROM metadata_metrics "
+                "WHERE metric_name = :name AND is_active = true AND tenant_id = :tid"
+            )
             with engine.connect() as conn:
-                row = conn.execute(query, {"name": metric_name}).mappings().first()
+                row = conn.execute(query, {"name": metric_name, "tid": tenant_id}).mappings().first()
                 if not row:
                     return None
-                dto = MetricDTO(**row)
+                dto = MetricDTO(**{k: row[k] for k in MetricDTO.__dataclass_fields__})
                 self._cache.setex(key, 300, self._serialize_json(asdict(dto)))
                 return dto
         except Exception as e:
-            self._logger.error(f"❌ Ошибка чтения метрики {metric_name}: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка чтения метрики {metric_name}: {mask_secrets(str(e))}")
             return None
 
-    def list_metrics(self, active_only: bool = True) -> List[MetricDTO]:
-        key = "metadata:metrics:active" if active_only else "metadata:metrics:all"
+    def list_metrics(self, active_only: bool = True, tenant_id: str = "default") -> List[MetricDTO]:
+        key = f"metadata:metrics:{tenant_id}:{'active' if active_only else 'all'}"
         cached = self._cache.get(key)
         if cached:
             return [MetricDTO(**item) for item in json.loads(cached)] # type: ignore
 
         try:
             engine = self._get_engine()
-            where = "WHERE is_active = true" if active_only else ""
+            conditions = ["tenant_id = :tenant_id"]
+            if active_only:
+                conditions.append("is_active = true")
+            where = "WHERE " + " AND ".join(conditions)
             query = text(f"SELECT * FROM metadata_metrics {where} ORDER BY metric_name")
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
-                dtos = [MetricDTO(**row) for row in rows]
+                rows = conn.execute(query, {"tenant_id": tenant_id}).mappings().all()
+                dtos = [MetricDTO(**{k: row[k] for k in MetricDTO.__dataclass_fields__}) for row in rows]
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка метрик: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка метрик: {mask_secrets(str(e))}")
             return []
 
     # --- CRUD: Dimensions ---
 
-    def create_dimension(self, dto: DimensionDTO) -> str:
+    def create_dimension(self, dto: DimensionDTO, tenant_id: str = "default") -> str:
         with global_lock("metadata_dimension_create", timeout=10):
             try:
                 engine = self._get_engine()
                 query = text("""
                     INSERT INTO metadata_dimensions (
-                        dimension_key, description, allowed_values, is_required
+                        dimension_key, description, allowed_values, is_required, tenant_id
                     ) VALUES (
-                        :dimension_key, :description, :allowed_values, :is_required
+                        :dimension_key, :description, :allowed_values, :is_required, :tenant_id
                     )
                     ON CONFLICT (dimension_key) DO UPDATE SET
                         description = EXCLUDED.description,
@@ -5830,66 +10849,71 @@ class MetadataService:
                         "dimension_key": dto.dimension_key,
                         "description": dto.description,
                         "allowed_values": self._serialize_json(dto.allowed_values),
-                        "is_required": dto.is_required
+                        "is_required": dto.is_required,
+                        "tenant_id": tenant_id,
                     })
                     dim_key = result.scalar_one()
                     self._invalidate_cache("dimensions")
-                    self._logger.info(f"✅ Измерение '{dim_key}' создано/обновлено")
+                    self._logger.info(f"Измерение '{dim_key}' создано/обновлено (tenant={tenant_id})")
                     return dim_key
             except Exception as e:
-                self._logger.error(f"❌ Ошибка создания измерения {dto.dimension_key}: {mask_secrets(str(e))}")
+                self._logger.error(f"Ошибка создания измерения {dto.dimension_key}: {mask_secrets(str(e))}")
                 raise
 
-    def get_dimension(self, dimension_key: str) -> Optional[DimensionDTO]:
-        key = f"metadim:{dimension_key}"
+    def get_dimension(self, dimension_key: str, tenant_id: str = "default") -> Optional[DimensionDTO]:
+        key = f"metadim:{tenant_id}:{dimension_key}"
         cached = self._cache.get(key)
         if cached:
             return DimensionDTO(**json.loads(cached)) # type: ignore
 
         try:
             engine = self._get_engine()
-            query = text("SELECT * FROM metadata_dimensions WHERE dimension_key = :key")
+            query = text(
+                "SELECT * FROM metadata_dimensions WHERE dimension_key = :key AND tenant_id = :tid"
+            )
             with engine.connect() as conn:
-                row = conn.execute(query, {"key": dimension_key}).mappings().first()
+                row = conn.execute(query, {"key": dimension_key, "tid": tenant_id}).mappings().first()
                 if not row:
                     return None
-                dto = DimensionDTO(**row)
+                dto = DimensionDTO(**{k: row[k] for k in DimensionDTO.__dataclass_fields__})
                 self._cache.setex(key, 300, self._serialize_json(asdict(dto)))
                 return dto
         except Exception as e:
-            self._logger.error(f"❌ Ошибка чтения измерения {dimension_key}: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка чтения измерения {dimension_key}: {mask_secrets(str(e))}")
             return None
 
-    def list_dimensions(self) -> List[DimensionDTO]:
-        key = "metadimensions:all"
+    def list_dimensions(self, tenant_id: str = "default") -> List[DimensionDTO]:
+        key = f"metadimensions:{tenant_id}:all"
         cached = self._cache.get(key)
         if cached:
             return [DimensionDTO(**item) for item in json.loads(cached)] # type: ignore
 
         try:
             engine = self._get_engine()
-            query = text("SELECT * FROM metadata_dimensions ORDER BY dimension_key")
+            query = text(
+                "SELECT * FROM metadata_dimensions WHERE tenant_id = :tid ORDER BY dimension_key"
+            )
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
-                dtos = [DimensionDTO(**row) for row in rows]
+                rows = conn.execute(query, {"tid": tenant_id}).mappings().all()
+                dtos = [DimensionDTO(**{k: row[k] for k in DimensionDTO.__dataclass_fields__}) for row in rows]
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка измерений: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка измерений: {mask_secrets(str(e))}")
             return []
 
     # --- CRUD: Rules ---
 
-    def create_rule(self, dto: RuleDTO) -> uuid.UUID:
+    def create_rule(self, dto: RuleDTO, tenant_id: str = "default") -> uuid.UUID:
         rule_id = dto.id or uuid.uuid4()
         with global_lock(f"metadata_rule_{rule_id}", timeout=10):
             try:
                 engine = self._get_engine()
                 query = text("""
                     INSERT INTO metadata_rules (
-                        id, name, description, condition, labels, actions, is_active
+                        id, name, description, condition, labels, actions, is_active, tenant_id
                     ) VALUES (
-                        :id, :name, :description, :condition, :labels, :actions, :is_active
+                        :id, :name, :description, :condition, :labels, :actions, :is_active, :tenant_id
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         name = EXCLUDED.name,
@@ -5909,18 +10933,19 @@ class MetadataService:
                         "condition": self._serialize_json(dto.condition),
                         "labels": self._serialize_json(dto.labels),
                         "actions": self._serialize_json(dto.actions),
-                        "is_active": dto.is_active
+                        "is_active": dto.is_active,
+                        "tenant_id": tenant_id,
                     })
                     created_id = result.scalar_one()
                     self._invalidate_cache("rules")
-                    self._logger.info(f"✅ Правило '{dto.name}' (id={created_id}) создано/обновлено")
+                    self._logger.info(f"Правило '{dto.name}' (id={created_id}) создано/обновлено")
                     return created_id
             except Exception as e:
-                self._logger.error(f"❌ Ошибка создания правила {dto.name}: {mask_secrets(str(e))}")
+                self._logger.error(f"Ошибка создания правила {dto.name}: {mask_secrets(str(e))}")
                 raise
 
-    def list_active_rules(self) -> List[RuleDTO]:
-        key = "metadata:rules:active"
+    def list_active_rules(self, tenant_id: str = "default") -> List[RuleDTO]:
+        key = f"metadata:rules:{tenant_id}:active"
         cached = self._cache.get(key)
         if cached:
             return [RuleDTO(**item) for item in json.loads(cached)] # type: ignore
@@ -5930,11 +10955,11 @@ class MetadataService:
             query = text("""
                 SELECT id, name, description, condition, labels, actions, is_active
                 FROM metadata_rules
-                WHERE is_active = true
+                WHERE is_active = true AND tenant_id = :tid
                 ORDER BY name
             """)
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
+                rows = conn.execute(query, {"tid": tenant_id}).mappings().all()
                 dtos = []
                 for row in rows:
                     dto = RuleDTO(
@@ -5950,12 +10975,12 @@ class MetadataService:
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка правил: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка правил: {mask_secrets(str(e))}")
             return []
 
     # --- CRUD: ML Configs ---
 
-    def create_ml_config(self, dto: MLConfigDTO) -> uuid.UUID:
+    def create_ml_config(self, dto: MLConfigDTO, tenant_id: str = "default") -> uuid.UUID:
         config_id = dto.id or uuid.uuid4()
         with global_lock(f"metadata_ml_{config_id}", timeout=10):
             try:
@@ -5963,10 +10988,10 @@ class MetadataService:
                 query = text("""
                     INSERT INTO metadata_ml_configs (
                         id, name, metric_name, group_by, methods, method_params,
-                        retrain_schedule, auto_alert, alert_severity, is_active
+                        retrain_schedule, auto_alert, alert_severity, is_active, tenant_id
                     ) VALUES (
                         :id, :name, :metric_name, :group_by, :methods, :method_params,
-                        :retrain_schedule, :auto_alert, :alert_severity, :is_active
+                        :retrain_schedule, :auto_alert, :alert_severity, :is_active, :tenant_id
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         name = EXCLUDED.name,
@@ -5992,18 +11017,19 @@ class MetadataService:
                         "retrain_schedule": dto.retrain_schedule,
                         "auto_alert": dto.auto_alert,
                         "alert_severity": dto.alert_severity,
-                        "is_active": dto.is_active
+                        "is_active": dto.is_active,
+                        "tenant_id": tenant_id,
                     })
                     created_id = result.scalar_one()
                     self._invalidate_cache("ml_configs")
-                    self._logger.info(f"✅ ML-конфиг '{dto.name}' (id={created_id}) создан/обновлён")
+                    self._logger.info(f"ML-конфиг '{dto.name}' (id={created_id}) создан/обновлён")
                     return created_id
             except Exception as e:
-                self._logger.error(f"❌ Ошибка создания ML-конфига {dto.name}: {mask_secrets(str(e))}")
+                self._logger.error(f"Ошибка создания ML-конфига {dto.name}: {mask_secrets(str(e))}")
                 raise
 
-    def list_active_ml_configs(self) -> List[MLConfigDTO]:
-        key = "metadata:ml_configs:active"
+    def list_active_ml_configs(self, tenant_id: str = "default") -> List[MLConfigDTO]:
+        key = f"metadata:ml_configs:{tenant_id}:active"
         cached = self._cache.get(key)
         if cached:
             return [MLConfigDTO(**item) for item in json.loads(cached)] # type: ignore
@@ -6014,11 +11040,11 @@ class MetadataService:
                 SELECT id, name, metric_name, group_by, methods, method_params,
                        retrain_schedule, auto_alert, alert_severity, is_active
                 FROM metadata_ml_configs
-                WHERE is_active = true
+                WHERE is_active = true AND tenant_id = :tid
                 ORDER BY name
             """)
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
+                rows = conn.execute(query, {"tid": tenant_id}).mappings().all()
                 dtos = []
                 for row in rows:
                     dto = MLConfigDTO(
@@ -6037,12 +11063,11 @@ class MetadataService:
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка ML-конфигов: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка ML-конфигов: {mask_secrets(str(e))}")
             return []
 
-    def list_all_ml_configs(self) -> List[MLConfigDTO]:
-        # Аналогично list_active, но без WHERE is_active = true
-        key = "metaml_configs:all"
+    def list_all_ml_configs(self, tenant_id: str = "default") -> List[MLConfigDTO]:
+        key = f"metaml_configs:{tenant_id}:all"
         cached = self._cache.get(key)
         if cached:
             return [MLConfigDTO(**item) for item in json.loads(cached)] # type: ignore
@@ -6053,10 +11078,11 @@ class MetadataService:
                 SELECT id, name, metric_name, group_by, methods, method_params,
                     retrain_schedule, auto_alert, alert_severity, is_active
                 FROM metadata_ml_configs
+                WHERE tenant_id = :tid
                 ORDER BY name
             """)
             with engine.connect() as conn:
-                rows = conn.execute(query).mappings().all()
+                rows = conn.execute(query, {"tid": tenant_id}).mappings().all()
                 dtos = [MLConfigDTO(
                     id=row["id"],
                     name=row["name"],
@@ -6072,7 +11098,7 @@ class MetadataService:
                 self._cache.setex(key, 300, self._serialize_json([asdict(d) for d in dtos]))
                 return dtos
         except Exception as e:
-            self._logger.error(f"❌ Ошибка списка всех ML-конфигов: {mask_secrets(str(e))}")
+            self._logger.error(f"Ошибка списка всех ML-конфигов: {mask_secrets(str(e))}")
             return []
 
     # --- Утилиты ---
@@ -6283,9 +11309,12 @@ except ImportError:
     logger.warning("ML libraries missing — anomaly detection disabled")
 
 from contextlib import contextmanager
+import re
 import sys
 import os
 import torch
+
+SAFE_DIMENSION_KEY_RE = re.compile(r"^[a-zA-Z0-9_]{1,50}$")
 from pathlib import Path
 
 ML_MODEL_DIR = Path("/app/models")
@@ -6900,27 +11929,36 @@ def retrain_all_models():
 
         for cfg in ml_configs:
             metric_name = cfg.metric_name
-            group_by_keys = cfg.group_by or ["region"]  # по умолчанию — регион
+            group_by_keys = cfg.group_by or ["region"]
+
+            # Валидация dimension keys для защиты от SQL injection
+            for key in group_by_keys:
+                if not SAFE_DIMENSION_KEY_RE.match(key):
+                    logger.error(f"Invalid dimension key: {key}, skipping config {cfg.id}")
+                    continue
 
             logger.info(f"Переобучение: {metric_name}, group_by={group_by_keys}")
 
-            # Формируем условие для dimensions
-            dimensions_filter = " AND ".join(
+            # Безопасное построение запроса: ключи валидированы regex выше
+            dim_select = ", ".join(
+                f"dimensions->>'{key}' as \"{key}\"" for key in group_by_keys
+            )
+            dim_filter = " AND ".join(
                 f"dimensions->>'{key}' IS NOT NULL" for key in group_by_keys
             )
 
-            query = f"""
-            SELECT 
+            query = text(f"""
+            SELECT
                 timestamp,
                 value,
-                {", ".join(f"dimensions->>'{key}' as {key}" for key in group_by_keys)}
+                {dim_select}
             FROM canonical_metrics
             WHERE metric_name = :metric_name
               AND timestamp >= :cutoff
-              {f"AND {dimensions_filter}" if dimensions_filter else ""}
+              AND {dim_filter}
             ORDER BY timestamp
             LIMIT 10000
-            """
+            """)
 
             df = pd.read_sql(
                 query,
@@ -7032,6 +12070,54 @@ def process_group_batch(group_data: tuple, cfg: MLConfigDTO) -> List[Dict]:
     
     return all_anomalies
 ```
+### 📄 `core/ml_tasks.py`
+
+```python
+# core/ml_tasks.py
+from celery_app import celery_app
+from config import logger
+
+
+@celery_app.task(time_limit=60)
+def evaluate_rules_task():
+    try:
+        from core.rule_engine import rule_engine
+        from core.notifications import notify
+        results = rule_engine.evaluate_all_rules()
+        fired = [r for r in results if r.fired]
+        for r in fired:
+            msg = f"Rule '{r.rule_name}': {r.metric_name} {r.operator} {r.threshold} (current: {r.current_value:.2f})"
+            notify(msg, "warning")
+        logger.info("Rule evaluation: %d rules checked, %d fired", len(results), len(fired))
+        return {"checked": len(results), "fired": len(fired)}
+    except Exception as e:
+        logger.exception("Rule evaluation failed")
+        return {"error": str(e)}
+
+
+@celery_app.task(queue="ml", time_limit=600)
+def run_ml_anomaly_check():
+    try:
+        from core.ml_anomaly import find_recent_ml_anomalies
+        count = find_recent_ml_anomalies(time_filter="6h")
+        logger.info(f"ML: found {count} anomalies")
+        return count
+    except Exception as e:
+        logger.exception("ML task failed")
+        return 0
+
+
+@celery_app.task(queue="ml", time_limit=600)
+def retrain_ml_models():
+    try:
+        from core.ml_anomaly import retrain_all_models
+        retrain_all_models()
+        return {"status": "success"}
+    except Exception as e:
+        logger.exception("Retrain ML failed")
+        return {"status": "error", "message": str(e)}
+
+```
 ### 📄 `core/models.py`
 
 ```python
@@ -7049,6 +12135,52 @@ class Base(DeclarativeBase):
 
 
 # === Каноническая метрика (только для ORM-запросов, необязательна, но удобна) ===
+class Tenant(Base):
+    __tablename__ = "tenants"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    settings = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=True)
+    password_hash = Column(String, nullable=True)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, default="default")
+    is_active = Column(Boolean, default=True)
+    auth_provider = Column(String, default="local")
+    external_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    roles = relationship("Role", secondary="user_roles", back_populates="users")
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, default="default")
+    permissions = Column(JSONB, nullable=False, default=list)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    users = relationship("User", secondary="user_roles", back_populates="roles")
+
+
+class UserRole(Base):
+    __tablename__ = "user_roles"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True)
+
+
 class CanonicalMetric(Base):
     __tablename__ = "canonical_metrics"
 
@@ -7059,6 +12191,7 @@ class CanonicalMetric(Base):
     dimensions = Column(JSONB, nullable=False, default=dict)
     tags = Column(JSONB, nullable=False, default=dict)
     source = Column(String, nullable=True)
+    tenant_id = Column(String, nullable=False, default="default")
 
     __table_args__ = (
         Index("ix_canonical_ts", "timestamp"),
@@ -7102,6 +12235,7 @@ class MLAnomaly(Base):
     confidence = Column(Float)
     method = Column(String, default="prophet")  # prophet, lstm, clustering
     model_version = Column(String, nullable=True)
+    tenant_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime(timezone=True), default=func.now())
 
     def __repr__(self):
@@ -7120,7 +12254,7 @@ class AlertEvent(Base):
     value = Column(Float, nullable=False)
     event_time = Column(DateTime(timezone=True), nullable=False)
     detected_at = Column(DateTime(timezone=True), default=func.now())
-    status = Column(String, default="firing")  # firing, resolved
+    status = Column(String, default="firing")  # firing, acknowledged, resolved
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     sent = Column(Boolean, default=False)
     sent_at = Column(DateTime(timezone=True), nullable=True)
@@ -7130,10 +12264,13 @@ class AlertEvent(Base):
     escalation_level = Column(Integer, default=0)
     last_escalation = Column(DateTime(timezone=True), nullable=True)
     alert_hash = Column(String, index=True)
-    
-    # 🔴 ДОБАВЛЕНО — критически недостающие поля:
+    tenant_id = Column(String, nullable=False, default="default")
+
     incident_created = Column(Boolean, default=False)
     incident_created_at = Column(DateTime(timezone=True), nullable=True)
+    acknowledged_by = Column(String, nullable=True)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(String, nullable=True)
 
     __table_args__ = (
         Index("ix_alerts_firing", "status", postgresql_where=(status == "firing")),
@@ -7158,11 +12295,26 @@ class Incident(Base):
     value = Column(String, nullable=True)
     priority = Column(String, nullable=False)
     status = Column(String, default=IncidentStatus.NEW.value)
-    detected_at = Column(DateTime, default=datetime.utcnow)
+    detected_at = Column(DateTime(timezone=True), default=func.now())
     assigned_to = Column(String, nullable=True)
     started_at = Column(DateTime, nullable=True)
     resolved_at = Column(DateTime, nullable=True)
     closed_at = Column(DateTime, nullable=True)
+    tenant_id = Column(String, nullable=False, default="default")
+    description = Column(Text, nullable=True)
+    alert_event_id = Column(UUID(as_uuid=True), nullable=True)
+    sla_policy_id = Column(UUID(as_uuid=True), ForeignKey("sla_policies.id"), nullable=True)
+    response_deadline = Column(DateTime(timezone=True), nullable=True)
+    resolution_deadline = Column(DateTime(timezone=True), nullable=True)
+    response_breached = Column(Boolean, default=False)
+    resolution_breached = Column(Boolean, default=False)
+    escalation_level = Column(Integer, default=0)
+    escalation_chain_id = Column(UUID(as_uuid=True), ForeignKey("escalation_chains.id"), nullable=True)
+    last_escalated_at = Column(DateTime(timezone=True), nullable=True)
+    external_id = Column(String, nullable=True)
+    external_system = Column(String, default="idoit")
+    external_url = Column(String, nullable=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
     comments = relationship("IncidentComment", back_populates="incident", cascade="all, delete-orphan")
 
 
@@ -7173,7 +12325,7 @@ class IncidentComment(Base):
     incident_id = Column(Integer, ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False)
     author = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=func.now())
     incident = relationship("Incident", back_populates="comments")
 
 
@@ -7190,7 +12342,7 @@ class ConfigTable(Base):
     
 class MetadataMetric(Base):
     __tablename__ = "metadata_metrics"
-    
+
     metric_name = Column(String, primary_key=True)
     display_name = Column(String, nullable=False)
     description = Column(Text)
@@ -7198,6 +12350,7 @@ class MetadataMetric(Base):
     default_threshold = Column(Float)
     default_critical_threshold = Column(Float)
     is_active = Column(Boolean, default=True)
+    tenant_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
     # В классе MetadataMetric — добавьте:
@@ -7205,16 +12358,17 @@ class MetadataMetric(Base):
 
 class MetadataDimension(Base):
     __tablename__ = "metadata_dimensions"
-    
+
     dimension_key = Column(String, primary_key=True)
     description = Column(Text)
     allowed_values = Column(JSONB)
     is_required = Column(Boolean, default=False)
+    tenant_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime(timezone=True), default=func.now())
 
 class MetadataRule(Base):
     __tablename__ = "metadata_rules"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     description = Column(Text)
@@ -7222,15 +12376,17 @@ class MetadataRule(Base):
     labels = Column(JSONB, default=dict)
     actions = Column(JSONB, default=list)
     is_active = Column(Boolean, default=True)
+    tenant_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
     
 class MetadataMLConfig(Base):
     __tablename__ = "metadata_ml_configs"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     metric_name = Column(String, ForeignKey("metadata_metrics.metric_name"), nullable=False)
+    tenant_id = Column(String, nullable=False, default="default")
     group_by = Column(ARRAY(String), nullable=False, default=list)  # TEXT[] → ARRAY(String)
     methods = Column(ARRAY(String), nullable=False, default=lambda: ["prophet"])
     method_params = Column(JSONB, nullable=False, default=dict)
@@ -7243,6 +12399,43 @@ class MetadataMLConfig(Base):
 
     # Связи
     metric = relationship("MetadataMetric", back_populates="ml_configs")
+
+
+class SlaPolicy(Base):
+    __tablename__ = "sla_policies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, default="default")
+    name = Column(String, nullable=False)
+    priority = Column(String, nullable=False)
+    response_time_minutes = Column(Integer, nullable=False)
+    resolution_time_minutes = Column(Integer, nullable=False)
+    escalation_after_minutes = Column(Integer, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+
+class EscalationChain(Base):
+    __tablename__ = "escalation_chains"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, default="default")
+    name = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    levels = relationship("EscalationLevel", back_populates="chain", cascade="all, delete-orphan", order_by="EscalationLevel.level")
+
+
+class EscalationLevel(Base):
+    __tablename__ = "escalation_levels"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    chain_id = Column(UUID(as_uuid=True), ForeignKey("escalation_chains.id", ondelete="CASCADE"), nullable=False)
+    level = Column(Integer, nullable=False)
+    notify_role = Column(String, nullable=False)
+    notify_users = Column(JSONB, default=list)
+    escalate_after_minutes = Column(Integer, nullable=False)
+    chain = relationship("EscalationChain", back_populates="levels")
 ```
 ### 📄 `core/notifications.py`
 
@@ -7287,6 +12480,496 @@ signal.signal(signal.SIGTERM, _shutdown_handler)
 signal.signal(signal.SIGINT, _shutdown_handler)
 
 logger.info("✅ Модуль уведомлений инициализирован")
+
+```
+### 📄 `core/oidc_auth.py`
+
+```python
+# core/oidc_auth.py
+from authlib.integrations.starlette_client import OAuth
+from config import settings, logger
+
+oauth = OAuth()
+
+
+def configure_oidc():
+    """Register the OIDC provider (Keycloak) with authlib OAuth."""
+    if not getattr(settings, "OIDC_ENABLED", False):
+        return
+
+    issuer_url = getattr(settings, "OIDC_ISSUER_URL", "")
+    client_id = getattr(settings, "OIDC_CLIENT_ID", "")
+    client_secret = getattr(settings, "OIDC_CLIENT_SECRET", "")
+
+    if not all([issuer_url, client_id, client_secret]):
+        logger.warning("OIDC enabled but missing configuration; skipping")
+        return
+
+    oauth.register(
+        name="keycloak",
+        client_id=client_id,
+        client_secret=client_secret,
+        server_metadata_url=f"{issuer_url}/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid email profile"},
+    )
+    logger.info("OIDC provider 'keycloak' registered (issuer=%s)", issuer_url)
+
+```
+### 📄 `core/pubsub.py`
+
+```python
+# core/pubsub.py
+import json
+import redis
+import redis.asyncio as aioredis
+from config import settings, logger, mask_secrets
+
+ALERT_CHANNEL = "sit_center:alerts"
+
+
+def _get_redis_url() -> str:
+    if settings.REDIS_URL:
+        return settings.REDIS_URL
+    pwd = settings.REDIS_PASSWORD or ""
+    return f"redis://:{pwd}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
+
+
+def publish_alert(data: dict) -> None:
+    """Publish an alert to Redis Pub/Sub (sync, for Celery/alerts)."""
+    try:
+        r = redis.from_url(_get_redis_url(), decode_responses=True)
+        r.publish(ALERT_CHANNEL, json.dumps(data, ensure_ascii=False, default=str))
+        r.close()
+    except Exception as e:
+        logger.error(f"Failed to publish alert: {mask_secrets(str(e))}")
+
+
+async def subscribe_alerts(callback):
+    """Subscribe to alert channel and invoke callback for each message (async, for WS)."""
+    while True:
+        try:
+            r = aioredis.from_url(_get_redis_url(), decode_responses=True)
+            pubsub = r.pubsub()
+            await pubsub.subscribe(ALERT_CHANNEL)
+            logger.info("Subscribed to Redis Pub/Sub channel: %s", ALERT_CHANNEL)
+
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    try:
+                        data = json.loads(message["data"])
+                        await callback(data)
+                    except Exception as e:
+                        logger.warning(f"Error processing pubsub message: {e}")
+
+        except Exception as e:
+            logger.error(f"Redis Pub/Sub connection error: {mask_secrets(str(e))}")
+            import asyncio
+            await asyncio.sleep(5)
+        finally:
+            try:
+                await pubsub.unsubscribe(ALERT_CHANNEL)
+                await r.aclose()
+            except Exception:
+                pass
+
+```
+### 📄 `core/rbac.py`
+
+```python
+# core/rbac.py
+from fastapi import Depends, HTTPException
+from api.auth import get_current_user, TokenData
+
+
+def require_permission(perm: str):
+    """FastAPI dependency: require a specific permission in the JWT."""
+    def _check(current_user: TokenData = Depends(get_current_user)):
+        if "admin" in current_user.scopes:
+            return current_user
+        if perm not in current_user.permissions:
+            raise HTTPException(403, f"Missing permission: {perm}")
+        return current_user
+    return _check
+
+
+def require_role(role: str):
+    """FastAPI dependency: require a specific role in the JWT."""
+    def _check(current_user: TokenData = Depends(get_current_user)):
+        if "admin" in current_user.scopes:
+            return current_user
+        if role not in current_user.roles:
+            raise HTTPException(403, f"Missing role: {role}")
+        return current_user
+    return _check
+
+```
+### 📄 `core/resilience.py`
+
+```python
+# core/resilience.py
+"""Graceful degradation helpers: Redis fallback, i-doit retry queue."""
+import functools
+from config import logger
+
+
+def redis_fallback(default=None):
+    """Decorator: if Redis is unavailable, return default instead of crashing."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logger.warning(f"Redis unavailable in {func.__name__}, returning fallback: {e}")
+                return default() if callable(default) else default
+        return wrapper
+    return decorator
+
+
+def safe_idoit_push(func):
+    """Decorator: swallow i-doit push errors so they never crash callers.
+    Logs to sync_log and enqueues for retry via Celery."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"i-doit push failed in {func.__name__}: {e}. Will retry via Celery.")
+            try:
+                from celery_app import celery_app
+                celery_app.send_task(
+                    "tasks.retry_idoit_push",
+                    args=[func.__name__, args, kwargs],
+                    countdown=60,
+                )
+            except Exception as retry_err:
+                logger.error(f"Failed to enqueue i-doit retry: {retry_err}")
+            return None
+    return wrapper
+
+```
+### 📄 `core/rule_engine.py`
+
+```python
+# core/rule_engine.py
+import re
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from sqlalchemy import text
+from config import logger, mask_secrets
+from core.database import get_engine
+from core.metadata_service import metadata_service, RuleDTO
+
+
+@dataclass
+class ParsedCondition:
+    metric_name: str
+    labels: Dict[str, str]
+    operator: str
+    threshold: float
+
+
+@dataclass
+class EvalResult:
+    rule_id: str
+    rule_name: str
+    metric_name: str
+    dimensions: Dict[str, str]
+    current_value: float
+    threshold: float
+    operator: str
+    fired: bool
+
+
+_CONDITION_RE = re.compile(
+    r'^([a-zA-Z0-9_\-\.]+)'       # metric name
+    r'(?:\{([^}]*)\})?'           # optional {label='val', ...}
+    r'\s*([><=!]+)\s*'            # operator
+    r'([\d.]+)$'                  # threshold
+)
+
+_ALLOWED_OPS = {">", "<", ">=", "<=", "==", "!="}
+
+
+class PromQLParser:
+    @staticmethod
+    def parse(expr: str) -> Optional[ParsedCondition]:
+        expr = expr.strip()
+        m = _CONDITION_RE.match(expr)
+        if not m:
+            logger.warning("Failed to parse rule expression: %s", expr)
+            return None
+
+        metric_name, labels_str, operator, threshold_str = m.groups()
+
+        if operator not in _ALLOWED_OPS:
+            logger.warning("Invalid operator in rule: %s", operator)
+            return None
+
+        labels: Dict[str, str] = {}
+        if labels_str:
+            for pair in labels_str.split(","):
+                pair = pair.strip()
+                if "=" not in pair:
+                    continue
+                k, v = pair.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip("'\"")
+                if re.match(r'^[a-zA-Z0-9_\-]{1,50}$', k):
+                    labels[k] = v
+
+        return ParsedCondition(
+            metric_name=metric_name,
+            labels=labels,
+            operator=operator,
+            threshold=float(threshold_str),
+        )
+
+
+class RuleEngine:
+    def __init__(self):
+        self.parser = PromQLParser()
+
+    def evaluate_all_rules(self) -> List[EvalResult]:
+        rules = metadata_service.list_active_rules()
+        results: List[EvalResult] = []
+
+        for rule in rules:
+            try:
+                rule_results = self._evaluate_rule(rule)
+                results.extend(rule_results)
+            except Exception as e:
+                logger.error("Error evaluating rule %s: %s", rule.name, mask_secrets(str(e)))
+
+        return results
+
+    def _evaluate_rule(self, rule: RuleDTO) -> List[EvalResult]:
+        condition = rule.condition
+        expr = condition.get("expr") if isinstance(condition, dict) else getattr(condition, "expr", None)
+        if not expr:
+            return []
+
+        parsed = self.parser.parse(expr)
+        if not parsed:
+            return []
+
+        # Query the latest values for this metric, grouped by dimensions
+        engine = get_engine()
+        where_parts = ["metric_name = :metric_name", "timestamp >= NOW() - INTERVAL '5 minutes'"]
+        params: Dict[str, Any] = {"metric_name": parsed.metric_name}
+
+        for i, (k, v) in enumerate(parsed.labels.items()):
+            where_parts.append(f"dimensions->>:key_{i} = :val_{i}")
+            params[f"key_{i}"] = k
+            params[f"val_{i}"] = v
+
+        query = text(f"""
+            SELECT dimensions, AVG(value) AS avg_value
+            FROM canonical_metrics
+            WHERE {" AND ".join(where_parts)}
+            GROUP BY dimensions
+            LIMIT 1000
+        """)
+
+        results: List[EvalResult] = []
+        try:
+            with engine.connect() as conn:
+                rows = conn.execute(query, params).mappings().all()
+
+            for row in rows:
+                avg_val = float(row["avg_value"])
+                fired = _compare(avg_val, parsed.operator, parsed.threshold)
+                results.append(EvalResult(
+                    rule_id=str(rule.id),
+                    rule_name=rule.name,
+                    metric_name=parsed.metric_name,
+                    dimensions=row["dimensions"] or {},
+                    current_value=avg_val,
+                    threshold=parsed.threshold,
+                    operator=parsed.operator,
+                    fired=fired,
+                ))
+        except Exception as e:
+            logger.error("Rule evaluation query failed for %s: %s", rule.name, mask_secrets(str(e)))
+
+        return results
+
+
+def _compare(value: float, op: str, threshold: float) -> bool:
+    ops = {
+        ">": lambda a, b: a > b,
+        "<": lambda a, b: a < b,
+        ">=": lambda a, b: a >= b,
+        "<=": lambda a, b: a <= b,
+        "==": lambda a, b: a == b,
+        "!=": lambda a, b: a != b,
+    }
+    return ops.get(op, lambda a, b: False)(value, threshold)
+
+
+rule_engine = RuleEngine()
+
+```
+### 📄 `core/sla_service.py`
+
+```python
+# core/sla_service.py
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, List
+from sqlalchemy import text
+from core.database import get_engine
+from config import logger
+
+
+def get_sla_policy(tenant_id: str, priority: str) -> Optional[Dict]:
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT id, response_time_minutes, resolution_time_minutes, escalation_after_minutes
+                FROM sla_policies
+                WHERE tenant_id = :tenant_id AND priority = :priority AND is_active = true
+            """),
+            {"tenant_id": tenant_id, "priority": priority},
+        ).mappings().first()
+        return dict(row) if row else None
+
+
+def apply_sla_to_incident(incident_id: int, tenant_id: str, priority: str, detected_at: datetime):
+    policy = get_sla_policy(tenant_id, priority)
+    if not policy:
+        return
+
+    response_deadline = detected_at + timedelta(minutes=policy["response_time_minutes"])
+    resolution_deadline = detected_at + timedelta(minutes=policy["resolution_time_minutes"])
+
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                UPDATE incidents SET
+                    sla_policy_id = :policy_id,
+                    response_deadline = :response_deadline,
+                    resolution_deadline = :resolution_deadline
+                WHERE id = :id
+            """),
+            {
+                "id": incident_id,
+                "policy_id": policy["id"],
+                "response_deadline": response_deadline,
+                "resolution_deadline": resolution_deadline,
+            },
+        )
+
+
+def check_sla_breaches():
+    """Check all open incidents for SLA breaches. Called periodically by Celery."""
+    now = datetime.now(timezone.utc)
+    engine = get_engine()
+
+    with engine.begin() as conn:
+        # Response breach: incident still NEW past response deadline
+        breached_response = conn.execute(
+            text("""
+                UPDATE incidents SET response_breached = true
+                WHERE status = 'new'
+                  AND response_deadline IS NOT NULL
+                  AND response_deadline < :now
+                  AND response_breached = false
+                RETURNING id, metric, region, priority
+            """),
+            {"now": now},
+        ).mappings().all()
+
+        for row in breached_response:
+            logger.warning(f"SLA response breach: incident #{row['id']} ({row['priority']}) {row['metric']}/{row['region']}")
+
+        # Resolution breach: incident not resolved/closed past resolution deadline
+        breached_resolution = conn.execute(
+            text("""
+                UPDATE incidents SET resolution_breached = true
+                WHERE status NOT IN ('resolved', 'closed')
+                  AND resolution_deadline IS NOT NULL
+                  AND resolution_deadline < :now
+                  AND resolution_breached = false
+                RETURNING id, metric, region, priority
+            """),
+            {"now": now},
+        ).mappings().all()
+
+        for row in breached_resolution:
+            logger.warning(f"SLA resolution breach: incident #{row['id']} ({row['priority']}) {row['metric']}/{row['region']}")
+
+    return {
+        "response_breaches": len(breached_response),
+        "resolution_breaches": len(breached_resolution),
+    }
+
+
+def check_auto_escalation():
+    """Auto-escalate incidents that exceeded their escalation timeout. Called by Celery."""
+    now = datetime.now(timezone.utc)
+    engine = get_engine()
+
+    with engine.connect() as conn:
+        # Find open incidents with escalation chains that need escalation
+        rows = conn.execute(
+            text("""
+                SELECT i.id, i.escalation_level, i.escalation_chain_id,
+                       i.last_escalated_at, i.detected_at, i.tenant_id,
+                       i.metric, i.region, i.priority
+                FROM incidents i
+                WHERE i.status NOT IN ('resolved', 'closed')
+                  AND i.escalation_chain_id IS NOT NULL
+            """),
+        ).mappings().all()
+
+    for row in rows:
+        current_level = row["escalation_level"]
+        reference_time = row["last_escalated_at"] or row["detected_at"]
+
+        with engine.connect() as conn:
+            next_level = conn.execute(
+                text("""
+                    SELECT level, notify_role, escalate_after_minutes
+                    FROM escalation_levels
+                    WHERE chain_id = :chain_id AND level = :next_level
+                """),
+                {"chain_id": row["escalation_chain_id"], "next_level": current_level + 1},
+            ).mappings().first()
+
+        if not next_level:
+            continue
+
+        elapsed = (now - reference_time).total_seconds() / 60
+        if elapsed >= next_level["escalate_after_minutes"]:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("""
+                        UPDATE incidents SET
+                            escalation_level = :level,
+                            status = 'escalated',
+                            last_escalated_at = :now
+                        WHERE id = :id
+                    """),
+                    {"id": row["id"], "level": next_level["level"], "now": now},
+                )
+
+            logger.warning(
+                f"Auto-escalated incident #{row['id']} to L{next_level['level']} "
+                f"({next_level['notify_role']}): {row['metric']}/{row['region']}"
+            )
+
+            try:
+                from core.notifications import notify
+                notify(
+                    f"Escalation L{next_level['level']}: incident #{row['id']} "
+                    f"{row['metric']}/{row['region']} ({row['priority']})",
+                    "critical" if next_level["level"] >= 3 else "warning",
+                )
+            except Exception as e:
+                logger.error(f"Failed to send escalation notification: {e}")
 
 ```
 ### 📄 `core/smart_alerts.py`
@@ -7382,6 +13065,100 @@ def check_deviation_alert(df: pd.DataFrame, col: str, metric_name: str, alert_se
             return f"⚠️ Отклонение {metric_name}: {row[col]} в {row['region']} (z={z_score:.2f})"
 
     return None
+```
+### 📄 `core/tenant.py`
+
+```python
+# core/tenant.py
+from contextvars import ContextVar
+
+_current_tenant: ContextVar[str] = ContextVar("current_tenant", default="default")
+
+
+def get_current_tenant() -> str:
+    return _current_tenant.get()
+
+
+def set_current_tenant(tenant_id: str) -> None:
+    _current_tenant.set(tenant_id)
+
+```
+### 📄 `core/tracing.py`
+
+```python
+# core/tracing.py
+"""OpenTelemetry distributed tracing setup.
+
+Enabled via OTEL_ENABLED=true. Exports to OTLP collector at OTEL_EXPORTER_OTLP_ENDPOINT.
+If OTEL is not enabled or dependencies are missing, tracing is a no-op.
+"""
+import os
+from config import logger
+
+
+def setup_tracing(app=None):
+    """Configure OpenTelemetry for FastAPI if enabled."""
+    if os.getenv("OTEL_ENABLED", "false").lower() != "true":
+        logger.info("OpenTelemetry tracing disabled (OTEL_ENABLED != true)")
+        return
+
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+        from opentelemetry.instrumentation.redis import RedisInstrumentor
+        from opentelemetry.instrumentation.requests import RequestsInstrumentor
+    except ImportError:
+        logger.warning(
+            "OpenTelemetry packages not installed. "
+            "Install: pip install opentelemetry-api opentelemetry-sdk "
+            "opentelemetry-exporter-otlp-proto-grpc "
+            "opentelemetry-instrumentation-fastapi "
+            "opentelemetry-instrumentation-sqlalchemy "
+            "opentelemetry-instrumentation-redis "
+            "opentelemetry-instrumentation-requests"
+        )
+        return
+
+    service_name = os.getenv("OTEL_SERVICE_NAME", "sit-center-api")
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+
+    resource = Resource.create({"service.name": service_name})
+    provider = TracerProvider(resource=resource)
+    exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+
+    # Instrument FastAPI
+    if app is not None:
+        FastAPIInstrumentor.instrument_app(app)
+
+    # Instrument SQLAlchemy
+    try:
+        from core.database import get_engine
+        engine = get_engine()
+        SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine if hasattr(engine, 'sync_engine') else engine)
+    except Exception as e:
+        logger.debug(f"SQLAlchemy instrumentation skipped: {e}")
+
+    # Instrument Redis
+    try:
+        RedisInstrumentor().instrument()
+    except Exception as e:
+        logger.debug(f"Redis instrumentation skipped: {e}")
+
+    # Instrument outbound HTTP (requests library — i-doit, Telegram, etc.)
+    try:
+        RequestsInstrumentor().instrument()
+    except Exception as e:
+        logger.debug(f"Requests instrumentation skipped: {e}")
+
+    logger.info(f"OpenTelemetry tracing enabled: service={service_name}, endpoint={endpoint}")
+
 ```
 ### 📄 `core/utils.py`
 

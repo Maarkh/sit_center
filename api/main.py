@@ -45,6 +45,10 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"OpenTelemetry setup failed: {e}")
 
+    # Start incident buffer processor (moved from module-level import)
+    from core.alerts import start_incident_buffer_processor
+    start_incident_buffer_processor()
+
     asyncio.create_task(alert_stream_task())
     yield
     logger.info("🛑 Остановка API-сервера...")

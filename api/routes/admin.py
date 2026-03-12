@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from core.database import get_engine
 from core.rbac import require_role
+from core.audit import log_audit
 from api.auth import TokenData
 from config import mask_secrets
 
@@ -80,7 +81,10 @@ def create_tenant(data: TenantCreate, current_user: TokenData = Depends(require_
                 text("INSERT INTO tenants (id, name) VALUES (:id, :name)"),
                 {"id": data.id, "name": data.name},
             )
+        log_audit(current_user.username, current_user.tenant_id, "create", "tenant", resource_id=data.id)
         return TenantRead(id=data.id, name=data.name, is_active=True)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(400, mask_secrets(str(e)))
 
@@ -122,7 +126,10 @@ def create_user(data: UserCreate, current_user: TokenData = Depends(require_role
                     "tenant_id": data.tenant_id,
                 },
             ).mappings().first()
+            log_audit(current_user.username, current_user.tenant_id, "create", "user", resource_id=data.username)
             return UserRead(**row)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(400, mask_secrets(str(e)))
 
@@ -159,7 +166,10 @@ def create_role(data: RoleCreate, current_user: TokenData = Depends(require_role
                     "description": data.description,
                 },
             ).mappings().first()
+            log_audit(current_user.username, current_user.tenant_id, "create", "role", resource_id=data.name)
             return RoleRead(**row)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(400, mask_secrets(str(e)))
 
@@ -175,7 +185,11 @@ def assign_role(data: UserRoleAssign, current_user: TokenData = Depends(require_
                 text("INSERT INTO user_roles (user_id, role_id) VALUES (:uid, :rid) ON CONFLICT DO NOTHING"),
                 {"uid": data.user_id, "rid": data.role_id},
             )
+        log_audit(current_user.username, current_user.tenant_id, "assign_role", "user_role",
+                  resource_id=str(data.user_id), changes={"role_id": str(data.role_id)})
         return {"status": "ok"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(400, mask_secrets(str(e)))
 
@@ -188,3 +202,5 @@ def unassign_role(data: UserRoleAssign, current_user: TokenData = Depends(requir
             text("DELETE FROM user_roles WHERE user_id = :uid AND role_id = :rid"),
             {"uid": data.user_id, "rid": data.role_id},
         )
+    log_audit(current_user.username, current_user.tenant_id, "unassign_role", "user_role",
+              resource_id=str(data.user_id), changes={"role_id": str(data.role_id)})

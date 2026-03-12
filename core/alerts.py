@@ -21,7 +21,7 @@ import json
 
 incident_queue = Queue(maxsize=100)
 buffer_event = threading.Event()
-HISTORY_KEY = "alert_history"
+_incident_processor_started = False
 _last_check_times = {}
 
 @dataclass
@@ -38,41 +38,40 @@ def get_engine_proxy():
 def generate_alert_hash(metric: str, region: str, value: float) -> str:
     return hashlib.md5(f"{metric}_{region}_{value}".encode()).hexdigest()
 
-def is_alert_suppressed(alert_hash: str) -> bool:
+def is_alert_suppressed(alert_hash: str, tenant_id: str = "default") -> bool:
     """Проверяет, подавлен ли алерт."""
     try:
-        return get_cache().get(f"alert_suppression:{alert_hash}") is not None
+        return get_cache().get(f"alert_suppression:{tenant_id}:{alert_hash}") is not None
     except Exception:
         return False
 
 
-def are_alerts_suppressed(alert_hashes: list) -> dict:
+def are_alerts_suppressed(alert_hashes: list, tenant_id: str = "default") -> dict:
     """Пакетная проверка подавления алертов."""
     if not alert_hashes:
         return {}
-    
+
     cache = get_cache()
-    keys = [f"alert_suppression:{h}" for h in alert_hashes]
-    
+    keys = [f"alert_suppression:{tenant_id}:{h}" for h in alert_hashes]
+
     try:
-        # Используем pipeline для одного запроса
         pipe = cache.pipeline()
         for key in keys:
             pipe.exists(key)
         results = pipe.execute()
-        
+
         return {h: bool(r) for h, r in zip(alert_hashes, results)}
     except Exception:
         return {h: False for h in alert_hashes}
 
-def suppress_alert(alert_hash: str, minutes: int):
+def suppress_alert(alert_hash: str, minutes: int, tenant_id: str = "default"):
     if alert_hash.startswith("escalation_"):
         return
-    get_cache().setex(f"alert_suppression:{alert_hash}", minutes * 60, "1")
+    get_cache().setex(f"alert_suppression:{tenant_id}:{alert_hash}", minutes * 60, "1")
 
-def track_escalation_data(metric: str, region: str, value: float):
+def track_escalation_data(metric: str, region: str, value: float, tenant_id: str = "default"):
     cache = get_cache()
-    key = f"escalation_tracker:{metric}:{region}"
+    key = f"escalation_tracker:{tenant_id}:{metric}:{region}"
     hist = cache.get(key)
     hist = json.loads(hist) if hist else []
     hist.append({"timestamp": time.time(), "value": value})
@@ -82,11 +81,11 @@ def track_escalation_data(metric: str, region: str, value: float):
 def is_steady_increase(vals: List[float]) -> bool:
     return len(vals) >= 3 and all(vals[i] > vals[i-1] for i in range(1, len(vals)))
 
-def check_escalation_alert(metric: str, region: str, current_value: float, is_suppressed: bool) -> Optional[Tuple[str, str]]:
+def check_escalation_alert(metric: str, region: str, current_value: float, is_suppressed: bool, tenant_id: str = "default") -> Optional[Tuple[str, str]]:
     if not is_suppressed:
         return None
     cache = get_cache()
-    key = f"escalation_tracker:{metric}:{region}"
+    key = f"escalation_tracker:{tenant_id}:{metric}:{region}"
     hist_raw = cache.get(key)
     if not hist_raw:
         return None
@@ -105,13 +104,14 @@ def check_escalation_alert(metric: str, region: str, current_value: float, is_su
         logger.warning(f"Ошибка эскалации: {e}")
     return None
 
-def create_incident_buffered(alert_message: str, metric: str, region: str, value: float, priority: str):
+def create_incident_buffered(alert_message: str, metric: str, region: str, value: float, priority: str, tenant_id: str = "default"):
     data = {
         "alert_message": alert_message,
         "metric": metric,
         "region": region,
         "value": str(value),
         "priority": priority,
+        "tenant_id": tenant_id,
         "detected_at": datetime.now(timezone.utc),
     }
     try:
@@ -187,29 +187,33 @@ def process_incident_buffer():
             time.sleep(5)
 
 def start_incident_buffer_processor():
+    global _incident_processor_started
+    if _incident_processor_started:
+        return
+    _incident_processor_started = True
     t = threading.Thread(target=process_incident_buffer, daemon=True, name="IncidentProcessor")
     t.start()
     logger.info("✅ Процессор инцидентов запущен")
 
-def get_alert_history() -> List[AlertLog]:
+def get_alert_history(tenant_id: str = "default") -> List[AlertLog]:
     try:
-        raw = get_cache().get(HISTORY_KEY)
+        raw = get_cache().get(f"alert_history:{tenant_id}")
         if raw:
             return [AlertLog(**item) for item in json.loads(raw)]
     except Exception as e:
         logger.warning(f"Ошибка чтения истории: {e}")
     return []
 
-def save_alert_history(history: List[AlertLog]):
+def save_alert_history(history: List[AlertLog], tenant_id: str = "default"):
     if len(history) > 100:
         history = history[-100:]
     try:
         data = [a.__dict__ for a in history]
-        get_cache().setex(HISTORY_KEY, 86400, json.dumps(data))
+        get_cache().setex(f"alert_history:{tenant_id}", 86400, json.dumps(data))
     except Exception as e:
         logger.error(f"Ошибка сохранения истории: {e}")
 
-def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_region: str, alert_settings: AlertSettings) -> Tuple[bool, str]:
+def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_region: str, alert_settings: AlertSettings, tenant_id: str = "default") -> Tuple[bool, str]:
     now = time.time()
     if col in _last_check_times and now - _last_check_times[col] < 30:
         return False, last_alert_region
@@ -234,14 +238,14 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         return False, last_alert_region
 
     alert_hash = generate_alert_hash(col, region, val)
-    is_suppressed = is_alert_suppressed(alert_hash)
+    is_suppressed = is_alert_suppressed(alert_hash, tenant_id=tenant_id)
 
-    escalation = check_escalation_alert(col, region, val, is_suppressed)
+    escalation = check_escalation_alert(col, region, val, is_suppressed, tenant_id=tenant_id)
     if escalation:
         msg, prio = escalation
         notify(msg, prio)
-        create_incident_buffered(msg, col, region, val, prio)
-        track_escalation_data(col, region, val)
+        create_incident_buffered(msg, col, region, val, prio, tenant_id=tenant_id)
+        track_escalation_data(col, region, val, tenant_id=tenant_id)
         return True, region
 
     if is_suppressed:
@@ -293,11 +297,11 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
     Session = sessionmaker(bind=engine)
     s = Session()
     try:
-        existing = s.query(AlertEvent).filter_by(alert_hash=alert_hash).first()
+        existing = s.query(AlertEvent).filter_by(alert_hash=alert_hash, tenant_id=tenant_id).first()
         if existing and existing.sent_at and (
             datetime.now(timezone.utc) - existing.sent_at < timedelta(minutes=alert_settings.get_suppression_minutes(selected))
         ):
-            suppress_alert(alert_hash, alert_settings.get_suppression_minutes(selected))
+            suppress_alert(alert_hash, alert_settings.get_suppression_minutes(selected), tenant_id=tenant_id)
             return False, last_alert_region
 
         new_alert = AlertEvent(
@@ -309,7 +313,8 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
             detected_at=datetime.now(timezone.utc),
             status="firing",
             sent=False,
-            fingerprint=alert_hash
+            fingerprint=alert_hash,
+            tenant_id=tenant_id,
         )
         s.add(new_alert)
         s.flush()
@@ -320,7 +325,7 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         new_alert.sent_at = datetime.now(timezone.utc)
 
         # Инцидент
-        create_incident_buffered(msg, selected, region, val, prio)
+        create_incident_buffered(msg, selected, region, val, prio, tenant_id=tenant_id)
         new_alert.incident_created = True
         new_alert.incident_created_at = datetime.now(timezone.utc)
 
@@ -351,9 +356,9 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
             logger.warning(f"Failed to publish alert to Kafka: {e}")
 
         # История
-        history = get_alert_history()
+        history = get_alert_history(tenant_id=tenant_id)
         history.append(AlertLog(time.time(), selected, region, val, prio))
-        save_alert_history(history)
+        save_alert_history(history, tenant_id=tenant_id)
 
         logger.info(f"✅ Алерт создан: {new_alert.id}")
         return True, region
@@ -367,6 +372,3 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         return False, last_alert_region
     finally:
         s.close()
-
-if __name__ != "__main__":
-    start_incident_buffer_processor()
