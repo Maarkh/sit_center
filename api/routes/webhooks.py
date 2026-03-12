@@ -153,3 +153,60 @@ async def idoit_webhook(
         "telegram_sent": True,
         "idoit": result
     }
+
+
+# === i-doit inbound sync: status/assignment changes pushed back to us ===
+
+class IdoitSyncPayload(BaseModel):
+    """Payload sent by i-doit when an incident is updated."""
+    object_id: str = Field(..., description="i-doit object ID")
+    status: Optional[str] = Field(None, description="i-doit status code")
+    assigned: Optional[str] = Field(None, description="Assigned user")
+    comment: Optional[str] = Field(None, description="Logbook comment")
+
+
+@router.post("/idoit/sync", status_code=status.HTTP_200_OK)
+@limiter.limit("100/minute")
+async def idoit_sync_webhook(request: Request, payload: IdoitSyncPayload):
+    """
+    Inbound webhook from i-doit.
+    Receives status/assignment updates and syncs them back to local incidents.
+    Configure i-doit to POST here on incident state changes.
+    """
+    if not verify_webhook_key(request):
+        raise HTTPException(status_code=403, detail="Invalid API key")
+
+    from core.database import get_engine
+    from sqlalchemy import text as sa_text
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            sa_text("SELECT id, status FROM incidents WHERE external_id = :eid"),
+            {"eid": payload.object_id},
+        ).mappings().first()
+
+    if not row:
+        logger.warning(f"i-doit sync: no local incident for object_id={payload.object_id}")
+        raise HTTPException(404, "Incident not found for this external_id")
+
+    incident_id = row["id"]
+    result = {"incident_id": incident_id, "synced": []}
+
+    if payload.status:
+        from core.idoit_service import pull_status_update
+        pull_status_update(incident_id, payload.status, payload.assigned)
+        result["synced"].append("status")
+
+    if payload.comment:
+        with engine.begin() as conn:
+            conn.execute(
+                sa_text("""
+                    INSERT INTO incident_comments (incident_id, author, content)
+                    VALUES (:iid, :author, :content)
+                """),
+                {"iid": incident_id, "author": f"i-doit:{payload.assigned or 'system'}", "content": payload.comment},
+            )
+        result["synced"].append("comment")
+
+    return {"success": True, **result}

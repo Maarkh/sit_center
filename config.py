@@ -148,6 +148,11 @@ class Settings(BaseSettings):
     OIDC_CLIENT_SECRET: str = Field("", env="OIDC_CLIENT_SECRET") # type: ignore
     OIDC_BASE_URL: str = Field("http://localhost:8000", env="OIDC_BASE_URL") # type: ignore
 
+    # --- CORS ---
+    CORS_ORIGINS: str = Field(
+        "http://localhost:8050,http://localhost:3000,http://localhost:8000",
+        env="CORS_ORIGINS",
+    ) # type: ignore
 
     class Config:
         env_file = ".env"

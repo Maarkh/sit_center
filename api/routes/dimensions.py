@@ -4,40 +4,46 @@ from typing import List
 from api.schemas import DimensionCreate, DimensionRead
 from core.metadata_service import MetadataService
 from api.dependencies import get_metadata_service
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
+from core.rbac import require_permission
+from core.audit import log_audit
 from config import mask_secrets
 
 router = APIRouter(prefix="/dimensions", tags=["Dimensions"])
 
 
-@router.get("/me")
-def protected_route(current_user: TokenData = Depends(get_current_user)):
-    return {"user": current_user.username}
-
 @router.post("/", response_model=DimensionRead, status_code=status.HTTP_201_CREATED)
 def create_dimension(
     data: DimensionCreate,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
     try:
-        dim_key = service.create_dimension(data) # type: ignore
+        dim_key = service.create_dimension(data)  # type: ignore
         dim = service.get_dimension(dim_key)
         if not dim:
             raise HTTPException(status_code=500, detail="Dimension created but not found")
+        log_audit(current_user.username, current_user.tenant_id, "create", "dimension", resource_id=dim_key)
         return dim
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.get("/", response_model=List[DimensionRead])
-def list_dimensions(service: MetadataService = Depends(get_metadata_service)):
+def list_dimensions(
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:metrics")),
+):
     return service.list_dimensions()
 
 
 @router.get("/{dimension_key}", response_model=DimensionRead)
 def get_dimension(
     dimension_key: str,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
     dim = service.get_dimension(dimension_key)
     if not dim:

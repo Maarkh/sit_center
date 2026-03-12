@@ -120,6 +120,27 @@ def handle_task_failure(sender=None, task_id=None, exception=None, traceback=Non
         logger.exception("💥 Ошибка в handle_task_failure")
         
 @celery_app.task
+def check_sla_breaches_task():
+    try:
+        from core.sla_service import check_sla_breaches
+        result = check_sla_breaches()
+        if result["response_breaches"] or result["resolution_breaches"]:
+            logger.warning(f"SLA breaches: {result}")
+        return result
+    except Exception as e:
+        logger.exception("SLA breach check failed")
+
+
+@celery_app.task
+def check_auto_escalation_task():
+    try:
+        from core.sla_service import check_auto_escalation
+        check_auto_escalation()
+    except Exception as e:
+        logger.exception("Auto-escalation check failed")
+
+
+@celery_app.task
 def healthcheck():
     return {"status": "ok"}
 

@@ -4,40 +4,48 @@ from typing import List
 from api.schemas import MetricCreate, MetricRead, MetricUpdate
 from core.metadata_service import MetadataService
 from api.dependencies import get_metadata_service
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
+from core.rbac import require_permission
+from core.audit import log_audit
 from sqlalchemy import text
 from config import mask_secrets
 
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
 
+
 @router.post("/", response_model=MetricRead, status_code=status.HTTP_201_CREATED)
 def create_metric(
     data: MetricCreate,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
     try:
-        metric_name = service.create_metric(data) # type: ignore
+        metric_name = service.create_metric(data)  # type: ignore
         metric = service.get_metric(metric_name)
         if not metric:
             raise HTTPException(status_code=500, detail="Metric created but not found")
+        log_audit(current_user.username, current_user.tenant_id, "create", "metric", resource_id=metric_name)
         return metric
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.get("/", response_model=List[MetricRead])
 def list_metrics(
     active_only: bool = True,
     service: MetadataService = Depends(get_metadata_service),
-    current_user: TokenData = Depends(get_current_user) 
+    current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
-    return service.list_metrics(active_only=active_only)
+    return service.list_metrics(active_only=active_only, tenant_id=current_user.tenant_id)
 
 
 @router.get("/{metric_name}", response_model=MetricRead)
 def get_metric(
     metric_name: str,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:metrics")),
 ):
     metric = service.get_metric(metric_name)
     if not metric:
@@ -49,39 +57,44 @@ def get_metric(
 def update_metric(
     metric_name: str,
     data: MetricUpdate,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
-    # Валидация: нельзя изменить имя
     if data.metric_name != metric_name:
         raise HTTPException(status_code=400, detail="Cannot change metric_name on update")
-    
+
     try:
-        # Просто вызываем create — он делает ON CONFLICT DO UPDATE
-        service.create_metric(data) # type: ignore
+        service.create_metric(data)  # type: ignore
         updated = service.get_metric(metric_name)
         if not updated:
             raise HTTPException(status_code=500, detail="Metric updated but not found")
+        log_audit(current_user.username, current_user.tenant_id, "update", "metric", resource_id=metric_name)
         return updated
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.delete("/{metric_name}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_metric(
     metric_name: str,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:metrics")),
 ):
-    # В PostgreSQL — удаляем вручную (metadata_metrics не имеет каскада)
     engine = service._get_engine()
     try:
         with engine.begin() as conn:
             result = conn.execute(
-                text("DELETE FROM metadata_metrics WHERE metric_name = :name"),
-                {"name": metric_name}
+                text("DELETE FROM metadata_metrics WHERE metric_name = :name AND tenant_id = :tid"),
+                {"name": metric_name, "tid": current_user.tenant_id},
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Metric not found")
         service._invalidate_cache("metrics")
+        log_audit(current_user.username, current_user.tenant_id, "delete", "metric", resource_id=metric_name)
         return
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))

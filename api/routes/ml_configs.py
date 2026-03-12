@@ -5,35 +5,39 @@ from uuid import UUID
 from api.schemas import MLConfigCreate, MLConfigRead
 from core.metadata_service import MetadataService
 from api.dependencies import get_metadata_service
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
+from core.rbac import require_permission
+from core.audit import log_audit
 from sqlalchemy import text
 from config import mask_secrets
 
 router = APIRouter(prefix="/ml/configs", tags=["ML Configs"])
 
-@router.get("/")
-def protected_route(current_user: TokenData = Depends(get_current_user)):
-    return {"user": current_user.username}
 
 @router.post("/", response_model=MLConfigRead, status_code=status.HTTP_201_CREATED)
 def create_ml_config(
+    data: MLConfigCreate,
     service: MetadataService = Depends(get_metadata_service),
-    data: MLConfigCreate = Depends()
+    current_user: TokenData = Depends(require_permission("write:ml")),
 ):
     try:
-        config_id = service.create_ml_config(data) # type: ignore
+        config_id = service.create_ml_config(data)  # type: ignore
         config = next((c for c in service.list_active_ml_configs() if c.id == config_id), None)
         if not config:
             raise HTTPException(status_code=500, detail="Config created but not found")
+        log_audit(current_user.username, current_user.tenant_id, "create", "ml_config", resource_id=str(config_id))
         return config
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.get("/", response_model=List[MLConfigRead])
 def list_ml_configs(
     active_only: bool = True,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:ml")),
 ):
     return service.list_active_ml_configs() if active_only else service.list_all_ml_configs()
 
@@ -41,7 +45,8 @@ def list_ml_configs(
 @router.get("/{config_id}", response_model=MLConfigRead)
 def get_ml_config(
     config_id: UUID,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("read:ml")),
 ):
     configs = service.list_active_ml_configs()
     config = next((c for c in configs if c.id == config_id), None)
@@ -53,35 +58,42 @@ def get_ml_config(
 @router.put("/{config_id}", response_model=MLConfigRead)
 def update_ml_config(
     config_id: UUID,
+    data: MLConfigCreate,
     service: MetadataService = Depends(get_metadata_service),
-    data: MLConfigCreate = Depends()
+    current_user: TokenData = Depends(require_permission("write:ml")),
 ):
     try:
-        # Используем create_ml_config — он же делает UPSERT
-        service.create_ml_config(data) # type: ignore
+        service.create_ml_config(data)  # type: ignore
         updated = next((c for c in service.list_active_ml_configs() if c.id == config_id), None)
         if not updated:
             raise HTTPException(status_code=500, detail="Config updated but not found")
+        log_audit(current_user.username, current_user.tenant_id, "update", "ml_config", resource_id=str(config_id))
         return updated
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
 @router.delete("/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_ml_config(
     config_id: UUID,
-    service: MetadataService = Depends(get_metadata_service)
+    service: MetadataService = Depends(get_metadata_service),
+    current_user: TokenData = Depends(require_permission("write:ml")),
 ):
     engine = service._get_engine()
     try:
         with engine.begin() as conn:
             result = conn.execute(
                 text("UPDATE metadata_ml_configs SET is_active = false WHERE id = :id"),
-                {"id": config_id}
+                {"id": config_id},
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="ML config not found")
         service._invalidate_cache("ml_configs")
+        log_audit(current_user.username, current_user.tenant_id, "delete", "ml_config", resource_id=str(config_id))
         return
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(mask_secrets(str(e))))
+        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))

@@ -130,6 +130,23 @@ def _create_incident_directly(data: Dict):
         incident = Incident(**data)
         s.add(incident)
         s.commit()
+        # Apply SLA policy
+        try:
+            from core.sla_service import apply_sla_to_incident
+            apply_sla_to_incident(
+                incident.id,
+                data.get("tenant_id", "default"),
+                data.get("priority", "medium"),
+                data.get("detected_at", datetime.now(timezone.utc)),
+            )
+        except Exception as e:
+            logger.warning(f"Failed to apply SLA to auto-created incident: {e}")
+        # Push to i-doit
+        try:
+            from core.idoit_service import push_incident_create
+            push_incident_create(incident.id)
+        except Exception as e:
+            logger.warning(f"Failed to push auto-created incident to i-doit: {e}")
     except Exception as e:
         s.rollback()
         logger.error(f"❌ Прямое создание инцидента упало: {e}")

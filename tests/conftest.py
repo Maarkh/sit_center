@@ -35,11 +35,39 @@ def api_client():
 
 @pytest.fixture()
 def auth_headers():
-    """Return valid Authorization headers for tests."""
+    """Return valid Authorization headers for admin user."""
     from api.auth import create_access_token
     from datetime import timedelta
     token = create_access_token(
-        data={"sub": "testadmin", "scopes": ["admin"]},
+        data={
+            "sub": "testadmin",
+            "scopes": ["admin"],
+            "tenant_id": "default",
+            "roles": ["admin"],
+            "permissions": [
+                "read:metrics", "write:metrics", "read:rules", "write:rules",
+                "read:alerts", "write:alerts", "read:ml", "write:ml",
+                "admin:tenants", "admin:users", "read:audit",
+            ],
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def viewer_auth_headers():
+    """Return valid Authorization headers for viewer user (read-only)."""
+    from api.auth import create_access_token
+    from datetime import timedelta
+    token = create_access_token(
+        data={
+            "sub": "testviewer",
+            "scopes": [],
+            "tenant_id": "default",
+            "roles": ["viewer"],
+            "permissions": ["read:metrics", "read:rules", "read:alerts"],
+        },
         expires_delta=timedelta(minutes=30),
     )
     return {"Authorization": f"Bearer {token}"}

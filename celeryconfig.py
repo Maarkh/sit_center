@@ -18,4 +18,12 @@ beat_schedule = {
         'task': 'core.ml_tasks.evaluate_rules_task',
         'schedule': crontab(minute='*/1')
     },
+    'check-sla-breaches-5min': {
+        'task': 'tasks.check_sla_breaches_task',
+        'schedule': crontab(minute='*/5')
+    },
+    'check-auto-escalation-5min': {
+        'task': 'tasks.check_auto_escalation_task',
+        'schedule': crontab(minute='*/5')
+    },
 }

@@ -138,9 +138,122 @@ class AlertRead(BaseModel):
     value: float
     event_time: datetime
     detected_at: datetime
-    status: Literal["firing", "resolved"]
+    status: Literal["firing", "acknowledged", "resolved"]
     sent: bool
     fingerprint: str
+    acknowledged_by: Optional[str] = None
+    acknowledged_at: Optional[datetime] = None
+    resolved_by: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+# --- Incidents ---
+class IncidentCreate(BaseModel):
+    alert_message: str = Field(..., min_length=1, max_length=1000)
+    metric: str = Field(..., min_length=1)
+    region: str = Field(..., min_length=1)
+    value: Optional[str] = None
+    priority: Literal["critical", "high", "medium", "low"] = "medium"
+    description: Optional[str] = None
+    assigned_to: Optional[str] = None
+    alert_event_id: Optional[UUID] = None
+
+
+class IncidentStatusUpdate(BaseModel):
+    status: Literal["new", "in_progress", "escalated", "resolved", "closed"]
+    comment: Optional[str] = None
+
+
+class IncidentAssign(BaseModel):
+    assigned_to: str = Field(..., min_length=1, max_length=100)
+    comment: Optional[str] = None
+
+
+class IncidentCommentCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000)
+
+
+class IncidentCommentRead(BaseModel):
+    id: int
+    incident_id: int
+    author: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class IncidentRead(BaseModel):
+    id: int
+    alert_message: str
+    metric: str
+    region: str
+    value: Optional[str] = None
+    priority: str
+    status: str
+    detected_at: datetime
+    assigned_to: Optional[str] = None
+    started_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    closed_at: Optional[datetime] = None
+    description: Optional[str] = None
+    alert_event_id: Optional[UUID] = None
+    response_deadline: Optional[datetime] = None
+    resolution_deadline: Optional[datetime] = None
+    response_breached: bool = False
+    resolution_breached: bool = False
+    escalation_level: int = 0
+    last_escalated_at: Optional[datetime] = None
+    external_id: Optional[str] = None
+    external_system: Optional[str] = None
+    external_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class IncidentListResponse(BaseModel):
+    items: List[IncidentRead]
+    total: int
+
+
+# --- SLA ---
+class SlaPolicyCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    priority: Literal["critical", "high", "medium", "low"]
+    response_time_minutes: int = Field(..., gt=0)
+    resolution_time_minutes: int = Field(..., gt=0)
+    escalation_after_minutes: int = Field(..., gt=0)
+
+
+class SlaPolicyRead(BaseModel):
+    id: UUID
+    tenant_id: str
+    name: str
+    priority: str
+    response_time_minutes: int
+    resolution_time_minutes: int
+    escalation_after_minutes: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# --- Forecasts ---
+class ForecastPoint(BaseModel):
+    timestamp: datetime
+    value: float
+    lower: Optional[float] = None
+    upper: Optional[float] = None
+
+
+class ForecastResponse(BaseModel):
+    metric_name: str
+    dimensions: Dict[str, str]
+    horizon_hours: int
+    points: List[ForecastPoint]

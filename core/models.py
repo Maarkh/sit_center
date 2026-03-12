@@ -131,7 +131,7 @@ class AlertEvent(Base):
     value = Column(Float, nullable=False)
     event_time = Column(DateTime(timezone=True), nullable=False)
     detected_at = Column(DateTime(timezone=True), default=func.now())
-    status = Column(String, default="firing")  # firing, resolved
+    status = Column(String, default="firing")  # firing, acknowledged, resolved
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     sent = Column(Boolean, default=False)
     sent_at = Column(DateTime(timezone=True), nullable=True)
@@ -145,6 +145,9 @@ class AlertEvent(Base):
 
     incident_created = Column(Boolean, default=False)
     incident_created_at = Column(DateTime(timezone=True), nullable=True)
+    acknowledged_by = Column(String, nullable=True)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(String, nullable=True)
 
     __table_args__ = (
         Index("ix_alerts_firing", "status", postgresql_where=(status == "firing")),
@@ -175,6 +178,20 @@ class Incident(Base):
     resolved_at = Column(DateTime, nullable=True)
     closed_at = Column(DateTime, nullable=True)
     tenant_id = Column(String, nullable=False, default="default")
+    description = Column(Text, nullable=True)
+    alert_event_id = Column(UUID(as_uuid=True), nullable=True)
+    sla_policy_id = Column(UUID(as_uuid=True), ForeignKey("sla_policies.id"), nullable=True)
+    response_deadline = Column(DateTime(timezone=True), nullable=True)
+    resolution_deadline = Column(DateTime(timezone=True), nullable=True)
+    response_breached = Column(Boolean, default=False)
+    resolution_breached = Column(Boolean, default=False)
+    escalation_level = Column(Integer, default=0)
+    escalation_chain_id = Column(UUID(as_uuid=True), ForeignKey("escalation_chains.id"), nullable=True)
+    last_escalated_at = Column(DateTime(timezone=True), nullable=True)
+    external_id = Column(String, nullable=True)
+    external_system = Column(String, default="idoit")
+    external_url = Column(String, nullable=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
     comments = relationship("IncidentComment", back_populates="incident", cascade="all, delete-orphan")
 
 
@@ -259,3 +276,40 @@ class MetadataMLConfig(Base):
 
     # Связи
     metric = relationship("MetadataMetric", back_populates="ml_configs")
+
+
+class SlaPolicy(Base):
+    __tablename__ = "sla_policies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, default="default")
+    name = Column(String, nullable=False)
+    priority = Column(String, nullable=False)
+    response_time_minutes = Column(Integer, nullable=False)
+    resolution_time_minutes = Column(Integer, nullable=False)
+    escalation_after_minutes = Column(Integer, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+
+class EscalationChain(Base):
+    __tablename__ = "escalation_chains"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=False, default="default")
+    name = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    levels = relationship("EscalationLevel", back_populates="chain", cascade="all, delete-orphan", order_by="EscalationLevel.level")
+
+
+class EscalationLevel(Base):
+    __tablename__ = "escalation_levels"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    chain_id = Column(UUID(as_uuid=True), ForeignKey("escalation_chains.id", ondelete="CASCADE"), nullable=False)
+    level = Column(Integer, nullable=False)
+    notify_role = Column(String, nullable=False)
+    notify_users = Column(JSONB, default=list)
+    escalate_after_minutes = Column(Integer, nullable=False)
+    chain = relationship("EscalationChain", back_populates="levels")

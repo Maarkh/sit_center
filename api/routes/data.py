@@ -10,8 +10,6 @@ from sqlalchemy import text
 from api.auth import get_current_user, TokenData
 from api.limiter import limiter
 from config import mask_secrets, logger
-from sqlalchemy import text
-from sqlalchemy.sql import quoted_name
 
 router = APIRouter(prefix="/data", tags=["Data"])
 ALLOWED_DIMENSIONS = {"service", "region", "dc", "env", "team"}
@@ -59,7 +57,7 @@ def protected_route(current_user: TokenData = Depends(get_current_user)):
 
 
 @router.get("/prometheus/api/v1/label/__name__/values", response_model=List[str])
-def prometheus_label_values1():
+def prometheus_label_values1(current_user: TokenData = Depends(get_current_user)):
     engine = get_engine()
     try:
         with engine.connect() as conn:
@@ -73,7 +71,7 @@ def prometheus_label_values1():
 
 
 @router.get("/prometheus/api/v1/label/{label_name}/values", response_model=List[str])
-def prometheus_label_values(label_name: str):
+def prometheus_label_values(label_name: str, current_user: TokenData = Depends(get_current_user)):
     if label_name == "__name__":
         return prometheus_label_values1()
 
@@ -114,7 +112,8 @@ def prometheus_label_values(label_name: str):
 def prometheus_series(
     match: List[str] = Query(default=[], alias="match[]"),
     start: float = Query(None),
-    end: float = Query(None)
+    end: float = Query(None),
+    current_user: TokenData = Depends(get_current_user),
 ):
     if not match:
         raise HTTPException(status_code=400, detail="match[] is required")
