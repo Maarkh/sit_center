@@ -119,6 +119,7 @@
 │   │   │   ├── 95/
 │   │   │   ├── 50/
 │   │   │   ├── 1d/
+│   │   │   ├── 7c/
 │   │   │   ├── 33/
 │   │   │   ├── 7a/
 │   │   │   ├── 5f/
@@ -128,7 +129,9 @@
 │   │   │   ├── 40/
 │   │   │   ├── c7/
 │   │   │   ├── c6/
+│   │   │   ├── 00/
 │   │   │   ├── e6/
+│   │   │   ├── b3/
 │   │   │   ├── e0/
 │   │   │   ├── b7/
 │   │   │   ├── be/
@@ -136,6 +139,7 @@
 │   │   │   ├── 4e/
 │   │   │   ├── ba/
 │   │   │   ├── f0/
+│   │   │   ├── 35/
 │   │   │   ├── 83/
 │   │   │   ├── c3/
 │   │   │   ├── 7b/
@@ -158,8 +162,10 @@
 │   │   │   ├── d0/
 │   │   │   ├── b8/
 │   │   │   ├── 0a/
+│   │   │   ├── 8c/
 │   │   │   ├── 98/
 │   │   │   ├── a0/
+│   │   │   ├── ca/
 │   │   │   ├── 9a/
 │   │   │   ├── 55/
 │   │   │   ├── 11/
@@ -174,6 +180,7 @@
 │   │   │   ├── 67/
 │   │   │   ├── 17/
 │   │   │   ├── pack/
+│   │   │   ├── ab/
 │   │   │   ├── b1/
 │   │   │   ├── 5b/
 │   │   │   ├── d7/
@@ -381,7 +388,7 @@ class Settings(BaseSettings):
     # --- Redis ---
     REDIS_HOST: str = Field(..., env="REDIS_HOST") # type: ignore
     REDIS_PORT: int = Field(..., env="REDIS_PORT") # type: ignore
-    REDIS_DB: int = Field(..., env="REDIS_DB") # type: ignore
+    REDIS_DB: int = Field(0, env="REDIS_DB") # type: ignore
     REDIS_PASSWORD: Optional[str] = Field(None, env="REDIS_PASSWORD") # type: ignore
     REDIS_URL: Optional[str] = Field(None, env="REDIS_URL") # type: ignore
 
@@ -433,6 +440,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Игнорируем неизвестные поля
 
 
 settings = Settings() # type: ignore
@@ -1968,9 +1976,8 @@ h5py
 kafka-python
 fastapi
 uvicorn[standard]
-jose
+python-jose[cryptography]
 redis
-jwt
 prometheus_client
 slowapi
 psutil
@@ -1978,6 +1985,7 @@ fastapi-jwt-auth
 pytest-cov
 torch
 passlib
+python-multipart
 ```
 ### 📄 `tasks.py`
 
@@ -2402,6 +2410,7 @@ COPY requirements.txt .
 # Устанавливаем в /root/.local для builder
 RUN pip install --user --no-cache-dir -r requirements.txt
 
+
 # Stage 2: production-образ
 FROM python:3.11-slim
 
@@ -2412,6 +2421,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos '' appuser
+
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
 
 # ИСПРАВЛЕНО: копируем из /root/.local в /home/appuser/.local
 COPY --from=builder /root/.local /home/appuser/.local

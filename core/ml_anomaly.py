@@ -31,9 +31,12 @@ except ImportError:
     logger.warning("ML libraries missing — anomaly detection disabled")
 
 from contextlib import contextmanager
+import re
 import sys
 import os
 import torch
+
+SAFE_DIMENSION_KEY_RE = re.compile(r"^[a-zA-Z0-9_]{1,50}$")
 from pathlib import Path
 
 ML_MODEL_DIR = Path("/app/models")
@@ -648,27 +651,36 @@ def retrain_all_models():
 
         for cfg in ml_configs:
             metric_name = cfg.metric_name
-            group_by_keys = cfg.group_by or ["region"]  # по умолчанию — регион
+            group_by_keys = cfg.group_by or ["region"]
+
+            # Валидация dimension keys для защиты от SQL injection
+            for key in group_by_keys:
+                if not SAFE_DIMENSION_KEY_RE.match(key):
+                    logger.error(f"Invalid dimension key: {key}, skipping config {cfg.id}")
+                    continue
 
             logger.info(f"Переобучение: {metric_name}, group_by={group_by_keys}")
 
-            # Формируем условие для dimensions
-            dimensions_filter = " AND ".join(
+            # Безопасное построение запроса: ключи валидированы regex выше
+            dim_select = ", ".join(
+                f"dimensions->>'{key}' as \"{key}\"" for key in group_by_keys
+            )
+            dim_filter = " AND ".join(
                 f"dimensions->>'{key}' IS NOT NULL" for key in group_by_keys
             )
 
-            query = f"""
-            SELECT 
+            query = text(f"""
+            SELECT
                 timestamp,
                 value,
-                {", ".join(f"dimensions->>'{key}' as {key}" for key in group_by_keys)}
+                {dim_select}
             FROM canonical_metrics
             WHERE metric_name = :metric_name
               AND timestamp >= :cutoff
-              {f"AND {dimensions_filter}" if dimensions_filter else ""}
+              AND {dim_filter}
             ORDER BY timestamp
             LIMIT 10000
-            """
+            """)
 
             df = pd.read_sql(
                 query,

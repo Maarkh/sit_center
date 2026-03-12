@@ -27,7 +27,10 @@ ALERTS_SENT = Counter("alerts_sent_total", "Total alerts sent", ["priority"])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
+    from api.routes.websocket import alert_stream_task
     logger.info("🚀 Запуск API-сервера...")
+    asyncio.create_task(alert_stream_task())
     yield
     logger.info("🛑 Остановка API-сервера...")
 
@@ -50,7 +53,11 @@ app.add_exception_handler(SQLADatabaseError, sqlalchemy_error_handler) # type: i
 # CORS (настрой под свой фронтенд)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ← замени на ["http://localhost:8050"] в продакшене
+    allow_origins=[
+        "http://localhost:8050",
+        "http://localhost:3000",
+        "http://localhost:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,13 +77,6 @@ app.include_router(webhooks.router)
 # WebSocket
 from api.routes.websocket import router as ws_router
 app.include_router(ws_router)
-
-# Запуск фоновой задачи WS
-@app.on_event("startup")
-async def startup_event():
-    import asyncio
-    from api.routes.websocket import alert_stream_task
-    asyncio.create_task(alert_stream_task())
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

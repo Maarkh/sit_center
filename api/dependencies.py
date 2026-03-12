@@ -1,21 +1,17 @@
 # api/dependencies.py
 from core.metadata_service import metadata_service
-from sqlalchemy import create_engine
-from config import get_database_url
+from core.database import get_engine
 from api.auth import get_current_user, TokenData
 from fastapi import Depends, HTTPException
 
-# Метаданные — синглтон
+
 def get_metadata_service():
     return metadata_service
 
-# БД (если нужно напрямую)
-_engine = None
+
 def get_db_engine():
-    global _engine
-    if _engine is None:
-        _engine = create_engine(get_database_url())
-    return _engine
+    return get_engine()
+
 
 def require_scope(required_scope: str):
     def _check(current_user: TokenData = Depends(get_current_user)):

@@ -117,7 +117,10 @@ async def grafana_webhook(
     request: Request,
     payload: GrafanaAlert
 ):
-    # Rate-limiting через глобальный limiter (уже настроен в main.py)
+    if not verify_webhook_key(request):
+        logger.warning(f"Invalid X-API-KEY from {request.client.host if request.client else 'unknown'}")
+        raise HTTPException(status_code=403, detail="Invalid API key")
+
     priority = "critical" if payload.status == "firing" else "info"
     message = f"🚨 {payload.title}\n{payload.message}"
     notify(message, priority)

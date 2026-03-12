@@ -25,9 +25,7 @@ h5py
 kafka-python
 fastapi
 uvicorn[standard]
-jose
-redis
-jwt
+python-jose[cryptography]
 prometheus_client
 slowapi
 psutil
@@ -35,3 +33,5 @@ fastapi-jwt-auth
 pytest-cov
 torch
 passlib
+bcrypt
+python-multipart

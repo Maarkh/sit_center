@@ -131,7 +131,7 @@ def handle_task_failure(sender=None, task_id=None, exception=None, traceback=Non
                 "message": message,
                 "priority": priority,
                 "error": str(exception),
-                "timestamp": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             try:
                 get_redis().xadd("dlq:notifications", payload) # type: ignore
@@ -155,7 +155,7 @@ def create_monthly_partition(self=None):
         """
         PARTITION_NAME_RE = re.compile(r"^canonical_metrics_\d{4}_\d{2}$")
         engine = get_engine()
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         next_month = (today.replace(day=1) + timedelta(days=32)).replace(day=1)
         start = next_month
         end = (start + timedelta(days=32)).replace(day=1)

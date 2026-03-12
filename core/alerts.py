@@ -1,7 +1,7 @@
 # core/alerts.py
 import time
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import threading
 from queue import Queue, Empty
 from typing import Tuple, Optional, Dict, List, Any
@@ -112,7 +112,7 @@ def create_incident_buffered(alert_message: str, metric: str, region: str, value
         "region": region,
         "value": str(value),
         "priority": priority,
-        "timestamp": datetime.utcnow()
+        "detected_at": datetime.now(timezone.utc),
     }
     try:
         incident_queue.put(data, timeout=1)
@@ -127,7 +127,7 @@ def _create_incident_directly(data: Dict):
     Session = sessionmaker(bind=engine)
     s = Session()
     try:
-        incident = Incident(**data, detected_at=data["timestamp"])
+        incident = Incident(**data)
         s.add(incident)
         s.commit()
     except Exception as e:
@@ -278,7 +278,7 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
     try:
         existing = s.query(AlertEvent).filter_by(alert_hash=alert_hash).first()
         if existing and existing.sent_at and (
-            datetime.utcnow() - existing.sent_at < timedelta(minutes=alert_settings.get_suppression_minutes(selected))
+            datetime.now(timezone.utc) - existing.sent_at < timedelta(minutes=alert_settings.get_suppression_minutes(selected))
         ):
             suppress_alert(alert_hash, alert_settings.get_suppression_minutes(selected))
             return False, last_alert_region
@@ -288,8 +288,8 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
             metric_name=selected,
             dimensions={"region": region},
             value=val,
-            event_time=datetime.utcnow(),
-            detected_at=datetime.utcnow(),
+            event_time=datetime.now(timezone.utc),
+            detected_at=datetime.now(timezone.utc),
             status="firing",
             sent=False,
             fingerprint=alert_hash
@@ -300,12 +300,12 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         # Отправка
         notify(msg, prio)
         new_alert.sent = True
-        new_alert.sent_at = datetime.utcnow()
+        new_alert.sent_at = datetime.now(timezone.utc)
 
         # Инцидент
         create_incident_buffered(msg, selected, region, val, prio)
         new_alert.incident_created = True
-        new_alert.incident_created_at = datetime.utcnow()
+        new_alert.incident_created_at = datetime.now(timezone.utc)
 
         s.commit()
 

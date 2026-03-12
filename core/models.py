@@ -121,7 +121,7 @@ class Incident(Base):
     value = Column(String, nullable=True)
     priority = Column(String, nullable=False)
     status = Column(String, default=IncidentStatus.NEW.value)
-    detected_at = Column(DateTime, default=datetime.utcnow)
+    detected_at = Column(DateTime(timezone=True), default=func.now())
     assigned_to = Column(String, nullable=True)
     started_at = Column(DateTime, nullable=True)
     resolved_at = Column(DateTime, nullable=True)
@@ -136,7 +136,7 @@ class IncidentComment(Base):
     incident_id = Column(Integer, ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False)
     author = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=func.now())
     incident = relationship("Incident", back_populates="comments")
 
 

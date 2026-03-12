@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  # ——— PostgreSQL ———
+  # ——— PostgreSQL для Situational Center ———
   db:
     image: postgres:15
     environment:
@@ -10,7 +8,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d
+      - ./db/migrations:/docker-entrypoint-initdb.d  # ← Только для основной БД
     ports:
       - "5433:5432"
     networks:
@@ -37,7 +35,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # ——— Airbyte ———
+  # ——— Airbyte: PostgreSQL (только для Airbyte) ———
   airbyte-db:
     image: postgres:13
     environment:
@@ -46,6 +44,7 @@ services:
       POSTGRES_DB: airbyte
     volumes:
       - airbyte_db_data:/var/lib/postgresql/data
+      # ❌ УДАЛЕНО: ./db/migrations — Airbyte сам управляет своей схемой
     networks:
       - app-network
     healthcheck:
@@ -54,6 +53,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # ——— Airbyte: Temporal ———
   airbyte-temporal:
     image: airbyte/temporal:${AIRBYTE_VERSION:-0.50.4}
     environment:
@@ -69,6 +69,7 @@ services:
       - app-network
     restart: unless-stopped
 
+  # ——— Airbyte: Server ———
   airbyte-server:
     image: airbyte/server:${AIRBYTE_VERSION:-0.50.4}
     environment:
@@ -89,6 +90,7 @@ services:
       - app-network
     restart: unless-stopped
 
+  # ——— Airbyte: Worker ———
   airbyte-worker:
     image: airbyte/worker:${AIRBYTE_VERSION:-0.50.4}
     environment:
@@ -109,6 +111,7 @@ services:
       - app-network
     restart: unless-stopped
 
+  # ——— Airbyte: Web UI ———
   airbyte-webapp:
     image: airbyte/webapp:${AIRBYTE_VERSION:-0.50.4}
     ports:
@@ -121,7 +124,7 @@ services:
       - app-network
     restart: unless-stopped
 
-  # ——— FastAPI (единый API + Webhooks) ———
+  # ——— FastAPI ———
   api:
     build:
       context: .
@@ -151,7 +154,7 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -175,7 +178,7 @@ services:
       - app-network
     restart: unless-stopped
 
-  # ——— Celery (worker + beat) ———
+  # ——— Celery Worker ———
   celery-worker:
     build:
       context: .
@@ -204,6 +207,7 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # ——— Celery Beat ———
   celery-beat:
     build:
       context: .
@@ -224,8 +228,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
 
-  # ——— Flower ———
+  # ——— Flower (Celery monitor) ———
   flower:
     image: mher/flower
     command: ["celery", "--broker=redis://:${REDIS_PASSWORD}@redis:6379/0", "flower", "--port=5555"]
@@ -236,7 +241,7 @@ services:
     networks:
       - app-network
 
-  # ——— GLPI (IT Service Management) ———
+  # ——— GLPI (ITSM) ———
   glpi-db:
     image: mysql:8.0
     environment:
