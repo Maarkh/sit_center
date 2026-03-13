@@ -1,4 +1,4 @@
-import ReactECharts from 'echarts-for-react';
+import EChart from '@/lib/EChart';
 
 interface Props {
   value: number;
@@ -10,7 +10,7 @@ interface Props {
 export default function GaugeChart({ value, title, max = 100, height = 200 }: Props) {
   const option = {
     series: [{
-      type: 'gauge',
+      type: 'gauge' as const,
       max,
       detail: { formatter: '{value}', fontSize: 20 },
       data: [{ value, name: title }],
@@ -23,5 +23,5 @@ export default function GaugeChart({ value, title, max = 100, height = 200 }: Pr
     }],
   };
 
-  return <ReactECharts option={option} style={{ height }} />;
+  return <EChart option={option} style={{ height }} />;
 }

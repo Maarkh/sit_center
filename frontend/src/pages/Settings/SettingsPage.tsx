@@ -2,14 +2,17 @@ import { Tabs } from 'antd';
 import RulesTab from './Rules/RulesTab';
 import MLConfigsTab from './MLConfigs/MLConfigsTab';
 import SlaTab from './Sla/SlaTab';
+import { useTranslation } from 'react-i18next';
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
+
   return (
     <Tabs
       items={[
-        { key: 'rules', label: 'Alert Rules', children: <RulesTab /> },
-        { key: 'ml', label: 'ML Configs', children: <MLConfigsTab /> },
-        { key: 'sla', label: 'SLA Policies', children: <SlaTab /> },
+        { key: 'rules', label: t('settings.alert_rules'), children: <RulesTab /> },
+        { key: 'ml', label: t('settings.ml_configs'), children: <MLConfigsTab /> },
+        { key: 'sla', label: t('settings.sla_policies'), children: <SlaTab /> },
       ]}
     />
   );

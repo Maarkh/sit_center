@@ -1,4 +1,4 @@
-import ReactECharts from 'echarts-for-react';
+import EChart from '@/lib/EChart';
 import type { DataPoint } from '@/types/metrics';
 
 interface Props {
@@ -18,7 +18,7 @@ export default function TimeSeriesChart({ data, title, height = 400 }: Props) {
       type: 'value' as const,
     },
     series: [{
-      type: 'line',
+      type: 'line' as const,
       data: data.map((p) => [p.timestamp, p.value]),
       smooth: true,
       areaStyle: { opacity: 0.1 },
@@ -27,5 +27,5 @@ export default function TimeSeriesChart({ data, title, height = 400 }: Props) {
     dataZoom: [{ type: 'inside' }, { type: 'slider' }],
   };
 
-  return <ReactECharts option={option} style={{ height }} />;
+  return <EChart option={option} style={{ height }} />;
 }

@@ -1,4 +1,4 @@
-import ReactECharts from 'echarts-for-react';
+import EChart from '@/lib/EChart';
 import type { ForecastPoint } from '@/types/forecasts';
 import type { DataPoint } from '@/types/metrics';
 
@@ -19,20 +19,20 @@ export default function ForecastChart({ historical, forecast, title, height = 40
     series: [
       {
         name: 'Historical',
-        type: 'line',
+        type: 'line' as const,
         data: historical.map((p) => [p.timestamp, p.value]),
         smooth: true,
       },
       {
         name: 'Forecast',
-        type: 'line',
+        type: 'line' as const,
         data: forecast.map((p) => [p.timestamp, p.value]),
         lineStyle: { type: 'dashed' },
         smooth: true,
       },
       {
         name: 'Confidence Band',
-        type: 'line',
+        type: 'line' as const,
         data: forecast.map((p) => [p.timestamp, p.upper]),
         lineStyle: { opacity: 0 },
         areaStyle: { opacity: 0 },
@@ -41,7 +41,7 @@ export default function ForecastChart({ historical, forecast, title, height = 40
       },
       {
         name: 'Lower',
-        type: 'line',
+        type: 'line' as const,
         data: forecast.map((p) => [p.timestamp, p.lower]),
         lineStyle: { opacity: 0 },
         areaStyle: { opacity: 0.15, color: '#1677ff' },
@@ -53,5 +53,5 @@ export default function ForecastChart({ historical, forecast, title, height = 40
     dataZoom: [{ type: 'inside' }],
   };
 
-  return <ReactECharts option={option} style={{ height }} />;
+  return <EChart option={option} style={{ height }} />;
 }

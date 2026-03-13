@@ -1,13 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import { Select, Spin, Card } from 'antd';
 import { getMetricNames } from '@/api/metrics';
+import { getLatestMetricByRegion } from '@/api/data';
+import type { RegionMetricValue } from '@/api/data';
+import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
+
+const COLORS = ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027'];
+const THRESHOLDS = [20, 40, 60, 80, 95];
+
+function getColor(value: number | undefined): string {
+  if (value === undefined) return '#cccccc';
+  for (let i = 0; i < THRESHOLDS.length; i++) {
+    if (value <= THRESHOLDS[i]) return COLORS[i];
+  }
+  return COLORS[COLORS.length - 1];
+}
+
+function Legend() {
+  const labels = ['0-20', '20-40', '40-60', '60-80', '80-95', '95+'];
+  return (
+    <div style={{
+      position: 'absolute', bottom: 30, right: 10, zIndex: 1000,
+      background: 'rgba(255,255,255,0.9)', padding: '8px 12px', borderRadius: 6,
+      fontSize: 12, lineHeight: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+    }}>
+      {COLORS.map((c, i) => (
+        <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 18, height: 14, background: c, display: 'inline-block', borderRadius: 2 }} />
+          {labels[i]}
+        </div>
+      ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ width: 18, height: 14, background: '#cccccc', display: 'inline-block', borderRadius: 2 }} />
+        N/A
+      </div>
+    </div>
+  );
+}
 
 export default function MapPage() {
   const [geoData, setGeoData] = useState<GeoJSON.FeatureCollection | null>(null);
   const [metricNames, setMetricNames] = useState<string[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<string | undefined>();
+  const [regionValues, setRegionValues] = useState<Map<string, number>>(new Map());
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetch('/russia.geojson')
@@ -18,25 +56,41 @@ export default function MapPage() {
     getMetricNames().then(setMetricNames).catch(() => {});
   }, []);
 
-  const getColor = (value: number) => {
-    if (value > 80) return '#ff4d4f';
-    if (value > 60) return '#faad14';
-    if (value > 40) return '#52c41a';
-    return '#1677ff';
-  };
+  useEffect(() => {
+    if (!selectedMetric) {
+      setRegionValues(new Map());
+      return;
+    }
+    getLatestMetricByRegion(selectedMetric)
+      .then((data: RegionMetricValue[]) => {
+        const map = new Map<string, number>();
+        data.forEach((r) => map.set(r.region.toLowerCase(), r.value));
+        setRegionValues(map);
+      })
+      .catch(() => setRegionValues(new Map()));
+  }, [selectedMetric]);
 
-  const onEachFeature = (feature: GeoJSON.Feature, layer: L.Layer) => {
+  const onEachFeature = useCallback((feature: GeoJSON.Feature, layer: L.Layer) => {
     const name = feature.properties?.name || feature.properties?.NAME || 'Unknown';
-    layer.bindTooltip(name, { sticky: true });
-  };
+    const val = regionValues.get(name.toLowerCase());
+    const tooltip = val !== undefined ? `${name}: ${val.toFixed(1)}` : name;
+    layer.bindTooltip(tooltip, { sticky: true });
+  }, [regionValues]);
 
-  const style = () => ({
-    fillColor: '#1677ff',
-    weight: 1,
-    opacity: 0.7,
-    color: '#fff',
-    fillOpacity: 0.5,
-  });
+  const style = useCallback((feature?: GeoJSON.Feature) => {
+    const name = feature?.properties?.name || feature?.properties?.NAME || '';
+    const val = regionValues.get(name.toLowerCase());
+    return {
+      fillColor: getColor(val),
+      weight: 1,
+      opacity: 0.8,
+      color: '#fff',
+      fillOpacity: 0.7,
+    };
+  }, [regionValues]);
+
+  // Force re-render GeoJSON when data changes
+  const geoKey = useMemo(() => `geo-${selectedMetric}-${regionValues.size}`, [selectedMetric, regionValues]);
 
   if (!geoData) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 
@@ -45,7 +99,7 @@ export default function MapPage() {
       <div style={{ position: 'absolute', top: 10, left: 60, zIndex: 1000 }}>
         <Card size="small" style={{ minWidth: 250 }}>
           <Select
-            placeholder="Select metric"
+            placeholder={t('map.select_metric')}
             options={metricNames.map((m) => ({ label: m, value: m }))}
             value={selectedMetric}
             onChange={setSelectedMetric}
@@ -55,12 +109,13 @@ export default function MapPage() {
           />
         </Card>
       </div>
+      {selectedMetric && <Legend />}
       <MapContainer center={[62, 95]} zoom={3} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; OpenStreetMap'
         />
-        <GeoJSON data={geoData} style={style} onEachFeature={onEachFeature} />
+        <GeoJSON key={geoKey} data={geoData} style={style} onEachFeature={onEachFeature} />
       </MapContainer>
     </div>
   );

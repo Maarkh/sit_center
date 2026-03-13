@@ -4,6 +4,7 @@ import { getMetricNames } from '@/api/metrics';
 import { predict } from '@/api/forecasts';
 import TimeSeriesChart from '@/components/Charts/TimeSeriesChart';
 import ForecastChart from '@/components/Charts/ForecastChart';
+import { useTranslation } from 'react-i18next';
 import type { ForecastResponse } from '@/types/forecasts';
 
 const { RangePicker } = DatePicker;
@@ -13,6 +14,7 @@ export default function MetricsExplorerPage() {
   const [selectedMetric, setSelectedMetric] = useState<string | undefined>();
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     getMetricNames().then(setMetricNames).catch(() => {});
@@ -36,7 +38,7 @@ export default function MetricsExplorerPage() {
       <Card>
         <Space wrap>
           <Select
-            placeholder="Select metric"
+            placeholder={t('metrics.select_metric')}
             options={metricNames.map((m) => ({ label: m, value: m }))}
             value={selectedMetric}
             onChange={setSelectedMetric}
@@ -45,19 +47,19 @@ export default function MetricsExplorerPage() {
           />
           <RangePicker showTime />
           <Button type="primary" onClick={handleForecast} loading={loading} disabled={!selectedMetric}>
-            Forecast (24h)
+            {t('metrics.forecast')}
           </Button>
         </Space>
       </Card>
 
       <div style={{ marginTop: 16 }}>
         {forecast ? (
-          <Card title={`Forecast: ${forecast.metric_name}`}>
+          <Card title={`${t('metrics.forecast_title')}: ${forecast.metric_name}`}>
             <ForecastChart historical={[]} forecast={forecast.points} height={500} />
           </Card>
         ) : (
           <Card>
-            <Empty description="Select a metric and click Forecast to see predictions" />
+            <Empty description={t('metrics.empty')} />
           </Card>
         )}
       </div>

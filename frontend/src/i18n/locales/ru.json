@@ -1,0 +1,128 @@
+{
+  "app_name": "Ситуационный центр",
+  "app_short": "СЦ",
+  "login": {
+    "title": "Ситуационный центр",
+    "username": "Имя пользователя",
+    "password": "Пароль",
+    "submit": "Войти",
+    "error": "Неверные учётные данные",
+    "enter_username": "Введите имя пользователя",
+    "enter_password": "Введите пароль"
+  },
+  "sidebar": {
+    "dashboard": "Дашборд",
+    "map": "Карта",
+    "metrics": "Метрики",
+    "alerts": "Алерты",
+    "incidents": "Инциденты",
+    "settings": "Настройки",
+    "admin": "Администрирование"
+  },
+  "dashboard": {
+    "firing_alerts": "Активные алерты",
+    "acknowledged": "Подтверждённые",
+    "open_incidents": "Открытые инциденты",
+    "critical": "Критические",
+    "recent_alerts": "Последние алерты",
+    "open_incidents_table": "Открытые инциденты"
+  },
+  "alerts": {
+    "filter_status": "Фильтр по статусу",
+    "all": "Все",
+    "firing": "Активные",
+    "acknowledged": "Подтверждённые",
+    "resolved": "Решённые",
+    "refresh": "Обновить",
+    "status": "Статус",
+    "metric": "Метрика",
+    "dimensions": "Измерения",
+    "value": "Значение",
+    "detected": "Обнаружено",
+    "fingerprint": "Отпечаток",
+    "time": "Время"
+  },
+  "incidents": {
+    "status": "Статус",
+    "priority": "Приоритет",
+    "refresh": "Обновить",
+    "create": "Создать",
+    "id": "ID",
+    "message": "Сообщение",
+    "metric": "Метрика",
+    "region": "Регион",
+    "assigned": "Назначен",
+    "detected": "Обнаружено",
+    "sla": "SLA",
+    "back": "Назад к инцидентам",
+    "value": "Значение",
+    "escalation_level": "Уровень эскалации",
+    "external": "Внешний",
+    "change_status": "Сменить статус",
+    "comments": "Комментарии",
+    "add_comment": "Добавить комментарий...",
+    "send": "Отправить",
+    "not_found": "Инцидент не найден",
+    "status_changed": "Статус изменён на",
+    "new": "Новый",
+    "in_progress": "В работе",
+    "escalated": "Эскалирован",
+    "closed": "Закрыт",
+    "response": "Ответ",
+    "resolution": "Решение",
+    "create_title": "Создать инцидент",
+    "alert_message": "Сообщение алерта",
+    "assigned_to": "Назначить на"
+  },
+  "metrics": {
+    "select_metric": "Выберите метрику",
+    "forecast": "Прогноз (24ч)",
+    "forecast_title": "Прогноз",
+    "empty": "Выберите метрику и нажмите Прогноз"
+  },
+  "map": {
+    "select_metric": "Выберите метрику"
+  },
+  "settings": {
+    "alert_rules": "Правила алертов",
+    "ml_configs": "ML конфигурации",
+    "sla_policies": "Политики SLA"
+  },
+  "admin": {
+    "tenants": "Тенанты",
+    "users": "Пользователи",
+    "roles": "Роли",
+    "audit": "Журнал аудита"
+  },
+  "audit": {
+    "time": "Время",
+    "user": "Пользователь",
+    "action": "Действие",
+    "resource": "Ресурс",
+    "resource_id": "ID ресурса",
+    "ip": "IP",
+    "action_filter": "Действие",
+    "resource_filter": "Ресурс",
+    "username_filter": "Пользователь"
+  },
+  "common": {
+    "logout": "Выйти",
+    "loading": "Загрузка...",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "search": "Поиск",
+    "actions": "Действия",
+    "yes": "Да",
+    "no": "Нет",
+    "critical": "Критический",
+    "high": "Высокий",
+    "medium": "Средний",
+    "low": "Низкий"
+  },
+  "theme": {
+    "light": "Светлая тема",
+    "dark": "Тёмная тема"
+  }
+}

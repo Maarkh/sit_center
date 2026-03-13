@@ -1,0 +1,128 @@
+{
+  "app_name": "Situational Center",
+  "app_short": "SC",
+  "login": {
+    "title": "Situational Center",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Login",
+    "error": "Invalid credentials",
+    "enter_username": "Enter username",
+    "enter_password": "Enter password"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "map": "Map",
+    "metrics": "Metrics",
+    "alerts": "Alerts",
+    "incidents": "Incidents",
+    "settings": "Settings",
+    "admin": "Admin"
+  },
+  "dashboard": {
+    "firing_alerts": "Firing Alerts",
+    "acknowledged": "Acknowledged",
+    "open_incidents": "Open Incidents",
+    "critical": "Critical",
+    "recent_alerts": "Recent Alerts",
+    "open_incidents_table": "Open Incidents"
+  },
+  "alerts": {
+    "filter_status": "Filter by status",
+    "all": "All",
+    "firing": "Firing",
+    "acknowledged": "Acknowledged",
+    "resolved": "Resolved",
+    "refresh": "Refresh",
+    "status": "Status",
+    "metric": "Metric",
+    "dimensions": "Dimensions",
+    "value": "Value",
+    "detected": "Detected",
+    "fingerprint": "Fingerprint",
+    "time": "Time"
+  },
+  "incidents": {
+    "status": "Status",
+    "priority": "Priority",
+    "refresh": "Refresh",
+    "create": "Create",
+    "id": "ID",
+    "message": "Message",
+    "metric": "Metric",
+    "region": "Region",
+    "assigned": "Assigned",
+    "detected": "Detected",
+    "sla": "SLA",
+    "back": "Back to Incidents",
+    "value": "Value",
+    "escalation_level": "Escalation Level",
+    "external": "External",
+    "change_status": "Change Status",
+    "comments": "Comments",
+    "add_comment": "Add a comment...",
+    "send": "Send",
+    "not_found": "Incident not found",
+    "status_changed": "Status changed to",
+    "new": "New",
+    "in_progress": "In Progress",
+    "escalated": "Escalated",
+    "closed": "Closed",
+    "response": "Response",
+    "resolution": "Resolution",
+    "create_title": "Create Incident",
+    "alert_message": "Alert message",
+    "assigned_to": "Assign to"
+  },
+  "metrics": {
+    "select_metric": "Select metric",
+    "forecast": "Forecast (24h)",
+    "forecast_title": "Forecast",
+    "empty": "Select a metric and click Forecast to see predictions"
+  },
+  "map": {
+    "select_metric": "Select metric"
+  },
+  "settings": {
+    "alert_rules": "Alert Rules",
+    "ml_configs": "ML Configs",
+    "sla_policies": "SLA Policies"
+  },
+  "admin": {
+    "tenants": "Tenants",
+    "users": "Users",
+    "roles": "Roles",
+    "audit": "Audit Log"
+  },
+  "audit": {
+    "time": "Time",
+    "user": "User",
+    "action": "Action",
+    "resource": "Resource",
+    "resource_id": "Resource ID",
+    "ip": "IP",
+    "action_filter": "Action",
+    "resource_filter": "Resource",
+    "username_filter": "Username"
+  },
+  "common": {
+    "logout": "Logout",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "actions": "Actions",
+    "yes": "Yes",
+    "no": "No",
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "theme": {
+    "light": "Light theme",
+    "dark": "Dark theme"
+  }
+}

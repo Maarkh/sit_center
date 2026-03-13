@@ -1,5 +1,6 @@
 import { Modal, Form, Input, Select, message } from 'antd';
 import { createIncident } from '@/api/incidents';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   open: boolean;
@@ -9,12 +10,13 @@ interface Props {
 
 export default function CreateIncidentModal({ open, onClose, onCreated }: Props) {
   const [form] = Form.useForm();
+  const { t } = useTranslation();
 
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
       await createIncident(values);
-      message.success('Incident created');
+      message.success(t('incidents.create'));
       form.resetFields();
       onClose();
       onCreated();
@@ -22,29 +24,29 @@ export default function CreateIncidentModal({ open, onClose, onCreated }: Props)
   };
 
   return (
-    <Modal title="Create Incident" open={open} onOk={handleOk} onCancel={onClose} destroyOnClose>
+    <Modal title={t('incidents.create_title')} open={open} onOk={handleOk} onCancel={onClose} destroyOnClose>
       <Form form={form} layout="vertical">
-        <Form.Item name="alert_message" label="Alert Message" rules={[{ required: true }]}>
+        <Form.Item name="alert_message" label={t('incidents.alert_message')} rules={[{ required: true }]}>
           <Input.TextArea rows={2} />
         </Form.Item>
-        <Form.Item name="metric" label="Metric" rules={[{ required: true }]}>
+        <Form.Item name="metric" label={t('incidents.metric')} rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item name="region" label="Region" rules={[{ required: true }]}>
+        <Form.Item name="region" label={t('incidents.region')} rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item name="priority" label="Priority" rules={[{ required: true }]}>
+        <Form.Item name="priority" label={t('incidents.priority')} rules={[{ required: true }]}>
           <Select options={[
-            { label: 'Critical', value: 'critical' },
-            { label: 'High', value: 'high' },
-            { label: 'Medium', value: 'medium' },
-            { label: 'Low', value: 'low' },
+            { label: t('common.critical'), value: 'critical' },
+            { label: t('common.high'), value: 'high' },
+            { label: t('common.medium'), value: 'medium' },
+            { label: t('common.low'), value: 'low' },
           ]} />
         </Form.Item>
-        <Form.Item name="description" label="Description">
+        <Form.Item name="description" label={t('incidents.message')}>
           <Input.TextArea rows={3} />
         </Form.Item>
-        <Form.Item name="assigned_to" label="Assign To">
+        <Form.Item name="assigned_to" label={t('incidents.assigned_to')}>
           <Input />
         </Form.Item>
       </Form>

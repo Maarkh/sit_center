@@ -5,6 +5,7 @@ import { listAlerts } from '@/api/alerts';
 import { useAlertStore } from '@/stores/alertStore';
 import StatusTag from '@/components/Common/StatusTag';
 import { formatDate } from '@/utils/formatters';
+import { useTranslation } from 'react-i18next';
 import type { AlertRead } from '@/types/alerts';
 
 export default function AlertsPage() {
@@ -12,6 +13,7 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const { liveAlerts } = useAlertStore();
+  const { t } = useTranslation();
 
   const fetchData = async () => {
     setLoading(true);
@@ -28,15 +30,15 @@ export default function AlertsPage() {
   const allAlerts = [...liveAlerts.filter((la) => !alerts.find((a) => a.id === la.id)), ...alerts];
 
   const columns = [
-    { title: 'Status', dataIndex: 'status', key: 'status', width: 130, render: (s: string) => <StatusTag status={s} /> },
-    { title: 'Metric', dataIndex: 'metric_name', key: 'metric_name' },
+    { title: t('alerts.status'), dataIndex: 'status', key: 'status', width: 130, render: (s: string) => <StatusTag status={s} /> },
+    { title: t('alerts.metric'), dataIndex: 'metric_name', key: 'metric_name' },
     {
-      title: 'Dimensions', dataIndex: 'dimensions', key: 'dimensions',
+      title: t('alerts.dimensions'), dataIndex: 'dimensions', key: 'dimensions',
       render: (d: Record<string, string>) => Object.entries(d || {}).map(([k, v]) => `${k}=${v}`).join(', '),
     },
-    { title: 'Value', dataIndex: 'value', key: 'value', render: (v: number) => v?.toFixed(2) },
-    { title: 'Detected', dataIndex: 'detected_at', key: 'detected_at', render: formatDate },
-    { title: 'Fingerprint', dataIndex: 'fingerprint', key: 'fingerprint', ellipsis: true },
+    { title: t('alerts.value'), dataIndex: 'value', key: 'value', render: (v: number) => v?.toFixed(2) },
+    { title: t('alerts.detected'), dataIndex: 'detected_at', key: 'detected_at', render: formatDate },
+    { title: t('alerts.fingerprint'), dataIndex: 'fingerprint', key: 'fingerprint', ellipsis: true },
   ];
 
   return (
@@ -44,19 +46,19 @@ export default function AlertsPage() {
       <Card>
         <Space>
           <Select
-            placeholder="Filter by status"
+            placeholder={t('alerts.filter_status')}
             options={[
-              { label: 'All', value: '' },
-              { label: 'Firing', value: 'firing' },
-              { label: 'Acknowledged', value: 'acknowledged' },
-              { label: 'Resolved', value: 'resolved' },
+              { label: t('alerts.all'), value: '' },
+              { label: t('alerts.firing'), value: 'firing' },
+              { label: t('alerts.acknowledged'), value: 'acknowledged' },
+              { label: t('alerts.resolved'), value: 'resolved' },
             ]}
             value={statusFilter}
             onChange={(v) => setStatusFilter(v || undefined)}
             allowClear
             style={{ width: 200 }}
           />
-          <Button icon={<ReloadOutlined />} onClick={fetchData}>Refresh</Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchData}>{t('alerts.refresh')}</Button>
         </Space>
       </Card>
       <Table

@@ -7,6 +7,7 @@ import PriorityTag from '@/components/Common/PriorityTag';
 import SlaIndicator from '@/components/Common/SlaIndicator';
 import { formatDate } from '@/utils/formatters';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import CreateIncidentModal from './CreateIncidentModal';
 import type { IncidentRead } from '@/types/incidents';
 
@@ -19,6 +20,7 @@ export default function IncidentsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const fetchData = async () => {
     setLoading(true);
@@ -39,18 +41,18 @@ export default function IncidentsPage() {
   useEffect(() => { fetchData(); }, [statusFilter, priorityFilter, page]);
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
-    { title: 'Priority', dataIndex: 'priority', key: 'priority', width: 100, render: (p: string) => <PriorityTag priority={p} /> },
-    { title: 'Status', dataIndex: 'status', key: 'status', width: 120, render: (s: string) => <StatusTag status={s} /> },
-    { title: 'Message', dataIndex: 'alert_message', key: 'alert_message', ellipsis: true },
-    { title: 'Metric', dataIndex: 'metric', key: 'metric' },
-    { title: 'Region', dataIndex: 'region', key: 'region' },
-    { title: 'Assigned', dataIndex: 'assigned_to', key: 'assigned_to' },
-    { title: 'Detected', dataIndex: 'detected_at', key: 'detected_at', render: formatDate },
+    { title: t('incidents.id'), dataIndex: 'id', key: 'id', width: 70 },
+    { title: t('incidents.priority'), dataIndex: 'priority', key: 'priority', width: 100, render: (p: string) => <PriorityTag priority={p} /> },
+    { title: t('incidents.status'), dataIndex: 'status', key: 'status', width: 120, render: (s: string) => <StatusTag status={s} /> },
+    { title: t('incidents.message'), dataIndex: 'alert_message', key: 'alert_message', ellipsis: true },
+    { title: t('incidents.metric'), dataIndex: 'metric', key: 'metric' },
+    { title: t('incidents.region'), dataIndex: 'region', key: 'region' },
+    { title: t('incidents.assigned'), dataIndex: 'assigned_to', key: 'assigned_to' },
+    { title: t('incidents.detected'), dataIndex: 'detected_at', key: 'detected_at', render: formatDate },
     {
-      title: 'SLA', key: 'sla', width: 180,
+      title: t('incidents.sla'), key: 'sla', width: 180,
       render: (_: unknown, r: IncidentRead) => (
-        <SlaIndicator deadline={r.response_deadline} breached={r.response_breached} label="Resp" />
+        <SlaIndicator deadline={r.response_deadline} breached={r.response_breached} label={t('incidents.response')} />
       ),
     },
   ];
@@ -59,17 +61,17 @@ export default function IncidentsPage() {
     <>
       <Card>
         <Space wrap>
-          <Select placeholder="Status" options={[
-            { label: 'New', value: 'new' }, { label: 'In Progress', value: 'in_progress' },
-            { label: 'Escalated', value: 'escalated' }, { label: 'Resolved', value: 'resolved' },
-            { label: 'Closed', value: 'closed' },
+          <Select placeholder={t('incidents.status')} options={[
+            { label: t('incidents.new'), value: 'new' }, { label: t('incidents.in_progress'), value: 'in_progress' },
+            { label: t('incidents.escalated'), value: 'escalated' }, { label: t('alerts.resolved'), value: 'resolved' },
+            { label: t('incidents.closed'), value: 'closed' },
           ]} value={statusFilter} onChange={(v) => { setStatusFilter(v || undefined); setPage(1); }} allowClear style={{ width: 150 }} />
-          <Select placeholder="Priority" options={[
-            { label: 'Critical', value: 'critical' }, { label: 'High', value: 'high' },
-            { label: 'Medium', value: 'medium' }, { label: 'Low', value: 'low' },
+          <Select placeholder={t('incidents.priority')} options={[
+            { label: t('common.critical'), value: 'critical' }, { label: t('common.high'), value: 'high' },
+            { label: t('common.medium'), value: 'medium' }, { label: t('common.low'), value: 'low' },
           ]} value={priorityFilter} onChange={(v) => { setPriorityFilter(v || undefined); setPage(1); }} allowClear style={{ width: 150 }} />
-          <Button icon={<ReloadOutlined />} onClick={fetchData}>Refresh</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>Create</Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchData}>{t('incidents.refresh')}</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>{t('incidents.create')}</Button>
         </Space>
       </Card>
       <Table
