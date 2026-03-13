@@ -799,6 +799,95 @@ All business routes are served under `/api/v1/` prefix. Legacy routes without pr
 | GET | `/docs` | Public | Swagger UI |
 | GET | `/redoc` | Public | ReDoc |
 
+### API Request Examples
+
+**Authentication (get JWT token):**
+```bash
+curl -X POST http://localhost:8000/token \
+  -d "username=admin&password=secret" \
+  -H "Content-Type: application/x-www-form-urlencoded"
+# Response: {"access_token": "eyJ...", "token_type": "bearer"}
+```
+
+**List metrics:**
+```bash
+TOKEN="eyJ..."
+curl http://localhost:8000/api/v1/metrics/ \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Create a metric definition:**
+```bash
+curl -X POST http://localhost:8000/api/v1/metrics/ \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"metric_name": "cpu_usage", "display_name": "CPU Usage", "unit": "%", "description": "Server CPU utilization"}'
+```
+
+**Ingest data via webhook (Grafana format):**
+```bash
+curl -X POST http://localhost:8000/api/v1/webhooks/grafana \
+  -H "X-API-Key: $WEBHOOK_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"alerts": [{"labels": {"alertname": "HighCPU", "region": "moscow"}, "annotations": {"value": "95.2"}, "status": "firing"}]}'
+```
+
+**Create an alert rule (PromQL-like):**
+```bash
+curl -X POST http://localhost:8000/api/v1/rules/ \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "High CPU", "condition": "cpu_usage{region=\"moscow\"} > 90", "priority": "critical", "enabled": true}'
+```
+
+**List incidents with filters:**
+```bash
+curl "http://localhost:8000/api/v1/incidents/?status=new&priority=critical&limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**WebSocket connection (alerts stream):**
+```bash
+websocat "ws://localhost:8000/ws/alerts?token=$TOKEN"
+```
+
+**Health check:**
+```bash
+curl http://localhost:8000/health
+# Response: {"status": "ok", "checks": {"database": {"status": "ok", "latency_ms": 2.1}, "redis": {"status": "ok", "latency_ms": 0.8}}}
+```
+
+### Incident Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> new: Alert triggers / Manual creation
+    new --> in_progress: Operator starts work
+    new --> escalated: Auto-escalation (SLA breach)
+    new --> closed: False positive
+    in_progress --> resolved: Fix confirmed
+    in_progress --> escalated: SLA breach / Manual escalation
+    in_progress --> closed: Duplicate / Invalid
+    escalated --> in_progress: Escalation team picks up
+    escalated --> resolved: Fix confirmed
+    escalated --> closed: Duplicate / Invalid
+    resolved --> closed: Operator closes
+    resolved --> in_progress: Re-opened (regression)
+    closed --> [*]
+```
+
+**Valid state transitions** (enforced by API):
+
+| From | Allowed transitions |
+|------|-------------------|
+| `new` | `in_progress`, `escalated`, `closed` |
+| `in_progress` | `escalated`, `resolved`, `closed` |
+| `escalated` | `in_progress`, `resolved`, `closed` |
+| `resolved` | `closed`, `in_progress` |
+| `closed` | (terminal state) |
+
+**SLA enforcement**: Celery Beat checks every 5 minutes. If `response_deadline` or `resolution_deadline` is breached, sets `response_breached`/`resolution_breached` flags and triggers auto-escalation via configured escalation chains.
+
 ---
 
 ## 5. Periodic Tasks

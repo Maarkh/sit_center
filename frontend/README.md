@@ -1,73 +1,115 @@
-# React + TypeScript + Vite
+# Sit Center Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Situational center dashboard built with React 19, TypeScript, and Vite 8.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Category           | Technology                                      |
+| ------------------ | ----------------------------------------------- |
+| Framework          | React 19 + TypeScript                           |
+| Bundler            | Vite 8 (rolldown)                               |
+| UI Components      | Ant Design 6                                    |
+| Charts             | ECharts via echarts-for-react (tree-shaken, 735kB) |
+| State Management   | Zustand                                         |
+| Routing            | React Router 7                                  |
+| Localization       | i18next (RU / EN)                               |
+| PWA                | Manual Service Worker                            |
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # Dev server at http://localhost:5173
+npm run build      # Production build
+npm run preview    # Preview production build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment Variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Set these in a `.env` file or in `vite.config.ts`:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Variable       | Description                | Default                  |
+| -------------- | -------------------------- | ------------------------ |
+| `VITE_API_URL` | Backend API base URL       | `http://localhost:8000`  |
+
+## Project Structure
+
+All pages are code-split with `React.lazy`.
+
+```
+src/
+  main.tsx                              Entry point
+  App.tsx                               Router setup, theme provider, lazy page imports
+  i18n/                                 i18next config (RU/EN)
+  styles/                               global.css, theme.ts (light/dark Ant Design tokens)
+
+  api/                                  API client functions (auth, alerts, metrics, incidents, etc.)
+  types/                                TypeScript interfaces (AlertRead, TokenData, etc.)
+  utils/                                Helpers (jwt.ts — decode/expiry check)
+
+  stores/
+    authStore.ts                        Auth: login, logout, initFromStorage, hasPermission, isAdmin
+                                        (JWT stored in localStorage)
+    alertStore.ts                       Alerts: fetchAlerts, addLiveAlert (ring buffer, 100 max),
+                                        setFilters
+    uiStore.ts                          UI: sidebarCollapsed, darkMode, language
+                                        (persisted to localStorage)
+
+  hooks/
+    useBreakpoint.ts                    Responsive breakpoint detection
+
+  components/
+    Auth/ProtectedRoute.tsx             Route guard (checks auth, optionally admin)
+    Layout/AppLayout.tsx                Main layout: sidebar + header + content
+    Layout/HeaderBar.tsx                Top bar: dark mode, language switcher, user menu
+    Layout/Sidebar.tsx                  Navigation menu
+    Common/ErrorBoundary.tsx            React error boundary with fallback UI
+    Common/StatusTag.tsx                Colored status badges
+    Common/PriorityTag.tsx              Priority badges
+    Common/SlaIndicator.tsx             SLA compliance indicator
+    Charts/TimeSeriesChart.tsx          ECharts time series
+    Charts/GaugeChart.tsx               ECharts gauge
+    Charts/ForecastChart.tsx            ECharts forecast with confidence bands
+
+  lib/EChart.tsx                        Lazy ECharts wrapper
+
+  pages/
+    Login/LoginPage.tsx                 Login form (local + OIDC SSO button)
+    Dashboard/DashboardPage.tsx         Overview: stat cards, charts, recent alerts
+    Map/MapPage.tsx                     Interactive Russia map with region metrics
+    Metrics/MetricsExplorerPage.tsx     Browse and chart metric data
+    Alerts/AlertsPage.tsx               Alert list with filters + live WebSocket alerts
+    Incidents/IncidentsPage.tsx         Incident list with SLA indicators
+    Incidents/IncidentDetailPage.tsx    Incident detail: timeline, comments, actions
+    Incidents/CreateIncidentModal.tsx   Create incident form
+    Settings/SettingsPage.tsx           Tabs: Rules, ML Configs, SLA
+    Admin/AdminPage.tsx                 Tabs: Tenants, Users, Roles, Audit
+```
+
+## WebSocket Integration
+
+The frontend connects to `ws://<host>/ws/alerts?token=<jwt>` for live alert streaming. The JWT is passed as a query parameter and validated server-side. Incoming alerts are pushed into `alertStore.addLiveAlert`, which maintains a ring buffer capped at 100 entries.
+
+## Error Handling
+
+- **ErrorBoundary** wraps all pages and renders a fallback UI on uncaught errors.
+- **API interceptors** catch 401 responses, trigger logout, and redirect to `/login`.
+- **Network errors** surface as Ant Design notifications.
+
+## Testing
+
+### Unit Tests (Vitest 4 + @testing-library/react)
+
+32 tests covering stores (authStore, alertStore, uiStore), hooks (useBreakpoint), and components.
+
+```bash
+npm run test          # or: npx vitest run
+```
+
+### E2E Tests (Playwright)
+
+22 end-to-end tests exercising full user flows.
+
+```bash
+npx playwright test
 ```
