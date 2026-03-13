@@ -1,9 +1,22 @@
 # api/middleware.py
 import time
+import uuid
+import logging
+from contextvars import ContextVar
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 from prometheus_client import Histogram, Counter, Gauge
+
+# Request correlation context
+request_id_var: ContextVar[str] = ContextVar("request_id", default="")
+
+
+class RequestIdFilter(logging.Filter):
+    """Inject request_id into all log records."""
+    def filter(self, record):
+        record.request_id = request_id_var.get("")
+        return True
 
 http_request_duration_seconds = Histogram(
     "http_request_duration_seconds",
@@ -64,6 +77,10 @@ def collect_pool_metrics():
 
 class PrometheusMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        # Generate or propagate request ID
+        rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+        request_id_var.set(rid)
+
         method = request.method
         # Normalize path to avoid high-cardinality labels
         path = request.url.path
@@ -86,6 +103,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             http_requests_total.labels(method=method, path=path, status_code=status_code).inc()
             http_requests_in_progress.labels(method=method).dec()
 
+        response.headers["X-Request-ID"] = rid
         return response
 
 

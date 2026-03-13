@@ -24,7 +24,7 @@ class AuditLogEntry(BaseModel):
     timestamp: datetime
 
 
-@router.get("/logs", response_model=List[AuditLogEntry])
+@router.get("/logs", response_model=List[AuditLogEntry], summary="Query audit log entries")
 def get_audit_logs(
     action: Optional[str] = None,
     resource_type: Optional[str] = None,

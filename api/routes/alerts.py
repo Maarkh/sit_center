@@ -1,5 +1,5 @@
 # api/routes/alerts.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import List
 from uuid import UUID
 from datetime import datetime, timezone
@@ -9,6 +9,7 @@ from core.database import get_engine
 from api.auth import TokenData
 from core.rbac import require_permission
 from core.audit import log_audit
+from api.limiter import limiter
 from config import mask_secrets
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
@@ -38,7 +39,7 @@ def _row_to_alert(row) -> AlertRead:
     )
 
 
-@router.get("/", response_model=List[AlertRead])
+@router.get("/", response_model=List[AlertRead], summary="List alert events")
 def list_alerts(
     status: str = Query(None, enum=["firing", "acknowledged", "resolved"]),
     metric_name: str = None,  # type: ignore
@@ -75,7 +76,7 @@ def list_alerts(
         raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
 
 
-@router.get("/{alert_id}", response_model=AlertRead)
+@router.get("/{alert_id}", response_model=AlertRead, summary="Get alert by ID")
 def get_alert(
     alert_id: UUID,
     current_user: TokenData = Depends(require_permission("read:alerts")),
@@ -98,8 +99,10 @@ def get_alert(
         raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
 
 
-@router.post("/{alert_id}/suppress", status_code=204)
+@router.post("/{alert_id}/suppress", status_code=204, summary="Suppress alert by fingerprint")
+@limiter.limit("30/minute")
 def suppress_alert(
+    request: Request,
     alert_id: UUID,
     minutes: int = 60,
     current_user: TokenData = Depends(require_permission("write:alerts")),
@@ -125,8 +128,10 @@ def suppress_alert(
         raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
 
 
-@router.post("/{alert_id}/acknowledge", response_model=AlertRead)
+@router.post("/{alert_id}/acknowledge", response_model=AlertRead, summary="Acknowledge firing alert")
+@limiter.limit("30/minute")
 def acknowledge_alert(
+    request: Request,
     alert_id: UUID,
     current_user: TokenData = Depends(require_permission("write:alerts")),
 ):
@@ -169,8 +174,10 @@ def acknowledge_alert(
         raise HTTPException(500, mask_secrets(str(e)))
 
 
-@router.post("/{alert_id}/resolve", response_model=AlertRead)
+@router.post("/{alert_id}/resolve", response_model=AlertRead, summary="Resolve alert")
+@limiter.limit("30/minute")
 def resolve_alert(
+    request: Request,
     alert_id: UUID,
     current_user: TokenData = Depends(require_permission("write:alerts")),
 ):

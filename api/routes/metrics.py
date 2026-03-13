@@ -1,5 +1,5 @@
 # api/routes/metrics.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from typing import List
 from api.schemas import MetricCreate, MetricRead, MetricUpdate
 from core.metadata_service import MetadataService
@@ -7,14 +7,17 @@ from api.dependencies import get_metadata_service
 from api.auth import TokenData
 from core.rbac import require_permission
 from core.audit import log_audit
+from api.limiter import limiter
 from sqlalchemy import text
 from config import mask_secrets
 
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
 
 
-@router.post("/", response_model=MetricRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=MetricRead, status_code=status.HTTP_201_CREATED, summary="Create metric definition")
+@limiter.limit("30/minute")
 def create_metric(
+    request: Request,
     data: MetricCreate,
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("write:metrics")),
@@ -32,7 +35,7 @@ def create_metric(
         raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
-@router.get("/", response_model=List[MetricRead])
+@router.get("/", response_model=List[MetricRead], summary="List all metric definitions")
 def list_metrics(
     active_only: bool = True,
     service: MetadataService = Depends(get_metadata_service),
@@ -41,7 +44,7 @@ def list_metrics(
     return service.list_metrics(active_only=active_only, tenant_id=current_user.tenant_id)
 
 
-@router.get("/{metric_name}", response_model=MetricRead)
+@router.get("/{metric_name}", response_model=MetricRead, summary="Get metric by name")
 def get_metric(
     metric_name: str,
     service: MetadataService = Depends(get_metadata_service),
@@ -53,8 +56,10 @@ def get_metric(
     return metric
 
 
-@router.put("/{metric_name}", response_model=MetricRead)
+@router.put("/{metric_name}", response_model=MetricRead, summary="Update metric definition")
+@limiter.limit("30/minute")
 def update_metric(
+    request: Request,
     metric_name: str,
     data: MetricUpdate,
     service: MetadataService = Depends(get_metadata_service),
@@ -76,8 +81,10 @@ def update_metric(
         raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
-@router.delete("/{metric_name}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{metric_name}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete metric definition")
+@limiter.limit("10/minute")
 def delete_metric(
+    request: Request,
     metric_name: str,
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("write:metrics")),

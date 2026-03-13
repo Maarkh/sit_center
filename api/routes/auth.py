@@ -4,11 +4,13 @@ from fastapi.responses import RedirectResponse
 from datetime import timedelta
 from config import settings, logger
 from api.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from api.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.get("/login/oidc")
+@limiter.limit("10/minute")
 async def login_oidc(request: Request):
     """Redirect user to Keycloak for OIDC login."""
     if not getattr(settings, "OIDC_ENABLED", False):
@@ -21,6 +23,7 @@ async def login_oidc(request: Request):
 
 
 @router.get("/callback/oidc")
+@limiter.limit("10/minute")
 async def callback_oidc(request: Request):
     """Handle OIDC callback from Keycloak, create JWT."""
     if not getattr(settings, "OIDC_ENABLED", False):

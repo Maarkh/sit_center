@@ -1,5 +1,5 @@
 # api/routes/admin.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
@@ -8,6 +8,7 @@ from core.database import get_engine
 from core.rbac import require_role
 from core.audit import log_audit
 from api.auth import TokenData
+from api.limiter import limiter
 from config import mask_secrets
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -64,7 +65,7 @@ class UserRoleAssign(BaseModel):
 
 # --- Tenants ---
 
-@router.get("/tenants", response_model=List[TenantRead])
+@router.get("/tenants", response_model=List[TenantRead], summary="List all tenants")
 def list_tenants(current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     with engine.connect() as conn:
@@ -72,8 +73,9 @@ def list_tenants(current_user: TokenData = Depends(require_role("admin"))):
         return [TenantRead(**row) for row in rows]
 
 
-@router.post("/tenants", response_model=TenantRead, status_code=status.HTTP_201_CREATED)
-def create_tenant(data: TenantCreate, current_user: TokenData = Depends(require_role("admin"))):
+@router.post("/tenants", response_model=TenantRead, status_code=status.HTTP_201_CREATED, summary="Create new tenant")
+@limiter.limit("10/minute")
+def create_tenant(request: Request, data: TenantCreate, current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     try:
         with engine.begin() as conn:
@@ -91,7 +93,7 @@ def create_tenant(data: TenantCreate, current_user: TokenData = Depends(require_
 
 # --- Users ---
 
-@router.get("/users", response_model=List[UserRead])
+@router.get("/users", response_model=List[UserRead], summary="List users in tenant")
 def list_users(tenant_id: str = "default", current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     with engine.connect() as conn:
@@ -102,8 +104,9 @@ def list_users(tenant_id: str = "default", current_user: TokenData = Depends(req
         return [UserRead(**row) for row in rows]
 
 
-@router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def create_user(data: UserCreate, current_user: TokenData = Depends(require_role("admin"))):
+@router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED, summary="Create local user")
+@limiter.limit("10/minute")
+def create_user(request: Request, data: UserCreate, current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     password_hash = None
     if data.password:
@@ -136,7 +139,7 @@ def create_user(data: UserCreate, current_user: TokenData = Depends(require_role
 
 # --- Roles ---
 
-@router.get("/roles", response_model=List[RoleRead])
+@router.get("/roles", response_model=List[RoleRead], summary="List roles in tenant")
 def list_roles(tenant_id: str = "default", current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     with engine.connect() as conn:
@@ -147,8 +150,9 @@ def list_roles(tenant_id: str = "default", current_user: TokenData = Depends(req
         return [RoleRead(**row) for row in rows]
 
 
-@router.post("/roles", response_model=RoleRead, status_code=status.HTTP_201_CREATED)
-def create_role(data: RoleCreate, current_user: TokenData = Depends(require_role("admin"))):
+@router.post("/roles", response_model=RoleRead, status_code=status.HTTP_201_CREATED, summary="Create role with permissions")
+@limiter.limit("10/minute")
+def create_role(request: Request, data: RoleCreate, current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     import json
     try:
@@ -176,8 +180,9 @@ def create_role(data: RoleCreate, current_user: TokenData = Depends(require_role
 
 # --- User-Role assignment ---
 
-@router.post("/user-roles", status_code=status.HTTP_201_CREATED)
-def assign_role(data: UserRoleAssign, current_user: TokenData = Depends(require_role("admin"))):
+@router.post("/user-roles", status_code=status.HTTP_201_CREATED, summary="Assign role to user")
+@limiter.limit("10/minute")
+def assign_role(request: Request, data: UserRoleAssign, current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     try:
         with engine.begin() as conn:
@@ -194,7 +199,7 @@ def assign_role(data: UserRoleAssign, current_user: TokenData = Depends(require_
         raise HTTPException(400, mask_secrets(str(e)))
 
 
-@router.delete("/user-roles", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/user-roles", status_code=status.HTTP_204_NO_CONTENT, summary="Remove role from user")
 def unassign_role(data: UserRoleAssign, current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     with engine.begin() as conn:

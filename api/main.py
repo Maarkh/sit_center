@@ -1,7 +1,9 @@
 # api/main.py
+import json
 from fastapi import FastAPI, Depends, HTTPException, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import text
 from config import logger, setup_logging, settings
 
 # Настройка логирования (важно: до импорта других модулей)
@@ -55,12 +57,35 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Situational Center API",
-    description="REST API для управления ситуационным центром",
+    description=(
+        "Enterprise monitoring and incident management platform.\n\n"
+        "Supports multi-tenancy, RBAC, LDAP/OIDC authentication, "
+        "PromQL-like alerting rules, ML anomaly detection, "
+        "and bidirectional i-doit ITSM integration.\n\n"
+        "**Authentication**: `POST /token` with form fields `username` + `password`. "
+        "Use the returned `access_token` as `Bearer` token in the `Authorization` header.\n\n"
+        "**Rate limits**: Global 100 req/min per IP. Write operations have tighter limits."
+    ),
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    openapi_tags=[
+        {"name": "System", "description": "Health checks and Prometheus metrics"},
+        {"name": "Metrics", "description": "CRUD for metric definitions (metadata)"},
+        {"name": "Dimensions", "description": "CRUD for dimension definitions"},
+        {"name": "Rules", "description": "Alerting rule management (PromQL-like conditions)"},
+        {"name": "ML Configs", "description": "Machine learning model configurations"},
+        {"name": "Alerts", "description": "Alert events: list, acknowledge, resolve, suppress"},
+        {"name": "Data", "description": "Time-series data ingestion and query"},
+        {"name": "Incidents", "description": "Incident lifecycle management with SLA tracking"},
+        {"name": "Forecasts", "description": "ML-powered metric forecasting (Prophet)"},
+        {"name": "Webhooks", "description": "Inbound webhooks from Grafana and i-doit"},
+        {"name": "Admin", "description": "Tenant, user, and role management (admin only)"},
+        {"name": "Auth", "description": "OIDC/Keycloak SSO login flow"},
+        {"name": "Audit", "description": "Audit log queries"},
+    ],
     swagger_ui_init_oauth={
         "usePkceWithAuthorizationCodeGrant": True,
     },
@@ -121,7 +146,7 @@ app.include_router(audit_routes.router)
 from api.routes.websocket import router as ws_router
 app.include_router(ws_router)
 
-@app.post("/token", response_model=Token)
+@app.post("/token", response_model=Token, tags=["System"], summary="Authenticate and get JWT token")
 @limiter.limit("5/minute")
 async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     from core.auth_strategies import try_ldap_auth, try_db_auth, try_env_admin_auth
@@ -145,11 +170,83 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     log_audit(form_data.username, "default", "login", "session", ip_address=ip)
     return {"access_token": token, "token_type": "bearer"}
 
-@app.get("/health")
-async def health():
-    return {"status": "ok", "service": "situational-center-api"}
+@app.post("/api/v1/frontend-errors")
+async def frontend_errors(request: Request):
+    """Collect frontend error reports for monitoring."""
+    try:
+        body = await request.json()
+        logger.warning(
+            "Frontend error: %s | url=%s | stack=%s",
+            body.get("message", "unknown"),
+            body.get("url", ""),
+            (body.get("stack", "") or "")[:500],
+        )
+    except Exception:
+        pass
+    return {"status": "ok"}
 
-@app.get("/metric")
+
+@app.get("/health", tags=["System"])
+async def health():
+    """Aggregated health check for all dependencies."""
+    import time
+    checks = {}
+
+    # Database
+    try:
+        from core.database import get_engine
+        engine = get_engine()
+        start = time.perf_counter()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["database"] = {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
+    except Exception as e:
+        checks["database"] = {"status": "error", "detail": str(e)[:200]}
+
+    # Redis
+    try:
+        from config import get_redis
+        start = time.perf_counter()
+        get_redis().ping()
+        checks["redis"] = {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
+    except Exception as e:
+        checks["redis"] = {"status": "error", "detail": str(e)[:200]}
+
+    # Kafka (optional)
+    if settings.KAFKA_ENABLED:
+        try:
+            from kafka import KafkaProducer
+            start = time.perf_counter()
+            p = KafkaProducer(bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS, request_timeout_ms=3000)
+            p.close(timeout=2)
+            checks["kafka"] = {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
+        except Exception as e:
+            checks["kafka"] = {"status": "error", "detail": str(e)[:200]}
+
+    # ClickHouse (optional)
+    if settings.CLICKHOUSE_ENABLED:
+        try:
+            import clickhouse_connect
+            start = time.perf_counter()
+            ch = clickhouse_connect.get_client(
+                host=settings.CLICKHOUSE_HOST, port=settings.CLICKHOUSE_PORT,
+                username=settings.CLICKHOUSE_USER, password=settings.CLICKHOUSE_PASSWORD,
+            )
+            ch.ping()
+            ch.close()
+            checks["clickhouse"] = {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
+        except Exception as e:
+            checks["clickhouse"] = {"status": "error", "detail": str(e)[:200]}
+
+    overall = "ok" if all(c["status"] == "ok" for c in checks.values()) else "degraded"
+    status_code = 200 if overall == "ok" else 503
+    return Response(
+        content=json.dumps({"status": overall, "service": "situational-center-api", "checks": checks}),
+        media_type="application/json",
+        status_code=status_code,
+    )
+
+@app.get("/metric", tags=["System"], summary="Prometheus metrics endpoint")
 async def metric():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

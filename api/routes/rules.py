@@ -1,5 +1,5 @@
 # api/routes/rules.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from typing import List
 from uuid import UUID
 from api.schemas import RuleCreate, RuleRead, RuleUpdate
@@ -8,14 +8,17 @@ from api.dependencies import get_metadata_service
 from api.auth import TokenData
 from core.rbac import require_permission
 from core.audit import log_audit
+from api.limiter import limiter
 from sqlalchemy import text
 from config import mask_secrets
 
 router = APIRouter(prefix="/rules", tags=["Rules"])
 
 
-@router.post("/", response_model=RuleRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=RuleRead, status_code=status.HTTP_201_CREATED, summary="Create alerting rule")
+@limiter.limit("30/minute")
 def create_rule(
+    request: Request,
     data: RuleCreate,
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("write:rules")),
@@ -33,7 +36,7 @@ def create_rule(
         raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
-@router.get("/", response_model=List[RuleRead])
+@router.get("/", response_model=List[RuleRead], summary="List alerting rules")
 def list_rules(
     active_only: bool = True,
     service: MetadataService = Depends(get_metadata_service),
@@ -45,7 +48,7 @@ def list_rules(
     return rules
 
 
-@router.get("/{rule_id}", response_model=RuleRead)
+@router.get("/{rule_id}", response_model=RuleRead, summary="Get rule by ID")
 def get_rule(
     rule_id: UUID,
     service: MetadataService = Depends(get_metadata_service),
@@ -57,8 +60,10 @@ def get_rule(
     return rule
 
 
-@router.put("/{rule_id}", response_model=RuleRead)
+@router.put("/{rule_id}", response_model=RuleRead, summary="Update alerting rule")
+@limiter.limit("30/minute")
 def update_rule(
+    request: Request,
     rule_id: UUID,
     data: RuleUpdate,
     service: MetadataService = Depends(get_metadata_service),
@@ -77,8 +82,10 @@ def update_rule(
         raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
-@router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Deactivate alerting rule")
+@limiter.limit("10/minute")
 def delete_rule(
+    request: Request,
     rule_id: UUID,
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("write:rules")),

@@ -1,5 +1,5 @@
 # api/routes/dimensions.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from typing import List
 from api.schemas import DimensionCreate, DimensionRead
 from core.metadata_service import MetadataService
@@ -7,13 +7,16 @@ from api.dependencies import get_metadata_service
 from api.auth import TokenData
 from core.rbac import require_permission
 from core.audit import log_audit
+from api.limiter import limiter
 from config import mask_secrets
 
 router = APIRouter(prefix="/dimensions", tags=["Dimensions"])
 
 
-@router.post("/", response_model=DimensionRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=DimensionRead, status_code=status.HTTP_201_CREATED, summary="Create dimension definition")
+@limiter.limit("30/minute")
 def create_dimension(
+    request: Request,
     data: DimensionCreate,
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("write:metrics")),
@@ -31,7 +34,7 @@ def create_dimension(
         raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
 
 
-@router.get("/", response_model=List[DimensionRead])
+@router.get("/", response_model=List[DimensionRead], summary="List dimension definitions")
 def list_dimensions(
     service: MetadataService = Depends(get_metadata_service),
     current_user: TokenData = Depends(require_permission("read:metrics")),
@@ -39,7 +42,7 @@ def list_dimensions(
     return service.list_dimensions(tenant_id=current_user.tenant_id)
 
 
-@router.get("/{dimension_key}", response_model=DimensionRead)
+@router.get("/{dimension_key}", response_model=DimensionRead, summary="Get dimension by key")
 def get_dimension(
     dimension_key: str,
     service: MetadataService = Depends(get_metadata_service),

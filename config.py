@@ -54,8 +54,12 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": mask_secrets(record.getMessage()),
         }
+        # Correlation fields injected by middleware
+        if hasattr(record, "request_id"):
+            log_entry["request_id"] = record.request_id
+        if hasattr(record, "tenant_id"):
+            log_entry["tenant_id"] = record.tenant_id
         if record.exc_info:
-            # Маскируем traceback тоже
             tb = self.formatException(record.exc_info)
             log_entry["exception"] = mask_secrets(tb)
         return json.dumps(log_entry, ensure_ascii=False)
@@ -259,10 +263,18 @@ def setup_logging():
 
     settings.log_dir.mkdir(exist_ok=True)
     
-    if os.getenv("LOG_JSON", "false").lower() == "true":
-        formatter = JsonFormatter()
-    else:
+    log_format = os.getenv("LOG_FORMAT", "json").lower()
+    if log_format == "text":
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    else:
+        formatter = JsonFormatter()
+
+    # Attach request_id filter (injected by middleware)
+    try:
+        from api.middleware import RequestIdFilter
+        logger.addFilter(RequestIdFilter())
+    except ImportError:
+        pass
 
     # Stream handler
     stream_handler = logging.StreamHandler()

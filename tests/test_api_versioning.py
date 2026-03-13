@@ -14,8 +14,15 @@ def mock_metadata_service():
 
 
 class TestApiVersioning:
-    def test_health_no_prefix(self, api_client):
-        resp = api_client.get("/health")
+    def test_health_no_prefix(self, api_client, mock_redis):
+        with patch("core.database.get_engine") as mock_engine:
+            engine = MagicMock()
+            mock_engine.return_value = engine
+            conn = MagicMock()
+            engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+            engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+            resp = api_client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 

@@ -328,6 +328,35 @@ def analytics_query_range(
     return {"status": "success", "data": data}
 
 
+@router.get("/latest-by-region", response_model=List[Dict[str, Any]])
+def latest_by_region(
+    metric_name: str = Query(..., pattern=r"^[a-zA-Z0-9_\-\.]+$"),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Get the latest metric value per region for choropleth map display."""
+    engine = get_engine()
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text("""
+                    SELECT DISTINCT ON (dimensions->>'region')
+                        dimensions->>'region' AS region,
+                        value
+                    FROM canonical_metrics
+                    WHERE metric_name = :metric
+                      AND dimensions ? 'region'
+                      AND dimensions->>'region' IS NOT NULL
+                      AND tenant_id = :tenant_id
+                    ORDER BY dimensions->>'region', timestamp DESC
+                """),
+                {"metric": metric_name, "tenant_id": current_user.tenant_id},
+            ).mappings().all()
+            return [{"region": row["region"], "value": float(row["value"])} for row in rows]
+    except Exception as e:
+        logger.error(f"Error fetching latest-by-region: {mask_secrets(str(e))}")
+        raise HTTPException(500, "Internal server error")
+
+
 @router.post("/query", response_model=DataQueryResponse)
 @limiter.limit("30/minute")
 async def query_data(
