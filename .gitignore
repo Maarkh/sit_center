@@ -17,6 +17,7 @@ archiv/*
 downloads/
 eggs/
 .eggs/
+.git/
 lib/
 lib64/
 parts/

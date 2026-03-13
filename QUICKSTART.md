@@ -74,7 +74,7 @@ Each component is independently toggleable via environment variables:
 | ClickHouse | `CLICKHOUSE_ENABLED=true` | `docker compose up -d clickhouse` |
 | Grafana | always available | `docker compose up -d grafana` (http://localhost:3000) |
 | Keycloak SSO | `OIDC_ENABLED=true` | `docker compose up -d keycloak-db keycloak` |
-| GLPI | standalone | `docker compose up -d glpi-db glpi` |
+| i-doit (ITSM) | standalone | `docker compose up -d idoit-db idoit` (http://localhost:9080) |
 | Flower | standalone | `docker compose up -d flower` (http://localhost:5555) |
 
 ## Full Stack

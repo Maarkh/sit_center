@@ -36,6 +36,7 @@
 
 ├── sit_center/
 │   ├────── Dockerfile.celery
+│   ├────── QUICKSTART.md
 │   ├────── README.md
 │   ├────── celery_app.py
 │   ├────── celeryconfig.py
@@ -95,6 +96,17 @@
 │   │   ├── versions/
 │   │   │   ├────── 001_add_admin_dashboard.py
 │   │   │   ├────── 002_add_metadata_ml_configs.py
+│   ├── k8s/
+│   │   ├── sit-center/
+│   │   │   ├────── Chart.yaml
+│   │   │   ├────── values.yaml
+│   │   │   ├── templates/
+│   │   │   │   ├────── api-deployment.yaml
+│   │   │   │   ├────── celery-deployment.yaml
+│   │   │   │   ├────── hpa.yaml
+│   │   │   │   ├────── ingress.yaml
+│   │   │   │   ├────── ml-worker-deployment.yaml
+│   │   │   │   ├────── service.yaml
 │   ├── data/
 │   ├── .claude/
 │   ├── tests/
@@ -116,9 +128,11 @@
 │   │   ├────── test_idoit_service.py
 │   │   ├────── test_incidents.py
 │   │   ├────── test_mask_secrets.py
+│   │   ├────── test_mask_secrets_edge.py
 │   │   ├────── test_metadata_service.py
 │   │   ├────── test_ml.py
 │   │   ├────── test_ml_configs_api.py
+│   │   ├────── test_ml_smoke.py
 │   │   ├────── test_pubsub.py
 │   │   ├────── test_rbac.py
 │   │   ├────── test_resilience.py
@@ -176,6 +190,7 @@
 │   │   │   ├── 56/
 │   │   │   ├── 90/
 │   │   │   ├── 95/
+│   │   │   ├── aa/
 │   │   │   ├── 50/
 │   │   │   ├── 1d/
 │   │   │   ├── 7c/
@@ -185,7 +200,9 @@
 │   │   │   ├── 33/
 │   │   │   ├── e7/
 │   │   │   ├── a1/
+│   │   │   ├── 0f/
 │   │   │   ├── 7a/
+│   │   │   ├── 19/
 │   │   │   ├── 6d/
 │   │   │   ├── de/
 │   │   │   ├── a8/
@@ -199,6 +216,8 @@
 │   │   │   ├── 40/
 │   │   │   ├── df/
 │   │   │   ├── c7/
+│   │   │   ├── 58/
+│   │   │   ├── cf/
 │   │   │   ├── 92/
 │   │   │   ├── c6/
 │   │   │   ├── 00/
@@ -220,6 +239,7 @@
 │   │   │   ├── be/
 │   │   │   ├── 87/
 │   │   │   ├── b4/
+│   │   │   ├── 48/
 │   │   │   ├── 4e/
 │   │   │   ├── ba/
 │   │   │   ├── f0/
@@ -249,6 +269,7 @@
 │   │   │   ├── 24/
 │   │   │   ├── 03/
 │   │   │   ├── 18/
+│   │   │   ├── 4a/
 │   │   │   ├── 75/
 │   │   │   ├── 8d/
 │   │   │   ├── 0c/
@@ -287,6 +308,7 @@
 │   │   │   ├── 61/
 │   │   │   ├── 13/
 │   │   │   ├── 9f/
+│   │   │   ├── 7d/
 │   │   │   ├── 05/
 │   │   │   ├── b0/
 │   │   │   ├── 74/
@@ -295,6 +317,7 @@
 │   │   │   ├── ce/
 │   │   │   ├── 2d/
 │   │   │   ├── 5a/
+│   │   │   ├── 52/
 │   │   │   ├── ae/
 │   │   │   ├── d1/
 │   │   │   ├── 62/
@@ -357,6 +380,7 @@
 │   │   ├────── tenant.py
 │   │   ├────── tracing.py
 │   │   ├────── utils.py
+│   │   ├────── vault.py
 │   │   ├── __pycache__/
 ## 💻 Коды основных модулей
 ### 📄 `Dockerfile.celery`
@@ -389,6 +413,118 @@ ENV PYTHONPATH=/app
 
 # Команда по умолчанию — будет переопределена в docker-compose
 CMD ["celery", "-A", "tasks.celery_app", "worker", "-l", "INFO", "--concurrency", "2"]
+```
+### 📄 `QUICKSTART.md`
+
+```markdown
+# Quick Start Guide
+
+Minimal setup for local development. Full stack requires ~2GB RAM.
+
+## Prerequisites
+
+- Python 3.11+
+- Docker & Docker Compose
+- Git
+
+## 1. Clone & Setup
+
+```bash
+git clone <repo-url> sit_center && cd sit_center
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## 2. Environment
+
+```bash
+cp env.example .env
+# Edit .env — minimum required:
+#   POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_SERVER, POSTGRES_PORT, POSTGRES_DB
+#   REDIS_HOST, REDIS_PORT
+#   SECRET_KEY (any random string)
+#   ADMIN_USERNAME, ADMIN_PASSWORD (bcrypt hash)
+#   I_DOIT_API_KEY, I_DOIT_API_URL (can be placeholder)
+#   WEBHOOK_API_KEY (any string)
+```
+
+## 3. Start Infrastructure (minimal)
+
+```bash
+# Only PostgreSQL + Redis — enough for API development
+docker compose -f docker-compose.prod.yml up -d db redis
+```
+
+Wait for healthy status:
+```bash
+docker compose -f docker-compose.prod.yml ps
+```
+
+## 4. Apply Migrations
+
+```bash
+alembic upgrade head
+```
+
+## 5. Run API
+
+```bash
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+API docs: http://localhost:8000/docs
+
+## 6. Run Tests
+
+```bash
+TESTING=1 python -m pytest tests/ --ignore=tests/test_ml.py -v
+```
+
+## Optional Components
+
+Each component is independently toggleable via environment variables:
+
+| Component | Enable | Start Command |
+|-----------|--------|---------------|
+| Celery Worker | always on | `celery -A tasks.celery_app worker -l INFO` |
+| Celery Beat | always on | `celery -A tasks.celery_app beat -l INFO` |
+| ML Worker | `ML_METHODS` env | `celery -A celery_app worker -Q ml -l INFO --concurrency=1` |
+| Kafka | `KAFKA_ENABLED=true` | `docker compose up -d zookeeper kafka kafka-consumer` |
+| ClickHouse | `CLICKHOUSE_ENABLED=true` | `docker compose up -d clickhouse` |
+| Grafana | always available | `docker compose up -d grafana` (http://localhost:3000) |
+| Keycloak SSO | `OIDC_ENABLED=true` | `docker compose up -d keycloak-db keycloak` |
+| i-doit (ITSM) | standalone | `docker compose up -d idoit-db idoit` (http://localhost:9080) |
+| Flower | standalone | `docker compose up -d flower` (http://localhost:5555) |
+
+## Full Stack
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+This starts all 17 services. Requires ~8GB RAM.
+
+## Architecture Overview
+
+```
+Client -> FastAPI (port 8000) -> PostgreSQL/TimescaleDB
+                              -> Redis (cache + pubsub)
+                              -> Celery (background tasks)
+                              -> ML Worker (anomaly detection)
+                              -> Kafka (optional, streaming)
+                              -> ClickHouse (optional, OLAP)
+```
+
+## Troubleshooting
+
+**Redis connection refused**: Ensure Redis is running (`docker compose up -d redis`)
+
+**Database not found**: Run `alembic upgrade head` to create tables
+
+**ML tests fail**: ML tests require `prophet`, `tensorflow`, `torch` — skip with `--ignore=tests/test_ml.py`
+
+**Rate limiting errors in tests**: Set `TESTING=1` environment variable
+
 ```
 ### 📄 `celery_app.py`
 
@@ -641,6 +777,13 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
         extra = "ignore"  # Игнорируем неизвестные поля
 
+
+# Inject Vault secrets into env before Settings init (if VAULT_ENABLED=true)
+try:
+    from core.vault import inject_vault_secrets
+    inject_vault_secrets()
+except Exception:
+    pass
 
 settings = Settings() # type: ignore
 
@@ -1285,40 +1428,41 @@ services:
       retries: 3
       start_period: 30s
 
-  # ——— GLPI (ITSM) ———
-  glpi-db:
+  # ——— i-doit (ITSM / CMDB) ———
+  idoit-db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${GLPI_DB_NAME}
-      MYSQL_USER: ${GLPI_DB_USER}
-      MYSQL_PASSWORD: ${GLPI_DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${IDOIT_DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${IDOIT_DB_NAME:-idoit}
+      MYSQL_USER: ${IDOIT_DB_USER:-idoit}
+      MYSQL_PASSWORD: ${IDOIT_DB_PASS:-idoit}
     volumes:
-      - glpi_mysql_data:/var/lib/mysql
+      - idoit_mysql_data:/var/lib/mysql
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD}"]
-      timeout: 20s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
       retries: 10
 
-  glpi:
-    image: glpi/glpi:latest
+  idoit:
+    image: bheisig/idoit:1.19
     environment:
-      - GLPI_DB_HOST=glpi-db
-      - GLPI_DB_NAME=${GLPI_DB_NAME}
-      - GLPI_DB_USER=${GLPI_DB_USER}
-      - GLPI_DB_PASSWORD=${GLPI_DB_PASS}
-      - GLPI_LANGUAGE=ru_RU
+      IDOIT_DB_HOST: idoit-db
+      IDOIT_DB_NAME: ${IDOIT_DB_NAME:-idoit}
+      IDOIT_DB_USERNAME: ${IDOIT_DB_USER:-idoit}
+      IDOIT_DB_PASSWORD: ${IDOIT_DB_PASS:-idoit}
+      IDOIT_DB_ROOT_PASSWORD: ${IDOIT_DB_ROOT_PASSWORD:-root}
+      IDOIT_ADMIN_PASSWORD: ${IDOIT_ADMIN_PASS:-admin}
+      IDOIT_DEFAULT_TENANT: sit-center
     ports:
-      - "8080:80"
+      - "9080:80"
     depends_on:
-      glpi-db:
+      idoit-db:
         condition: service_healthy
     volumes:
-      - glpi_data:/var/www/html
-      - glpi_plugins:/var/www/html/plugins
-      - glpi_marketplace:/var/www/html/marketplace
+      - idoit_data:/var/www/html
     networks:
       - app-network
     restart: unless-stopped
@@ -1327,7 +1471,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
 
   # ——— Keycloak DB ———
   keycloak-db:
@@ -1383,10 +1527,8 @@ volumes:
   grafana_data:
   airbyte_db_data:
   airbyte_workspace:
-  glpi_mysql_data:
-  glpi_data:
-  glpi_plugins:
-  glpi_marketplace:
+  idoit_mysql_data:
+  idoit_data:
   keycloak_db_data:
   clickhouse_data:
   zookeeper_data:
@@ -3253,6 +3395,43 @@ http_requests_in_progress = Gauge(
     ["method"],
 )
 
+# --- SQLAlchemy connection pool metrics ---
+
+sqlalchemy_pool_size = Gauge(
+    "sqlalchemy_pool_size",
+    "Number of connections currently in the pool (checked in + checked out)",
+)
+
+sqlalchemy_pool_checked_in = Gauge(
+    "sqlalchemy_pool_checked_in",
+    "Number of idle connections in the pool",
+)
+
+sqlalchemy_pool_checked_out = Gauge(
+    "sqlalchemy_pool_checked_out",
+    "Number of connections currently checked out (in use)",
+)
+
+sqlalchemy_pool_overflow = Gauge(
+    "sqlalchemy_pool_overflow",
+    "Current overflow connections beyond pool_size",
+)
+
+
+def collect_pool_metrics():
+    """Update SQLAlchemy pool gauges from the current engine's QueuePool."""
+    try:
+        from core.database import _engine
+        if _engine is None:
+            return
+        pool = _engine.pool
+        sqlalchemy_pool_size.set(pool.size())
+        sqlalchemy_pool_checked_in.set(pool.checkedin())
+        sqlalchemy_pool_checked_out.set(pool.checkedout())
+        sqlalchemy_pool_overflow.set(pool.overflow())
+    except Exception:
+        pass
+
 
 class PrometheusMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -3264,6 +3443,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
                 path = path.replace(segment, "{id}")
 
         http_requests_in_progress.labels(method=method).inc()
+        collect_pool_metrics()
         start = time.perf_counter()
         try:
             response = await call_next(request)
@@ -6503,6 +6683,405 @@ def upgrade():
 def downgrade():
     op.drop_table('metadata_ml_configs')
 ```
+### 📄 `k8s/sit-center/Chart.yaml`
+
+```yaml
+apiVersion: v2
+name: sit-center
+description: Situational Center — enterprise monitoring platform
+version: 1.0.0
+appVersion: "1.0.0"
+type: application
+keywords:
+  - monitoring
+  - observability
+  - aiops
+  - situational-center
+
+```
+### 📄 `k8s/sit-center/values.yaml`
+
+```yaml
+# Default values for sit-center Helm chart
+
+replicaCount:
+  api: 2
+  celeryWorker: 2
+  mlWorker: 1
+  celeryBeat: 1
+
+image:
+  repository: situational-center/api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# -- External secrets (create manually or via ExternalSecrets operator)
+existingSecret: sit-center-secrets
+# Keys expected in secret:
+#   POSTGRES_PASSWORD, REDIS_PASSWORD, SECRET_KEY,
+#   ADMIN_PASSWORD, WEBHOOK_API_KEY, I_DOIT_API_KEY
+
+postgresql:
+  host: sit-center-postgresql
+  port: 5432
+  user: sit_center
+  database: sit_center
+
+redis:
+  host: sit-center-redis
+  port: 6379
+
+# -- Optional components
+kafka:
+  enabled: false
+  bootstrapServers: sit-center-kafka:9092
+
+clickhouse:
+  enabled: false
+  host: sit-center-clickhouse
+  port: 8123
+
+ldap:
+  enabled: false
+  url: "ldap://ldap:389"
+  baseDn: ""
+
+oidc:
+  enabled: false
+  issuerUrl: ""
+  clientId: ""
+  baseUrl: "https://sit-center.example.com"
+
+# -- Resource limits
+resources:
+  api:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  celeryWorker:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  mlWorker:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+# -- Autoscaling
+autoscaling:
+  api:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+
+# -- Ingress
+ingress:
+  enabled: true
+  className: nginx
+  host: sit-center.example.com
+  tls: true
+  secretName: sit-center-tls
+
+# -- Service
+service:
+  type: ClusterIP
+  port: 8000
+
+# -- Monitoring
+prometheus:
+  scrape: true
+  port: 8000
+  path: /metric
+
+# -- Vault integration (optional)
+vault:
+  enabled: false
+  address: "https://vault.example.com"
+  role: sit-center
+  secretPath: secret/data/sit-center
+
+```
+### 📄 `k8s/sit-center/templates/api-deployment.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.replicaCount.api }}
+  selector:
+    matchLabels:
+      {{- include "sit-center.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "sit-center.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+      annotations:
+        {{- if .Values.prometheus.scrape }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.prometheus.port | quote }}
+        prometheus.io/path: {{ .Values.prometheus.path }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+        vault.hashicorp.com/agent-inject-secret-config: {{ .Values.vault.secretPath | quote }}
+        {{- end }}
+    spec:
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            {{- include "sit-center.env" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources.api | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 10
+            periodSeconds: 5
+
+```
+### 📄 `k8s/sit-center/templates/celery-deployment.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-celery-worker
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+    app.kubernetes.io/component: celery-worker
+spec:
+  replicas: {{ .Values.replicaCount.celeryWorker }}
+  selector:
+    matchLabels:
+      {{- include "sit-center.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: celery-worker
+  template:
+    metadata:
+      labels:
+        {{- include "sit-center.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: celery-worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - celery
+            - -A
+            - tasks.celery_app
+            - worker
+            - --loglevel=INFO
+            - --concurrency=2
+            - --max-tasks-per-child=100
+          env:
+            {{- include "sit-center.env" . | nindent 12 }}
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          resources:
+            {{- toYaml .Values.resources.celeryWorker | nindent 12 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-celery-beat
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+    app.kubernetes.io/component: celery-beat
+spec:
+  replicas: {{ .Values.replicaCount.celeryBeat }}
+  selector:
+    matchLabels:
+      {{- include "sit-center.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: celery-beat
+  template:
+    metadata:
+      labels:
+        {{- include "sit-center.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: celery-beat
+    spec:
+      containers:
+        - name: beat
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - celery
+            - -A
+            - tasks.celery_app
+            - beat
+            - --loglevel=INFO
+          env:
+            {{- include "sit-center.env" . | nindent 12 }}
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+
+```
+### 📄 `k8s/sit-center/templates/hpa.yaml`
+
+```yaml
+{{- if .Values.autoscaling.api.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-api
+  minReplicas: {{ .Values.autoscaling.api.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.api.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.api.targetCPUUtilizationPercentage }}
+{{- end }}
+
+```
+### 📄 `k8s/sit-center/templates/ingress.yaml`
+
+```yaml
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/websocket-services: {{ .Release.Name }}-api
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-api
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}
+
+```
+### 📄 `k8s/sit-center/templates/ml-worker-deployment.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-ml-worker
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ml-worker
+spec:
+  replicas: {{ .Values.replicaCount.mlWorker }}
+  selector:
+    matchLabels:
+      {{- include "sit-center.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ml-worker
+  template:
+    metadata:
+      labels:
+        {{- include "sit-center.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ml-worker
+    spec:
+      containers:
+        - name: ml-worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - celery
+            - -A
+            - celery_app
+            - worker
+            - --queues=ml
+            - --loglevel=INFO
+            - --concurrency=1
+            - --max-tasks-per-child=10
+          env:
+            {{- include "sit-center.env" . | nindent 12 }}
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          resources:
+            {{- toYaml .Values.resources.mlWorker | nindent 12 }}
+
+```
+### 📄 `k8s/sit-center/templates/service.yaml`
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sit-center.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+
+```
 ### 📄 `tests/__init__.py`
 
 ```python
@@ -7946,6 +8525,162 @@ def test_mask_redis_url():
     assert "mysecret" not in out
 
 ```
+### 📄 `tests/test_mask_secrets_edge.py`
+
+```python
+# tests/test_mask_secrets_edge.py
+"""
+Edge-case tests for mask_secrets() — covering formats that reviewers flagged.
+"""
+from config import mask_secrets
+
+
+# --- Redis URL edge cases ---
+
+def test_mask_redis_password_only():
+    """redis://:password@host (no username)"""
+    s = "redis://:SuperSecret123@redis:6379/0"
+    out = mask_secrets(s)
+    assert "SuperSecret123" not in out
+    assert "redis://:***@redis:6379/0" in out
+
+
+def test_mask_redis_with_username():
+    """redis://user:password@host"""
+    s = "redis://default:mypass@redis:6379/0"
+    out = mask_secrets(s)
+    assert "mypass" not in out
+    assert "redis://default:***@redis:6379/0" in out
+
+
+def test_mask_redis_sentinel_url():
+    """redis-sentinel://:pass@host"""
+    s = "redis://:sentinel_pass@sentinel1:26379/0"
+    out = mask_secrets(s)
+    assert "sentinel_pass" not in out
+
+
+def test_mask_redis_empty_password():
+    """redis://:@host (empty password) should not crash"""
+    s = "redis://:@redis:6379/0"
+    out = mask_secrets(s)
+    assert "redis://" in out
+
+
+# --- PostgreSQL URL edge cases ---
+
+def test_mask_postgres_standard():
+    s = "postgresql://admin:p4ssw0rd@db:5432/mydb"
+    out = mask_secrets(s)
+    assert "p4ssw0rd" not in out
+    assert "postgresql://admin:***@db:5432/mydb" in out
+
+
+def test_mask_postgres_special_chars_in_password():
+    """Password with special chars: @, :, /, #"""
+    s = "postgresql://user:p%40ss%3Aw0rd@db:5432/mydb"
+    out = mask_secrets(s)
+    assert "p%40ss%3Aw0rd" not in out
+
+
+def test_mask_postgres_no_username():
+    s = "postgres://:secret@db:5432/mydb"
+    out = mask_secrets(s)
+    assert "secret" not in out
+
+
+# --- Telegram bot token ---
+
+def test_mask_telegram_token_standard():
+    s = "bot123456789:ABCdefGHIjklMNOpqrsTUVwxyz_0123456789"
+    out = mask_secrets(s)
+    assert "bot123456789:***" in out
+    assert "ABCdefGHIjklMNOpqrsTUVwxyz_0123456789" not in out
+
+
+def test_mask_telegram_token_in_url():
+    s = "https://api.telegram.org/bot123456:ABCdef/sendMessage"
+    out = mask_secrets(s)
+    assert "ABCdef" not in out
+
+
+# --- JSON key-value pairs ---
+
+def test_mask_json_password():
+    s = '{"password": "hunter2"}'
+    out = mask_secrets(s)
+    assert "hunter2" not in out
+
+
+def test_mask_json_token():
+    s = '{"token": "abc123xyz"}'
+    out = mask_secrets(s)
+    assert "abc123xyz" not in out
+
+
+def test_mask_json_secret_key():
+    s = "{'secret': 'my_secret_value'}"
+    out = mask_secrets(s)
+    assert "my_secret_value" not in out
+
+
+# --- Generic key=value pairs ---
+
+def test_mask_password_equals():
+    s = "connection failed password=MySecret123 at host"
+    out = mask_secrets(s)
+    assert "MySecret123" not in out
+    assert "password=***" in out
+
+
+def test_mask_token_equals():
+    s = "token=xoxb-123-456-abc other stuff"
+    out = mask_secrets(s)
+    assert "xoxb-123-456-abc" not in out
+
+
+def test_mask_secret_equals():
+    s = "SECRET=very_secret_value"
+    out = mask_secrets(s)
+    assert "very_secret_value" not in out
+
+
+# --- Edge cases ---
+
+def test_mask_none_input():
+    assert mask_secrets(None) == ""
+
+
+def test_mask_non_string_input():
+    result = mask_secrets(12345)
+    assert result == "12345"
+
+
+def test_mask_empty_string():
+    assert mask_secrets("") == ""
+
+
+def test_mask_no_secrets():
+    s = "This is a normal log message without any secrets"
+    assert mask_secrets(s) == s
+
+
+def test_mask_multiple_secrets_in_one_string():
+    s = "DB: postgresql://user:dbpass@db:5432/mydb Redis: redis://:redispass@redis:6379"
+    out = mask_secrets(s)
+    assert "dbpass" not in out
+    assert "redispass" not in out
+    assert "***" in out
+
+
+def test_mask_preserves_non_secret_content():
+    s = "Error connecting to postgresql://admin:secret@db:5432/app — retrying in 5s"
+    out = mask_secrets(s)
+    assert "secret" not in out
+    assert "Error connecting to" in out
+    assert "retrying in 5s" in out
+
+```
 ### 📄 `tests/test_metadata_service.py`
 
 ```python
@@ -8120,6 +8855,210 @@ def test_delete_ml_config(api_client, auth_headers, mock_metadata_service):
 def test_ml_configs_require_auth(api_client):
     response = api_client.get("/ml/configs/")
     assert response.status_code == 401
+
+```
+### 📄 `tests/test_ml_smoke.py`
+
+```python
+# tests/test_ml_smoke.py
+"""
+ML smoke tests that work WITHOUT heavy ML dependencies (Prophet, TensorFlow, torch).
+These run in CI to verify ML pipeline logic, error handling, and graceful degradation.
+
+Note: We do NOT import core.ml_anomaly directly because it pulls in tensorflow/torch
+at module level. Instead, we test through the Celery task layer (which uses local
+imports) and mock the ML internals.
+"""
+import pytest
+from unittest.mock import patch, MagicMock
+from datetime import datetime, timezone
+from uuid import uuid4
+
+
+# --- ML task layer (safe to import — uses lazy local imports) ---
+
+def test_ml_tasks_import():
+    """Verify ml_tasks module has expected Celery tasks."""
+    from core.ml_tasks import run_ml_anomaly_check, retrain_ml_models, evaluate_rules_task
+    assert callable(run_ml_anomaly_check)
+    assert callable(retrain_ml_models)
+    assert callable(evaluate_rules_task)
+
+
+def test_run_ml_anomaly_check_handles_import_error():
+    """ML anomaly check task gracefully handles missing ML libs."""
+    from core.ml_tasks import run_ml_anomaly_check
+    # ml_tasks does `from core.ml_anomaly import find_recent_ml_anomalies` inside the function.
+    # We mock at the sys.modules level to simulate import failure.
+    mock_module = MagicMock()
+    mock_module.find_recent_ml_anomalies = MagicMock(side_effect=ImportError("No prophet"))
+    with patch.dict("sys.modules", {"core.ml_anomaly": mock_module}):
+        result = run_ml_anomaly_check()
+        assert result == 0
+
+
+def test_run_ml_anomaly_check_handles_runtime_error():
+    """ML anomaly check task returns 0 on runtime failure."""
+    from core.ml_tasks import run_ml_anomaly_check
+    mock_module = MagicMock()
+    mock_module.find_recent_ml_anomalies = MagicMock(side_effect=RuntimeError("DB down"))
+    with patch.dict("sys.modules", {"core.ml_anomaly": mock_module}):
+        result = run_ml_anomaly_check()
+        assert result == 0
+
+
+def test_run_ml_anomaly_check_success():
+    """ML anomaly check returns anomaly list on success."""
+    from core.ml_tasks import run_ml_anomaly_check
+    mock_module = MagicMock()
+    mock_module.find_recent_ml_anomalies = MagicMock(return_value=[{"id": 1}])
+    with patch.dict("sys.modules", {"core.ml_anomaly": mock_module}):
+        result = run_ml_anomaly_check()
+        # The task calls find_recent_ml_anomalies and returns its result
+        assert result is not None
+
+
+def test_retrain_ml_models_handles_error():
+    """Retrain task returns error status on failure."""
+    from core.ml_tasks import retrain_ml_models
+    mock_module = MagicMock()
+    mock_module.retrain_all_models = MagicMock(side_effect=RuntimeError("DB down"))
+    with patch.dict("sys.modules", {"core.ml_anomaly": mock_module}):
+        result = retrain_ml_models()
+        assert result["status"] == "error"
+        assert "DB down" in result["message"]
+
+
+def test_retrain_ml_models_success():
+    """Retrain task returns success on happy path."""
+    from core.ml_tasks import retrain_ml_models
+    mock_module = MagicMock()
+    mock_module.retrain_all_models = MagicMock()
+    with patch.dict("sys.modules", {"core.ml_anomaly": mock_module}):
+        result = retrain_ml_models()
+        assert result["status"] == "success"
+
+
+def test_evaluate_rules_task_handles_error():
+    """Rule evaluation task returns error on failure."""
+    from core.ml_tasks import evaluate_rules_task
+    mock_re_module = MagicMock()
+    mock_re_module.rule_engine.evaluate_all_rules.side_effect = RuntimeError("boom")
+    with patch.dict("sys.modules", {"core.rule_engine": mock_re_module}):
+        result = evaluate_rules_task()
+        assert "error" in result
+
+
+def test_evaluate_rules_task_success():
+    """Rule evaluation returns check/fired counts."""
+    from core.ml_tasks import evaluate_rules_task
+    mock_result = MagicMock()
+    mock_result.fired = True
+    mock_result.rule_name = "test"
+    mock_result.metric_name = "cpu"
+    mock_result.operator = ">"
+    mock_result.threshold = 80
+    mock_result.current_value = 95.0
+
+    mock_re_module = MagicMock()
+    mock_re_module.rule_engine.evaluate_all_rules.return_value = [mock_result]
+    with patch.dict("sys.modules", {"core.rule_engine": mock_re_module}), \
+         patch("core.notifications.notify"):
+        result = evaluate_rules_task()
+        assert result["checked"] == 1
+        assert result["fired"] == 1
+
+
+# --- MLConfigDTO structure ---
+
+def test_ml_config_dto_structure():
+    """Verify MLConfigDTO has required fields."""
+    from core.metadata_service import MLConfigDTO
+    cfg = MLConfigDTO(
+        name="test",
+        metric_name="cpu_usage",
+        group_by=["region"],
+        methods=["prophet"],
+        method_params={},
+        retrain_schedule="0 3 * * *",
+        auto_alert=True,
+        alert_severity="warning",
+        is_active=True,
+        id=uuid4(),
+    )
+    assert cfg.metric_name == "cpu_usage"
+    assert "prophet" in cfg.methods
+    assert cfg.auto_alert is True
+
+
+def test_ml_config_dto_defaults():
+    """MLConfigDTO with minimal + default fields."""
+    from core.metadata_service import MLConfigDTO
+    cfg = MLConfigDTO(
+        name="minimal",
+        metric_name="m",
+        group_by=[],
+        methods=["prophet"],
+        method_params={},
+    )
+    assert cfg.is_active is True
+    assert cfg.group_by == []
+    assert cfg.alert_severity == "warning"
+
+
+# --- Anomaly serialization ---
+
+def test_serialize_anomalies_empty():
+    """serialize_anomalies works for empty list."""
+    from core.utils import serialize_anomalies
+    result = serialize_anomalies([])
+    assert result is not None
+
+
+def test_serialize_anomalies_with_data():
+    """serialize_anomalies works for non-empty list."""
+    from core.utils import serialize_anomalies
+    anomaly = {
+        "metric_name": "cpu",
+        "timestamp": datetime.now(timezone.utc),
+        "value": 42.5,
+        "predicted": 40.0,
+        "residual": 2.5,
+    }
+    result = serialize_anomalies([anomaly])
+    assert result is not None
+
+
+# --- Forecast endpoint (ML consumer) ---
+
+def test_forecast_endpoint_handles_import_error(api_client, auth_headers):
+    """Forecast returns 501 when ML libs are unavailable."""
+    mock_svc = MagicMock()
+    mock_metric = MagicMock()
+    mock_metric.metric_name = "test_metric"
+    mock_svc.list_metrics.return_value = [mock_metric]
+
+    with patch("core.metadata_service.metadata_service", mock_svc), \
+         patch("api.routes.forecasts._generate_forecast", side_effect=ImportError("No prophet")):
+        resp = api_client.get("/forecasts/predict?metric_name=test_metric", headers=auth_headers)
+    assert resp.status_code == 501
+
+
+# --- ML config API (consumer of ML metadata) ---
+
+def test_ml_configs_endpoint_returns_list(api_client, auth_headers):
+    """GET /ml/configs/ returns a list (may be empty)."""
+    from api.main import app
+    from api.dependencies import get_metadata_service
+    mock_svc = MagicMock()
+    mock_svc.list_active_ml_configs.return_value = []
+    app.dependency_overrides[get_metadata_service] = lambda: mock_svc
+    try:
+        resp = api_client.get("/ml/configs/", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json() == []
+    finally:
+        app.dependency_overrides.pop(get_metadata_service, None)
 
 ```
 ### 📄 `tests/test_pubsub.py`
@@ -13801,4 +14740,132 @@ def deserialize_anomalies(data_str: str) -> List[Dict[str, Any]]:
         if "timestamp" in item:
             item["timestamp"] = datetime.fromisoformat(item["timestamp"])
     return data
+```
+### 📄 `core/vault.py`
+
+```python
+# core/vault.py
+"""
+HashiCorp Vault integration for secret management.
+
+Usage:
+  - Set VAULT_ENABLED=true, VAULT_ADDR, VAULT_ROLE, VAULT_SECRET_PATH in .env
+  - In Kubernetes: uses Vault Agent Sidecar (annotations in Helm chart)
+  - Standalone: uses AppRole or Token auth to fetch secrets at startup
+
+Secrets from Vault override corresponding env vars in Settings.
+"""
+import os
+import logging
+from typing import Dict, Optional
+
+logger = logging.getLogger(__name__)
+
+VAULT_ENABLED = os.getenv("VAULT_ENABLED", "false").lower() == "true"
+VAULT_ADDR = os.getenv("VAULT_ADDR", "https://vault.example.com")
+VAULT_TOKEN = os.getenv("VAULT_TOKEN", "")
+VAULT_ROLE_ID = os.getenv("VAULT_ROLE_ID", "")
+VAULT_SECRET_ID = os.getenv("VAULT_SECRET_ID", "")
+VAULT_SECRET_PATH = os.getenv("VAULT_SECRET_PATH", "secret/data/sit-center")
+VAULT_MOUNT = os.getenv("VAULT_MOUNT", "secret")
+
+
+def fetch_secrets() -> Dict[str, str]:
+    """Fetch secrets from Vault and return as dict of env-var-compatible keys."""
+    if not VAULT_ENABLED:
+        return {}
+
+    try:
+        import requests
+    except ImportError:
+        logger.warning("requests library required for Vault integration")
+        return {}
+
+    token = _get_vault_token()
+    if not token:
+        logger.error("Could not obtain Vault token")
+        return {}
+
+    try:
+        headers = {"X-Vault-Token": token}
+        resp = requests.get(
+            f"{VAULT_ADDR}/v1/{VAULT_SECRET_PATH}",
+            headers=headers,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json().get("data", {}).get("data", {})
+        logger.info("Fetched %d secrets from Vault", len(data))
+        return data
+    except Exception as e:
+        logger.error("Failed to fetch secrets from Vault: %s", e)
+        return {}
+
+
+def _get_vault_token() -> Optional[str]:
+    """Get Vault token via direct token, AppRole, or Kubernetes auth."""
+    if VAULT_TOKEN:
+        return VAULT_TOKEN
+
+    # Kubernetes Service Account auth
+    sa_token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    if os.path.exists(sa_token_path):
+        return _k8s_auth(sa_token_path)
+
+    # AppRole auth
+    if VAULT_ROLE_ID and VAULT_SECRET_ID:
+        return _approle_auth()
+
+    return None
+
+
+def _k8s_auth(sa_token_path: str) -> Optional[str]:
+    """Authenticate to Vault using Kubernetes service account."""
+    try:
+        import requests
+
+        with open(sa_token_path) as f:
+            jwt = f.read().strip()
+
+        role = os.getenv("VAULT_ROLE", "sit-center")
+        resp = requests.post(
+            f"{VAULT_ADDR}/v1/auth/kubernetes/login",
+            json={"jwt": jwt, "role": role},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json()["auth"]["client_token"]
+    except Exception as e:
+        logger.error("Vault Kubernetes auth failed: %s", e)
+        return None
+
+
+def _approle_auth() -> Optional[str]:
+    """Authenticate to Vault using AppRole."""
+    try:
+        import requests
+
+        resp = requests.post(
+            f"{VAULT_ADDR}/v1/auth/approle/login",
+            json={"role_id": VAULT_ROLE_ID, "secret_id": VAULT_SECRET_ID},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json()["auth"]["client_token"]
+    except Exception as e:
+        logger.error("Vault AppRole auth failed: %s", e)
+        return None
+
+
+def inject_vault_secrets():
+    """Fetch secrets from Vault and inject into os.environ (before Settings init)."""
+    secrets = fetch_secrets()
+    for key, value in secrets.items():
+        env_key = key.upper()
+        if env_key not in os.environ:
+            os.environ[env_key] = str(value)
+            logger.debug("Injected Vault secret: %s", env_key)
+        else:
+            logger.debug("Vault secret %s skipped (already in env)", env_key)
+
 ```

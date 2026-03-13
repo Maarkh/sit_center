@@ -369,40 +369,41 @@ services:
       retries: 3
       start_period: 30s
 
-  # ——— GLPI (ITSM) ———
-  glpi-db:
+  # ——— i-doit (ITSM / CMDB) ———
+  idoit-db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${GLPI_DB_NAME}
-      MYSQL_USER: ${GLPI_DB_USER}
-      MYSQL_PASSWORD: ${GLPI_DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${IDOIT_DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${IDOIT_DB_NAME:-idoit}
+      MYSQL_USER: ${IDOIT_DB_USER:-idoit}
+      MYSQL_PASSWORD: ${IDOIT_DB_PASS:-idoit}
     volumes:
-      - glpi_mysql_data:/var/lib/mysql
+      - idoit_mysql_data:/var/lib/mysql
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD}"]
-      timeout: 20s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
       retries: 10
 
-  glpi:
-    image: glpi/glpi:latest
+  idoit:
+    image: bheisig/idoit:1.19
     environment:
-      - GLPI_DB_HOST=glpi-db
-      - GLPI_DB_NAME=${GLPI_DB_NAME}
-      - GLPI_DB_USER=${GLPI_DB_USER}
-      - GLPI_DB_PASSWORD=${GLPI_DB_PASS}
-      - GLPI_LANGUAGE=ru_RU
+      IDOIT_DB_HOST: idoit-db
+      IDOIT_DB_NAME: ${IDOIT_DB_NAME:-idoit}
+      IDOIT_DB_USERNAME: ${IDOIT_DB_USER:-idoit}
+      IDOIT_DB_PASSWORD: ${IDOIT_DB_PASS:-idoit}
+      IDOIT_DB_ROOT_PASSWORD: ${IDOIT_DB_ROOT_PASSWORD:-root}
+      IDOIT_ADMIN_PASSWORD: ${IDOIT_ADMIN_PASS:-admin}
+      IDOIT_DEFAULT_TENANT: sit-center
     ports:
-      - "8080:80"
+      - "9080:80"
     depends_on:
-      glpi-db:
+      idoit-db:
         condition: service_healthy
     volumes:
-      - glpi_data:/var/www/html
-      - glpi_plugins:/var/www/html/plugins
-      - glpi_marketplace:/var/www/html/marketplace
+      - idoit_data:/var/www/html
     networks:
       - app-network
     restart: unless-stopped
@@ -411,7 +412,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
 
   # ——— Keycloak DB ———
   keycloak-db:
@@ -467,10 +468,8 @@ volumes:
   grafana_data:
   airbyte_db_data:
   airbyte_workspace:
-  glpi_mysql_data:
-  glpi_data:
-  glpi_plugins:
-  glpi_marketplace:
+  idoit_mysql_data:
+  idoit_data:
   keycloak_db_data:
   clickhouse_data:
   zookeeper_data:

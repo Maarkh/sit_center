@@ -1,0 +1,61 @@
+import client from './client';
+import type {
+  IncidentRead, IncidentCreate, IncidentStatusUpdate,
+  IncidentCommentRead, IncidentListResponse,
+} from '@/types/incidents';
+import type { SlaPolicyRead, SlaPolicyCreate } from '@/types/sla';
+
+export interface IncidentFilters {
+  status?: string;
+  priority?: string;
+  assigned_to?: string;
+  metric?: string;
+  breached?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listIncidents(params: IncidentFilters = {}): Promise<IncidentListResponse> {
+  const { data } = await client.get<IncidentListResponse>('/api/v1/incidents', { params });
+  return data;
+}
+
+export async function getIncident(id: number): Promise<IncidentRead> {
+  const { data } = await client.get<IncidentRead>(`/api/v1/incidents/${id}`);
+  return data;
+}
+
+export async function createIncident(payload: IncidentCreate): Promise<IncidentRead> {
+  const { data } = await client.post<IncidentRead>('/api/v1/incidents', payload);
+  return data;
+}
+
+export async function updateIncidentStatus(id: number, payload: IncidentStatusUpdate): Promise<IncidentRead> {
+  const { data } = await client.put<IncidentRead>(`/api/v1/incidents/${id}/status`, payload);
+  return data;
+}
+
+export async function assignIncident(id: number, assigned_to: string, comment?: string): Promise<IncidentRead> {
+  const { data } = await client.post<IncidentRead>(`/api/v1/incidents/${id}/assign`, { assigned_to, comment });
+  return data;
+}
+
+export async function listComments(id: number): Promise<IncidentCommentRead[]> {
+  const { data } = await client.get<IncidentCommentRead[]>(`/api/v1/incidents/${id}/comments`);
+  return data;
+}
+
+export async function addComment(id: number, content: string): Promise<IncidentCommentRead> {
+  const { data } = await client.post<IncidentCommentRead>(`/api/v1/incidents/${id}/comments`, { content });
+  return data;
+}
+
+export async function listSlaPolicies(): Promise<SlaPolicyRead[]> {
+  const { data } = await client.get<SlaPolicyRead[]>('/api/v1/incidents/sla-policies');
+  return data;
+}
+
+export async function createSlaPolicy(payload: SlaPolicyCreate): Promise<SlaPolicyRead> {
+  const { data } = await client.post<SlaPolicyRead>('/api/v1/incidents/sla-policies', payload);
+  return data;
+}
