@@ -34,14 +34,19 @@ from contextlib import contextmanager
 import re
 import sys
 import os
-import torch
+
+try:
+    import torch
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
 
 SAFE_DIMENSION_KEY_RE = re.compile(r"^[a-zA-Z0-9_]{1,50}$")
 from pathlib import Path
 
 ML_MODEL_DIR = Path("/app/models")
 logger = logging.getLogger(__name__)
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda' if HAS_TORCH and torch.cuda.is_available() else 'cpu'
 
 
 # Ключи кэша
@@ -515,14 +520,14 @@ def get_ml_model_status() -> Dict[str, List[str]]:
     """
     cache = get_cache()
     metrics = [m.column for m in load_metrics_from_db_cached()]
-    regions = cache.get("regions") or ["Moscow", "SPb"]  # или загрузить из БД
+    regions = cache.get("regions") or ["Moscow", "SPb"]
 
     trained = []
     for m in metrics:
-        for r in regions: # type: ignore
+        for r in regions:  # type: ignore
             key = MODEL_CACHE_KEY.format(metric=m, region=r)
             if cache.get(key):
-                trained.append(f"{m} → {r}")
+                trained.append(f"{m} -> {r}")
     return {"trained_models": trained}
 
 def detect_anomaly_lstm(region_data, metric_col, window_size=24):

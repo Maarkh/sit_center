@@ -63,10 +63,11 @@ sqlalchemy_pool_overflow = Gauge(
 def collect_pool_metrics():
     """Update SQLAlchemy pool gauges from the current engine's QueuePool."""
     try:
-        from core.database import _engine
-        if _engine is None:
+        from core.database import get_engine
+        engine = get_engine()
+        if engine is None:
             return
-        pool = _engine.pool
+        pool = engine.pool
         sqlalchemy_pool_size.set(pool.size())
         sqlalchemy_pool_checked_in.set(pool.checkedin())
         sqlalchemy_pool_checked_out.set(pool.checkedout())

@@ -121,6 +121,11 @@
     "medium": "Medium",
     "low": "Low"
   },
+  "error": {
+    "title": "Something went wrong",
+    "retry": "Try Again",
+    "go_home": "Go Home"
+  },
   "theme": {
     "light": "Light theme",
     "dark": "Dark theme"

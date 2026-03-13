@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { message } from 'antd';
+import { useAuthStore } from '@/stores/authStore';
 
 const client = axios.create({
   baseURL: '',
@@ -18,7 +19,7 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+      useAuthStore.getState().logout();
       window.location.href = '/login';
     } else if (error.response?.status === 403) {
       message.error('Access denied');

@@ -290,31 +290,34 @@ class DataIngester(AuthenticatedUser):
     wait_time = between(0.5, 2)
 
     @task(10)
-    def ingest_single(self):
-        """POST a single metric data point via the ingest endpoint."""
+    def ingest_via_webhook(self):
+        """POST metric data via Grafana webhook (the actual ingestion path)."""
         body = {
-            "metric_name": random.choice(METRIC_NAMES),
-            "value": round(random.uniform(0, 100), 2),
-            "timestamp": _random_iso_timestamp(hours_ago_max=1),
-            "dimensions": {
-                "region": random.choice(REGIONS),
-                "service": random.choice(SERVICES),
-            },
+            "alerts": [
+                {
+                    "labels": {
+                        "alertname": random.choice(METRIC_NAMES),
+                        "region": random.choice(REGIONS),
+                        "service": random.choice(SERVICES),
+                    },
+                    "annotations": {
+                        "value": str(round(random.uniform(0, 100), 2)),
+                    },
+                    "status": "firing",
+                }
+            ]
         }
         with self.client.post(
-            f"{API_V1}/data/ingest",
+            f"{API_V1}/webhooks/grafana",
             json=body,
             headers=self.auth_headers,
-            name="POST /api/v1/data/ingest",
+            name="POST /api/v1/webhooks/grafana",
             catch_response=True,
         ) as resp:
             if resp.status_code == RATE_LIMITED:
                 resp.success()
             elif resp.status_code in (200, 201, 202):
                 pass  # success
-            elif resp.status_code == 404:
-                # Endpoint may not exist yet — treat as expected
-                resp.success()
             else:
                 resp.failure(f"{resp.status_code}: {resp.text[:200]}")
 

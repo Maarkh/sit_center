@@ -752,8 +752,9 @@ All business routes are served under `/api/v1/` prefix. Legacy routes without pr
 | GET | `/api/v1/incidents` | read:incidents | List incidents (filters: status, priority, assigned_to, metric, breached) |
 | POST | `/api/v1/incidents` | write:incidents | Create incident |
 | GET | `/api/v1/incidents/{id}` | read:incidents | Get incident details |
-| PUT | `/api/v1/incidents/{id}/status` | write:incidents | Update incident status |
-| POST | `/api/v1/incidents/{id}/assign` | write:incidents | Assign incident |
+| PATCH | `/api/v1/incidents/{id}/status` | write:incidents | Update incident status |
+| PATCH | `/api/v1/incidents/{id}/assign` | write:incidents | Assign incident |
+| POST | `/api/v1/incidents/{id}/escalate` | write:incidents | Escalate incident to next level |
 | POST | `/api/v1/incidents/{id}/comments` | write:incidents | Add comment |
 | GET | `/api/v1/incidents/{id}/comments` | read:incidents | List comments |
 | GET | `/api/v1/incidents/sla-policies` | read:incidents | List SLA policies |
@@ -765,6 +766,7 @@ All business routes are served under `/api/v1/` prefix. Legacy routes without pr
 |--------|------|------|-------------|
 | POST | `/api/v1/webhooks/grafana` | API Key | Receive Grafana alerts |
 | POST | `/api/v1/webhooks/idoit` | API Key | Receive i-doit alerts, create incidents |
+| POST | `/api/v1/webhooks/idoit/sync` | API Key | Sync status update from i-doit |
 
 ### Admin
 

@@ -1,5 +1,5 @@
 # api/routes/data.py
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from typing import List, Dict, Any, Literal
 from datetime import datetime, timezone
 import json
@@ -194,8 +194,10 @@ def _parse_duration(s: str) -> int:
     return seconds
 
 
-@router.get("/prometheus/api/v1/query_range", response_model=Dict[str, Any])
+@router.get("/prometheus/api/v1/query_range", response_model=Dict[str, Any], summary="Query metric time series (Prometheus-compatible)")
+@limiter.limit("60/minute")
 def prometheus_query_range(
+    request: Request,
     query: str,
     start: float,
     end: float,

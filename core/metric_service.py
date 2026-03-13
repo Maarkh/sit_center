@@ -21,10 +21,6 @@ class Metric:
         if not isinstance(self.priority, int):
             self.priority = int(self.priority)
 
-# Глобальная переменная для кэширования
-_METRICS_CACHE = None
-_LAST_CACHE_UPDATE = 0
-_CACHE_TTL = 300  # 5 минут
 
 def get_config_service():
     """Ленивая загрузка config_service"""
@@ -121,18 +117,3 @@ def get_metric_by_column(col: str) -> Optional[Metric]:
     metrics = load_metrics_from_db_cached()
     return next((m for m in metrics if m.column == col), None)
 
-def get_metric_buttons() -> Dict[str, tuple]:
-    """Возвращает словарь для кнопок (btn-id -> (label, column))"""
-    metrics = load_metrics_from_db_cached()
-    return {
-        f"btn-{m.column}": (m.display_name, m.column)
-        for m in metrics
-    }
-
-# Добавляем функцию для принудительного обновления кэша
-def refresh_metrics_cache():
-    """Принудительно обновляет кэш метрик"""
-    global _METRICS_CACHE, _LAST_CACHE_UPDATE
-    _METRICS_CACHE = None
-    _LAST_CACHE_UPDATE = 0
-    return load_metrics_from_db(force_refresh=True)

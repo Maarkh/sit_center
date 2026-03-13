@@ -53,7 +53,7 @@ Audit entries are stored in the `audit_log` table in PostgreSQL with the followi
 | `changes`       | JSONB     | Before/after diff of the mutation    |
 | `ip_address`    | text      | Client IP address                    |
 | `user_agent`    | text      | Client user-agent string             |
-| `created_at`    | timestamp | When the action occurred             |
+| `timestamp`     | timestamptz | When the action occurred           |
 
 All mutating endpoints call `core/audit.py::log_audit()` to write entries.
 
@@ -68,11 +68,11 @@ All mutating endpoints call `core/audit.py::log_audit()` to write entries.
 ```bash
 # Archive audit entries older than 90 days
 pg_dump -h db -U $POSTGRES_USER -t audit_log --data-only \
-  --where="created_at < NOW() - INTERVAL '90 days'" $POSTGRES_DB \
+  --where="timestamp < NOW() - INTERVAL '90 days'" $POSTGRES_DB \
   | gzip > /backups/audit/audit_$(date +%Y%m).sql.gz
 # Then purge
 psql -h db -U $POSTGRES_USER $POSTGRES_DB \
-  -c "DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL '90 days'"
+  -c "DELETE FROM audit_log WHERE timestamp < NOW() - INTERVAL '90 days'"
 ```
 
 Schedule this as a cron job on the first of each month. Verify the backup file is non-empty before running the DELETE.
