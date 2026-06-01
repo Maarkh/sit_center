@@ -41,6 +41,7 @@ ENV MPLCONFIGDIR=/home/appuser/.matplotlib
 
 EXPOSE 8000
 
-COPY .env .
+# NOTE: .env is intentionally NOT copied into the image — secrets must be supplied
+# at runtime via env vars / Docker secrets. See .dockerignore.
 
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

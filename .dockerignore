@@ -1,0 +1,35 @@
+# Secrets — must never be baked into an image layer
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend build artifacts
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# VCS & CI
+.git/
+.github/
+
+# Local data, logs, generated docs
+logs/
+data/
+documents/
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

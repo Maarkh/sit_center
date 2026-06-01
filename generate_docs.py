@@ -165,19 +165,26 @@ def clean_text_for_xml(text: str) -> str:
 def build_documentation():
     spec = load_gitignore_spec()
     structure = generate_tree(PROJECT_ROOT, spec)
-    code_sections = gather_files(PROJECT_ROOT, spec)
-    
-    # Используем обновленный заголовок
-    documentation = f"""{README_HEADER}
+
+    # README остаётся лёгким: описание + дерево структуры.
+    # Полный дамп исходников в README НЕ пишется — он раздувал файл до нескольких
+    # МБ и взрывал git-историю на каждом push. Исходники идут только в .docx-отчёт.
+    readme = f"""{README_HEADER}
+```
 {structure}
-## 💻 Коды основных модулей
-{code_sections}
+```
+
+> Подробнее: [ARCHITECTURE.md](ARCHITECTURE.md) · быстрый старт: [QUICKSTART.md](QUICKSTART.md) · эксплуатация: [docs/operations.md](docs/operations.md)
 """
 
     # Запись README.md
     with open(README_FILE, "w", encoding="utf-8") as f:
-        f.write(documentation)
+        f.write(readme)
     print("[+] README.md успешно обновлён")
+
+    # Полный листинг кода — отдельный офлайн-артефакт (.docx), не в git.
+    code_sections = gather_files(PROJECT_ROOT, spec)
+    documentation = f"{readme}\n## 💻 Коды основных модулей\n{code_sections}\n"
 
     # --- Создание .docx ---
     # Создаем каталог documents, если он не существует

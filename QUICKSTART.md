@@ -1,10 +1,10 @@
 # Quick Start Guide
 
-Minimal setup for local development. Full stack requires ~2GB RAM.
+Minimal setup for local development (~2GB RAM). Full stack requires ~8GB RAM.
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.11–3.13 (NOT 3.14 — `tensorflow` has no 3.14 wheels yet)
 - Docker & Docker Compose
 - Git
 
@@ -83,7 +83,7 @@ Each component is independently toggleable via environment variables:
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-This starts all 17 services. Requires ~8GB RAM.
+This starts all 21 services. Requires ~8GB RAM.
 
 ## Architecture Overview
 
@@ -100,7 +100,7 @@ Client -> FastAPI (port 8000) -> PostgreSQL/TimescaleDB
 
 **Redis connection refused**: Ensure Redis is running (`docker compose up -d redis`)
 
-**Database not found**: Run `alembic upgrade head` to create tables
+**Database not found / tables missing**: The base schema is auto-created from `db/migrations/*.sql` on the **first** `docker compose up -d db` (fresh volume). Then run `alembic upgrade head` for the admin/ML-config tables. If you reused an old volume, the init scripts won't re-run — recreate it with `docker compose down -v`.
 
 **ML tests fail**: ML tests require `prophet`, `tensorflow`, `torch` — skip with `--ignore=tests/test_ml.py`
 

@@ -119,7 +119,7 @@ def list_incidents(
 
 @router.post("/", response_model=IncidentRead, status_code=201)
 @limiter.limit("30/minute")
-async def create_incident(
+def create_incident(
     request: Request,
     data: IncidentCreate,
     current_user: TokenData = Depends(require_permission("write:alerts")),
@@ -194,8 +194,8 @@ async def create_incident(
         # Re-read to get SLA + i-doit fields
         with engine.connect() as conn:
             row = conn.execute(
-                text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id"),
-                {"id": incident.id},
+                text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id AND tenant_id = :tid"),
+                {"id": incident.id, "tid": current_user.tenant_id},
             ).mappings().first()
         return _row_to_incident(row)
 
@@ -228,7 +228,7 @@ def get_incident(
 
 @router.patch("/{incident_id}/status", response_model=IncidentRead)
 @limiter.limit("30/minute")
-async def update_incident_status(
+def update_incident_status(
     request: Request,
     incident_id: int,
     data: IncidentStatusUpdate,
@@ -237,45 +237,45 @@ async def update_incident_status(
     engine = get_engine()
     now = datetime.now(timezone.utc)
 
-    with engine.connect() as conn:
+    # Lock the row and perform check-then-update atomically to avoid lost updates
+    # on concurrent status changes (race condition / SLA timer desync).
+    with engine.begin() as conn:
         row = conn.execute(
-            text("SELECT status FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            text("SELECT status FROM incidents WHERE id = :id AND tenant_id = :tid FOR UPDATE"),
             {"id": incident_id, "tid": current_user.tenant_id},
         ).mappings().first()
 
-    if not row:
-        raise HTTPException(404, "Incident not found")
+        if not row:
+            raise HTTPException(404, "Incident not found")
 
-    current_status = row["status"]
-    if data.status not in VALID_TRANSITIONS.get(current_status, set()):
-        raise HTTPException(
-            400,
-            f"Cannot transition from '{current_status}' to '{data.status}'. "
-            f"Allowed: {VALID_TRANSITIONS.get(current_status, set())}",
-        )
+        current_status = row["status"]
+        if data.status not in VALID_TRANSITIONS.get(current_status, set()):
+            raise HTTPException(
+                400,
+                f"Cannot transition from '{current_status}' to '{data.status}'. "
+                f"Allowed: {VALID_TRANSITIONS.get(current_status, set())}",
+            )
 
-    updates = ["status = :new_status"]
-    params = {"id": incident_id, "new_status": data.status}
+        updates = ["status = :new_status"]
+        params = {"id": incident_id, "new_status": data.status}
 
-    if data.status == "in_progress" and current_status == "new":
-        updates.append("started_at = :now")
-        params["now"] = now
-    elif data.status == "resolved":
-        updates.append("resolved_at = :now")
-        params["now"] = now
-    elif data.status == "closed":
-        updates.append("closed_at = :now")
-        params["now"] = now
+        if data.status == "in_progress" and current_status == "new":
+            updates.append("started_at = :now")
+            params["now"] = now
+        elif data.status == "resolved":
+            updates.append("resolved_at = :now")
+            params["now"] = now
+        elif data.status == "closed":
+            updates.append("closed_at = :now")
+            params["now"] = now
 
-    with engine.begin() as conn:
         conn.execute(
             text(f"UPDATE incidents SET {', '.join(updates)} WHERE id = :id"),
             params,
         )
 
-    # Add comment for status change
-    if data.comment:
-        with engine.begin() as conn:
+        # Add comment for status change (same transaction)
+        if data.comment:
             conn.execute(
                 text("""
                     INSERT INTO incident_comments (incident_id, author, content)
@@ -299,8 +299,8 @@ async def update_incident_status(
 
     with engine.connect() as conn:
         row = conn.execute(
-            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id"),
-            {"id": incident_id},
+            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            {"id": incident_id, "tid": current_user.tenant_id},
         ).mappings().first()
     return _row_to_incident(row)
 
@@ -313,23 +313,22 @@ def assign_incident(
 ):
     engine = get_engine()
 
-    with engine.connect() as conn:
+    # Lock the row so the existence check and the update are atomic.
+    with engine.begin() as conn:
         exists = conn.execute(
-            text("SELECT 1 FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            text("SELECT 1 FROM incidents WHERE id = :id AND tenant_id = :tid FOR UPDATE"),
             {"id": incident_id, "tid": current_user.tenant_id},
         ).first()
 
-    if not exists:
-        raise HTTPException(404, "Incident not found")
+        if not exists:
+            raise HTTPException(404, "Incident not found")
 
-    with engine.begin() as conn:
         conn.execute(
             text("UPDATE incidents SET assigned_to = :assigned_to WHERE id = :id"),
             {"id": incident_id, "assigned_to": data.assigned_to},
         )
 
-    if data.comment:
-        with engine.begin() as conn:
+        if data.comment:
             conn.execute(
                 text("""
                     INSERT INTO incident_comments (incident_id, author, content)
@@ -357,8 +356,8 @@ def assign_incident(
 
     with engine.connect() as conn:
         row = conn.execute(
-            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id"),
-            {"id": incident_id},
+            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            {"id": incident_id, "tid": current_user.tenant_id},
         ).mappings().first()
     return _row_to_incident(row)
 
@@ -372,45 +371,44 @@ def escalate_incident(
     engine = get_engine()
     now = datetime.now(timezone.utc)
 
-    with engine.connect() as conn:
+    # Lock the incident row and run the read-check-write as one transaction so
+    # the level increment and the comment insert cannot interleave or partially commit.
+    with engine.begin() as conn:
         row = conn.execute(
             text("""
                 SELECT id, escalation_level, escalation_chain_id, status
-                FROM incidents WHERE id = :id AND tenant_id = :tid
+                FROM incidents WHERE id = :id AND tenant_id = :tid FOR UPDATE
             """),
             {"id": incident_id, "tid": current_user.tenant_id},
         ).mappings().first()
 
-    if not row:
-        raise HTTPException(404, "Incident not found")
-    if row["status"] in ("resolved", "closed"):
-        raise HTTPException(400, "Cannot escalate resolved/closed incident")
+        if not row:
+            raise HTTPException(404, "Incident not found")
+        if row["status"] in ("resolved", "closed"):
+            raise HTTPException(400, "Cannot escalate resolved/closed incident")
 
-    current_level = row["escalation_level"] or 0
-    next_level_num = current_level + 1
+        current_level = row["escalation_level"] or 0
+        next_level_num = current_level + 1
 
-    chain_id = row["escalation_chain_id"]
-    if not chain_id:
-        # Try to find default chain
-        with engine.connect() as conn:
+        chain_id = row["escalation_chain_id"]
+        if not chain_id:
+            # Try to find default chain
             chain = conn.execute(
                 text("SELECT id FROM escalation_chains WHERE tenant_id = :tid AND is_active = true ORDER BY created_at LIMIT 1"),
                 {"tid": current_user.tenant_id},
             ).mappings().first()
-        if not chain:
-            raise HTTPException(400, "No escalation chain configured")
-        chain_id = chain["id"]
+            if not chain:
+                raise HTTPException(400, "No escalation chain configured")
+            chain_id = chain["id"]
 
-    with engine.connect() as conn:
         level_info = conn.execute(
             text("SELECT level, notify_role FROM escalation_levels WHERE chain_id = :cid AND level = :lvl"),
             {"cid": chain_id, "lvl": next_level_num},
         ).mappings().first()
 
-    if not level_info:
-        raise HTTPException(400, f"No escalation level {next_level_num} defined in chain")
+        if not level_info:
+            raise HTTPException(400, f"No escalation level {next_level_num} defined in chain")
 
-    with engine.begin() as conn:
         conn.execute(
             text("""
                 UPDATE incidents SET
@@ -443,8 +441,8 @@ def escalate_incident(
 
     with engine.connect() as conn:
         row = conn.execute(
-            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id"),
-            {"id": incident_id},
+            text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id AND tenant_id = :tid"),
+            {"id": incident_id, "tid": current_user.tenant_id},
         ).mappings().first()
     return _row_to_incident(row)
 
