@@ -2,7 +2,7 @@
 from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 # --- Metrics ---
@@ -22,8 +22,7 @@ class MetricRead(MetricCreate):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Dimensions ---
@@ -36,8 +35,7 @@ class DimensionCreate(BaseModel):
 class DimensionRead(DimensionCreate):
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Actions (для правил) ---
@@ -52,11 +50,11 @@ class RuleCondition(BaseModel):
     for_duration: str = Field("1m", alias="for", description="duration: '5m', '1h'")
     eval_interval: str = Field("1m", alias="eval", description="evaluation interval")
     
-    class Config:
-        populate_by_name = True
-        
+    model_config = ConfigDict(populate_by_name=True)
+
     # Добавить validator для формата времени
-    @validator('for_duration', 'eval_interval')
+    @field_validator('for_duration', 'eval_interval')
+    @classmethod
     def validate_duration(cls, v):
         import re
         if not re.match(r'^\d+[smhd]$', v):
@@ -79,8 +77,7 @@ class RuleRead(RuleCreate):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- ML Configs ---
@@ -103,8 +100,7 @@ class MLConfigRead(MLConfigCreate):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Data Query ---
@@ -145,8 +141,7 @@ class AlertRead(BaseModel):
     acknowledged_at: Optional[datetime] = None
     resolved_by: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Incidents ---
@@ -182,8 +177,7 @@ class IncidentCommentRead(BaseModel):
     content: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IncidentRead(BaseModel):
@@ -211,8 +205,7 @@ class IncidentRead(BaseModel):
     external_system: Optional[str] = None
     external_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IncidentListResponse(BaseModel):
@@ -240,8 +233,7 @@ class SlaPolicyRead(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Forecasts ---

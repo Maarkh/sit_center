@@ -17,7 +17,9 @@ export default function MetricsExplorerPage() {
   const { t } = useTranslation();
 
   useEffect(() => {
-    getMetricNames().then(setMetricNames).catch(() => {});
+    getMetricNames().then(setMetricNames).catch((e) => {
+      console.error('Failed to load metric names', e);
+    });
   }, []);
 
   const handleForecast = async () => {

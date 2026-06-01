@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
-import { Select, Spin, Card } from 'antd';
+import { Select, Spin, Card, Result, App } from 'antd';
 import { getMetricNames } from '@/api/metrics';
 import { getLatestMetricByRegion } from '@/api/data';
 import type { RegionMetricValue } from '@/api/data';
@@ -45,16 +45,27 @@ export default function MapPage() {
   const [metricNames, setMetricNames] = useState<string[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<string | undefined>();
   const [regionValues, setRegionValues] = useState<Map<string, number>>(new Map());
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { t } = useTranslation();
+  const { message } = App.useApp();
 
   useEffect(() => {
     fetch('/russia.geojson')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`geojson HTTP ${r.status}`);
+        return r.json();
+      })
       .then(setGeoData)
-      .catch(() => {});
+      .catch((e) => {
+        console.error('Failed to load map geometry', e);
+        setLoadError(t('map.load_error', 'Failed to load map data'));
+      });
 
-    getMetricNames().then(setMetricNames).catch(() => {});
-  }, []);
+    getMetricNames().then(setMetricNames).catch((e) => {
+      console.error('Failed to load metric names', e);
+      message.error(t('map.metrics_error', 'Failed to load metric list'));
+    });
+  }, [t, message]);
 
   useEffect(() => {
     if (!selectedMetric) {
@@ -67,8 +78,12 @@ export default function MapPage() {
         data.forEach((r) => map.set(r.region.toLowerCase(), r.value));
         setRegionValues(map);
       })
-      .catch(() => setRegionValues(new Map()));
-  }, [selectedMetric]);
+      .catch((e) => {
+        console.error('Failed to load region values', e);
+        message.error(t('map.values_error', 'Failed to load metric values'));
+        setRegionValues(new Map());
+      });
+  }, [selectedMetric, t, message]);
 
   const onEachFeature = useCallback((feature: GeoJSON.Feature, layer: L.Layer) => {
     const name = feature.properties?.name || feature.properties?.NAME || 'Unknown';
@@ -92,6 +107,9 @@ export default function MapPage() {
   // Force re-render GeoJSON when data changes
   const geoKey = useMemo(() => `geo-${selectedMetric}-${regionValues.size}`, [selectedMetric, regionValues]);
 
+  if (loadError && !geoData) {
+    return <Result status="error" title={loadError} />;
+  }
   if (!geoData) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 
   return (

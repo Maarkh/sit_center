@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import ProtectedRoute from '@/components/Auth/ProtectedRoute';
 import AppLayout from '@/components/Layout/AppLayout';
+import ErrorBoundary from '@/components/Common/ErrorBoundary';
 import '@/i18n';
 import '@/styles/global.css';
 
@@ -32,6 +33,7 @@ export default function App() {
   return (
     <ConfigProvider theme={darkMode ? darkTheme : lightTheme}>
       <AntApp>
+        <ErrorBoundary>
         <BrowserRouter>
           <Suspense fallback={PageLoader}>
             <Routes>
@@ -50,6 +52,7 @@ export default function App() {
             </Routes>
           </Suspense>
         </BrowserRouter>
+        </ErrorBoundary>
       </AntApp>
     </ConfigProvider>
   );

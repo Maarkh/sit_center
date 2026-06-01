@@ -6,7 +6,7 @@ Webhook endpoints for external systems:
 """
 
 from fastapi import APIRouter, Request, HTTPException, Depends, status
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any
 import hmac
 import requests
@@ -33,7 +33,8 @@ class IdoitAlertData(BaseModel):
     metric: str = Field(..., description="Имя метрики, e.g. api_latency_p99")
     value: Optional[str] = Field("N/A", description="Текущее значение")
 
-    @validator("region")
+    @field_validator("region")
+    @classmethod
     def validate_region(cls, v):
         if v and len(v) > 20:
             raise ValueError("region too long")

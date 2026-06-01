@@ -1,7 +1,7 @@
 services:
   # ——— PostgreSQL для Situational Center ———
   db:
-    image: timescale/timescaledb:latest-pg15
+    image: timescale/timescaledb:2.18.0-pg15  # pinned (was latest-pg15) for reproducible deploys
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -131,7 +131,7 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile.api
-    image: situational-center/api:latest
+    image: situational-center/api:1.0.0  # pinned tag for the locally-built API image
     ports:
       - "8000:8000"
     environment:
@@ -164,7 +164,7 @@ services:
 
   # ——— Grafana ———
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.3.0  # pinned (was latest) for reproducible deploys
     ports:
       # Только localhost: доступ к Grafana — через reverse-proxy/VPN.
       - "127.0.0.1:3000:3000"

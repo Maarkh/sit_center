@@ -102,6 +102,11 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
       - name: Build and push image
+        env:
+          IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/sit_center
         run: |
-          docker build -t Maarkh/sit_center:latest -f Dockerfile .
-          docker push Maarkh/sit_center:latest
+          # Build the API image (no root Dockerfile exists — it lives at api/Dockerfile.api)
+          # and tag with both the commit SHA (immutable/traceable) and latest.
+          docker build -t "$IMAGE:${GITHUB_SHA}" -t "$IMAGE:latest" -f api/Dockerfile.api .
+          docker push "$IMAGE:${GITHUB_SHA}"
+          docker push "$IMAGE:latest"

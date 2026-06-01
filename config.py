@@ -1,6 +1,6 @@
 # config.py
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional, List, Dict
 from pydantic import Field, PostgresDsn
 import logging
@@ -66,19 +66,19 @@ class JsonFormatter(logging.Formatter):
 
 class Settings(BaseSettings):
     # --- Подключение к БД ---
-    DATABASE_URL: Optional[PostgresDsn] = Field(None, env="DATABASE_URL") # type: ignore
-    POSTGRES_USER: str = Field(..., env="POSTGRES_USER") # type: ignore
-    POSTGRES_PASSWORD: str = Field(..., env="POSTGRES_PASSWORD") # type: ignore
-    POSTGRES_SERVER: str = Field(..., env="POSTGRES_SERVER") # type: ignore
-    POSTGRES_PORT: int = Field(..., env="POSTGRES_PORT") # type: ignore
-    POSTGRES_DB: str = Field(..., env="POSTGRES_DB") # type: ignore
+    DATABASE_URL: Optional[PostgresDsn] = Field(None) # type: ignore
+    POSTGRES_USER: str = Field(...) # type: ignore
+    POSTGRES_PASSWORD: str = Field(...) # type: ignore
+    POSTGRES_SERVER: str = Field(...) # type: ignore
+    POSTGRES_PORT: int = Field(...) # type: ignore
+    POSTGRES_DB: str = Field(...) # type: ignore
 
     # --- Redis ---
-    REDIS_HOST: str = Field(..., env="REDIS_HOST") # type: ignore
-    REDIS_PORT: int = Field(..., env="REDIS_PORT") # type: ignore
-    REDIS_DB: int = Field(0, env="REDIS_DB") # type: ignore
-    REDIS_PASSWORD: Optional[str] = Field(None, env="REDIS_PASSWORD") # type: ignore
-    REDIS_URL: Optional[str] = Field(None, env="REDIS_URL") # type: ignore
+    REDIS_HOST: str = Field(...) # type: ignore
+    REDIS_PORT: int = Field(...) # type: ignore
+    REDIS_DB: int = Field(0) # type: ignore
+    REDIS_PASSWORD: Optional[str] = Field(None) # type: ignore
+    REDIS_URL: Optional[str] = Field(None) # type: ignore
 
     # --- Пути ---
     data_regions_path: Path = PROJECT_ROOT / "data" / "regions.csv"
@@ -90,10 +90,10 @@ class Settings(BaseSettings):
     audio_file_path: str = "alert.mp3"
 
     # --- Telegram ---
-    TELEGRAM_BOT_TOKEN: Optional[str] = Field(None, env="TELEGRAM_BOT_TOKEN") # type: ignore
-    TELEGRAM_CHAT_ID: Optional[str] = Field(None, env="TELEGRAM_CHAT_ID") # type: ignore
-    TELEGRAM_CHAT_ID_WARNING: Optional[str] = Field(None, env="TELEGRAM_CHAT_ID_WARNING") # type: ignore
-    TELEGRAM_CHAT_ID_CRITICAL: Optional[str] = Field(None, env="TELEGRAM_CHAT_ID_CRITICAL") # type: ignore
+    TELEGRAM_BOT_TOKEN: Optional[str] = Field(None) # type: ignore
+    TELEGRAM_CHAT_ID: Optional[str] = Field(None) # type: ignore
+    TELEGRAM_CHAT_ID_WARNING: Optional[str] = Field(None) # type: ignore
+    TELEGRAM_CHAT_ID_CRITICAL: Optional[str] = Field(None) # type: ignore
 
     # --- Кэширование ---
     cache_ttl: int = 30  # секунд
@@ -105,63 +105,63 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # ML настройки
-    ml_model_cache_days: int = Field(7, env="ML_MODEL_CACHE_DAYS") # type: ignore
-    ml_retrain_hour: int = Field(3, env="ML_RETRAIN_HOUR") # type: ignore
-    ml_methods: List[str] = Field(["prophet", "lstm", "clustering"], env="ML_METHODS") # type: ignore
-    ML_MAX_WORKERS: int = Field(4, env="ML_MAX_WORKERS")  # type: ignore # Количество параллельных воркеров
+    ml_model_cache_days: int = Field(7) # type: ignore
+    ml_retrain_hour: int = Field(3) # type: ignore
+    ml_methods: List[str] = Field(["prophet", "lstm", "clustering"]) # type: ignore
+    ML_MAX_WORKERS: int = Field(4)  # type: ignore # Количество параллельных воркеров
 
     # --- Ключи кэша ---
     GEOJSON_CACHE_KEY: str = "geojson_data"
     DASHBOARD_CACHE_KEY: str = "custom_dashboard_metrics"
 
     # --- Прочее ---
-    secret_key: str = Field(..., env="SECRET_KEY") # type: ignore
+    secret_key: str = Field(...) # type: ignore
     alert_cooldown: int = 3600  # секунд
     
-    I_DOIT_API_KEY: str = Field(..., env="I_DOIT_API_KEY") # type: ignore
-    I_DOIT_API_URL: str = Field(..., env="I_DOIT_API_URL") # type: ignore
-    ADMIN_USERNAME: str = Field(..., env="ADMIN_USERNAME") # type: ignore
-    ADMIN_PASSWORD: str = Field(..., env="ADMIN_PASSWORD")     # type: ignore
-    WEBHOOK_API_KEY: str = Field(..., env="WEBHOOK_API_KEY") # type: ignore
+    I_DOIT_API_KEY: str = Field(...) # type: ignore
+    I_DOIT_API_URL: str = Field(...) # type: ignore
+    ADMIN_USERNAME: str = Field(...) # type: ignore
+    ADMIN_PASSWORD: str = Field(...)     # type: ignore
+    WEBHOOK_API_KEY: str = Field(...) # type: ignore
 
     # --- Kafka ---
-    KAFKA_BOOTSTRAP_SERVERS: str = Field("kafka:9092", env="KAFKA_BOOTSTRAP_SERVERS") # type: ignore
-    KAFKA_ENABLED: bool = Field(False, env="KAFKA_ENABLED") # type: ignore
+    KAFKA_BOOTSTRAP_SERVERS: str = Field("kafka:9092") # type: ignore
+    KAFKA_ENABLED: bool = Field(False) # type: ignore
 
     # --- ClickHouse ---
-    CLICKHOUSE_HOST: str = Field("clickhouse", env="CLICKHOUSE_HOST") # type: ignore
-    CLICKHOUSE_PORT: int = Field(8123, env="CLICKHOUSE_PORT") # type: ignore
-    CLICKHOUSE_USER: str = Field("default", env="CLICKHOUSE_USER") # type: ignore
-    CLICKHOUSE_PASSWORD: str = Field("", env="CLICKHOUSE_PASSWORD") # type: ignore
-    CLICKHOUSE_DB: str = Field("sit_center", env="CLICKHOUSE_DB") # type: ignore
-    CLICKHOUSE_ENABLED: bool = Field(False, env="CLICKHOUSE_ENABLED") # type: ignore
+    CLICKHOUSE_HOST: str = Field("clickhouse") # type: ignore
+    CLICKHOUSE_PORT: int = Field(8123) # type: ignore
+    CLICKHOUSE_USER: str = Field("default") # type: ignore
+    CLICKHOUSE_PASSWORD: str = Field("") # type: ignore
+    CLICKHOUSE_DB: str = Field("sit_center") # type: ignore
+    CLICKHOUSE_ENABLED: bool = Field(False) # type: ignore
 
     # --- LDAP ---
-    LDAP_ENABLED: bool = Field(False, env="LDAP_ENABLED") # type: ignore
-    LDAP_URL: str = Field("ldap://localhost:389", env="LDAP_URL") # type: ignore
-    LDAP_BASE_DN: str = Field("", env="LDAP_BASE_DN") # type: ignore
-    LDAP_BIND_DN: str = Field("", env="LDAP_BIND_DN") # type: ignore
-    LDAP_BIND_PASSWORD: str = Field("", env="LDAP_BIND_PASSWORD") # type: ignore
-    LDAP_USER_SEARCH_FILTER: str = Field("(sAMAccountName={username})", env="LDAP_USER_SEARCH_FILTER") # type: ignore
-    LDAP_GROUP_ROLE_MAP: Dict[str, str] = Field(default_factory=dict, env="LDAP_GROUP_ROLE_MAP") # type: ignore
+    LDAP_ENABLED: bool = Field(False) # type: ignore
+    LDAP_URL: str = Field("ldap://localhost:389") # type: ignore
+    LDAP_BASE_DN: str = Field("") # type: ignore
+    LDAP_BIND_DN: str = Field("") # type: ignore
+    LDAP_BIND_PASSWORD: str = Field("") # type: ignore
+    LDAP_USER_SEARCH_FILTER: str = Field("(sAMAccountName={username})") # type: ignore
+    LDAP_GROUP_ROLE_MAP: Dict[str, str] = Field(default_factory=dict) # type: ignore
 
     # --- OIDC (Keycloak SSO) ---
-    OIDC_ENABLED: bool = Field(False, env="OIDC_ENABLED") # type: ignore
-    OIDC_ISSUER_URL: str = Field("", env="OIDC_ISSUER_URL") # type: ignore
-    OIDC_CLIENT_ID: str = Field("", env="OIDC_CLIENT_ID") # type: ignore
-    OIDC_CLIENT_SECRET: str = Field("", env="OIDC_CLIENT_SECRET") # type: ignore
-    OIDC_BASE_URL: str = Field("http://localhost:8000", env="OIDC_BASE_URL") # type: ignore
+    OIDC_ENABLED: bool = Field(False) # type: ignore
+    OIDC_ISSUER_URL: str = Field("") # type: ignore
+    OIDC_CLIENT_ID: str = Field("") # type: ignore
+    OIDC_CLIENT_SECRET: str = Field("") # type: ignore
+    OIDC_BASE_URL: str = Field("http://localhost:8000") # type: ignore
 
     # --- CORS ---
     CORS_ORIGINS: str = Field(
         "http://localhost:8050,http://localhost:3000,http://localhost:8000",
-        env="CORS_ORIGINS",
     ) # type: ignore
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"  # Игнорируем неизвестные поля
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",  # Игнорируем неизвестные поля
+    )
 
 
 # Inject Vault secrets into env before Settings init (if VAULT_ENABLED=true)

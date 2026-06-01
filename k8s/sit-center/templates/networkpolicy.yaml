@@ -1,0 +1,33 @@
+{{- if .Values.networkPolicy.enabled }}
+# Default-deny ingress for all release pods, with explicit allowances.
+# Egress is intentionally left open (pods need DNS + external Postgres/Redis/Kafka).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-default
+  labels:
+    {{- include "sit-center.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sit-center.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    # 1. Allow traffic between this release's own pods (same namespace).
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "sit-center.selectorLabels" . | nindent 14 }}
+    # 2. Allow the ingress controller and Prometheus to reach the API port.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressNamespace | default "ingress-nginx" }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.monitoringNamespace | default "monitoring" }}
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- end }}

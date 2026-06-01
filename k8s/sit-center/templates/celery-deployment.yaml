@@ -17,9 +17,13 @@ spec:
         {{- include "sit-center.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: celery-worker
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           command:
             - celery
             - -A
@@ -54,9 +58,13 @@ spec:
         {{- include "sit-center.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: celery-beat
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: beat
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           command:
             - celery
             - -A

@@ -17,9 +17,13 @@ spec:
         {{- include "sit-center.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: ml-worker
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: ml-worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           command:
             - celery
             - -A

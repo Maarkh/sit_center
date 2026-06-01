@@ -8,8 +8,30 @@ replicaCount:
 
 image:
   repository: situational-center/api
-  tag: latest
+  tag: "1.0.0"  # pinned (was latest) — override per release for reproducible rollouts
   pullPolicy: IfNotPresent
+
+# -- Pod / container security hardening (applied to all workloads)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000        # matches the non-root "appuser" created in api/Dockerfile.api
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # app writes to /app/logs and MPLCONFIGDIR
+  capabilities:
+    drop:
+      - ALL
+
+# -- NetworkPolicy: default-deny ingress, allow only intra-app + ingress-controller + Prometheus
+networkPolicy:
+  enabled: true
+  ingressNamespace: ingress-nginx   # namespace of the ingress controller (reaches API :8000)
+  monitoringNamespace: monitoring   # namespace of Prometheus (scrapes API :8000)
 
 # -- External secrets (create manually or via ExternalSecrets operator)
 existingSecret: sit-center-secrets
