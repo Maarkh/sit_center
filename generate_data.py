@@ -18,8 +18,6 @@ from core.database import get_engine
 from core.config_service import ConfigService
 from core.locking import global_lock
 import io
-import psycopg2
-from psycopg2 import sql
 
 # --- 1. Схема БД: DDL ---
 INIT_SCHEMA_SQL = """
@@ -155,7 +153,6 @@ def bulk_insert_canonical_metrics(engine, records: list):
     buf = io.StringIO()
     for r in records:
         metric_name = r.get("metric_name") or ""
-        value = r.get("value")
         ts = r.get("timestamp").isoformat() if r.get("timestamp") is not None else ""
         dims = json.dumps(r.get("dimensions", {}), ensure_ascii=False)
         tags = json.dumps(r.get("tags", {}), ensure_ascii=False)
@@ -175,7 +172,7 @@ def bulk_insert_canonical_metrics(engine, records: list):
         cur.copy_expert(copy_sql, buf)
         conn.commit()
         return len(records)
-    except Exception as e:
+    except Exception:
         conn.rollback()
         raise
     finally:

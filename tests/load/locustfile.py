@@ -8,7 +8,6 @@ Run:
 Web UI: http://localhost:8089
 Headless: locust -f tests/load/locustfile.py --host http://localhost:8000 --users 100 --spawn-rate 10 -t 5m --headless
 """
-import json
 from locust import HttpUser, task, between, tag
 
 

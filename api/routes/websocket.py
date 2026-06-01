@@ -2,7 +2,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from typing import List
 import json
-from config import logger
 from api.auth import verify_token
 from core.pubsub import subscribe_alerts
 

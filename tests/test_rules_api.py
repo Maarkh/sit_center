@@ -3,7 +3,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
-from core.metadata_service import RuleDTO
 
 
 @pytest.fixture

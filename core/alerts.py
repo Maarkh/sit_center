@@ -4,17 +4,16 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 import threading
 from queue import Queue, Empty
-from typing import Tuple, Optional, Dict, List, Any
+from typing import Tuple, Optional, Dict, List
 from dataclasses import dataclass
 import pandas as pd
-from config import settings, logger, get_cache, get_database_url
+from config import settings, logger, get_cache
 from core.database import get_engine
 from core.notifications import notify
 from core.smart_alerts import check_growth_alert, check_deviation_alert
-from core.alert_settings import AlertSettings, load_alert_settings_cached
+from core.alert_settings import AlertSettings
 from core.metric_service import get_metric_by_column
 from core.models import AlertEvent, Incident
-from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 import json

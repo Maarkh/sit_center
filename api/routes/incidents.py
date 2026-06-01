@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy import text
 from core.database import get_engine
-from api.auth import get_current_user, TokenData
+from api.auth import TokenData
 from core.rbac import require_permission
 from api.schemas import (
     IncidentCreate, IncidentRead, IncidentStatusUpdate,
@@ -112,7 +112,7 @@ def list_incidents(
                 items=[_row_to_incident(r) for r in rows],
                 total=total,
             )
-    except Exception as e:
+    except Exception:
         logger.exception("Error listing incidents")
         raise HTTPException(500, "Failed to list incidents")
 
@@ -201,7 +201,7 @@ def create_incident(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Error creating incident")
         raise HTTPException(500, "Failed to create incident")
 

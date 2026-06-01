@@ -1,5 +1,4 @@
 # tests/test_auth_oidc.py
-import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.responses import RedirectResponse
 from config import settings

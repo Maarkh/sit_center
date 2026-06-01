@@ -1,8 +1,7 @@
 # tests/test_api_metrics.py
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 from datetime import datetime
-from core.metadata_service import MetricDTO
 
 
 @pytest.fixture

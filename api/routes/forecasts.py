@@ -52,7 +52,6 @@ def predict_metric(
 def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hours: int):
     """Try cached model first, fall back to fitting on recent data."""
     import pandas as pd
-    import numpy as np
 
     try:
         from prophet import Prophet
@@ -117,7 +116,8 @@ def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hou
             changepoint_prior_scale=0.05,
             interval_width=0.90,
         )
-        import os, sys
+        import os
+        import sys
         with open(os.devnull, "w") as devnull:
             old = sys.stdout
             sys.stdout = devnull

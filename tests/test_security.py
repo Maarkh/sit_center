@@ -1,5 +1,4 @@
 # tests/test_security.py
-import pytest
 from unittest.mock import patch
 from core.metadata_service import MetricDTO
 

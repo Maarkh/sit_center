@@ -210,8 +210,7 @@ def build_documentation():
         clean_line = clean_text_for_xml(line)
         
         if clean_line.startswith("```"):
-            # Начало блока кода
-            lang = clean_line[3:].strip() # Получаем язык (например, python)
+            # Начало блока кода (язык после ``` не используется в .docx)
             code_block = ""
             i += 1
             # Собираем строки кода до закрывающей ```
@@ -221,7 +220,7 @@ def build_documentation():
                 i += 1
             # Добавляем блок кода в документ
             if code_block.strip():
-                p_code = doc.add_paragraph(code_block.strip())
+                doc.add_paragraph(code_block.strip())
                 # Простая попытка применить стиль кода (docx не поддерживает подсветку синтаксиса из коробки)
                 # Можно рассмотреть использование python-docx-template или других библиотек
                 # p_code.style = 'Code' if 'Code' in [s.name for s in doc.styles] else 'Normal'

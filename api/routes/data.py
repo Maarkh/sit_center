@@ -252,7 +252,7 @@ def prometheus_query_range(
     if aggregation not in ALLOWED_AGGREGATIONS:
         aggregation = "avg"
 
-    group_by_expr = f"floor(EXTRACT(EPOCH FROM timestamp) / :step_sec) * :step_sec"
+    group_by_expr = "floor(EXTRACT(EPOCH FROM timestamp) / :step_sec) * :step_sec"
 
     query_sql = text(f"""
         SELECT
@@ -292,7 +292,7 @@ def prometheus_query_range(
             "data": {"resultType": "matrix", "result": result}
         }
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error executing Prometheus query")
         raise HTTPException(500, "Query execution failed")
 
@@ -433,6 +433,6 @@ async def query_data(
                 points=points,
                 total=len(points)
             )
-    except Exception as e:
+    except Exception:
         logger.exception("Query execution error")
         raise HTTPException(500, "Query failed")

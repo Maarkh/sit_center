@@ -6,7 +6,7 @@ from celery.signals import worker_shutting_down
 
 
 def make_celery(app_name=__name__):
-    from config import settings, logger
+    from config import settings
 
     if settings.REDIS_URL:
         redis_url = settings.REDIS_URL

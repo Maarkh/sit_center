@@ -27,7 +27,7 @@ def run_ml_anomaly_check():
         count = find_recent_ml_anomalies(time_filter="6h")
         logger.info(f"ML: found {count} anomalies")
         return count
-    except Exception as e:
+    except Exception:
         logger.exception("ML task failed")
         return 0
 

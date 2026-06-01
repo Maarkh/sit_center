@@ -1,7 +1,7 @@
 # tests/test_metadata_service.py
 import pytest
-from unittest.mock import patch, MagicMock
-from core.metadata_service import MetadataService, MetricDTO
+from unittest.mock import patch
+from core.metadata_service import MetadataService
 
 
 @pytest.fixture

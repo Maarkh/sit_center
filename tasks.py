@@ -91,7 +91,7 @@ def update_mv_data():
             logger.info("✅ MV обновлены")
         else:
             logger.warning("⚠️ Не удалось обновить MV")
-    except Exception as e:
+    except Exception:
         logger.exception("⚠️ Ошибка при обновлении MV")
 
 
@@ -114,7 +114,7 @@ def handle_task_failure(sender=None, task_id=None, exception=None, traceback=Non
             try:
                 get_redis().xadd("dlq:notifications", payload) # type: ignore
                 logger.error(f"🚨 DLQ запись: {message[:50]}...")
-            except Exception as e:
+            except Exception:
                 logger.exception("❌ Ошибка записи в DLQ")
     except Exception:
         logger.exception("💥 Ошибка в handle_task_failure")
@@ -127,7 +127,7 @@ def check_sla_breaches_task():
         if result["response_breaches"] or result["resolution_breaches"]:
             logger.warning(f"SLA breaches: {result}")
         return result
-    except Exception as e:
+    except Exception:
         logger.exception("SLA breach check failed")
 
 
@@ -136,7 +136,7 @@ def check_auto_escalation_task():
     try:
         from core.sla_service import check_auto_escalation
         check_auto_escalation()
-    except Exception as e:
+    except Exception:
         logger.exception("Auto-escalation check failed")
 
 

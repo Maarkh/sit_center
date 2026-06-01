@@ -1,5 +1,4 @@
 # tests/test_api_data.py
-import pytest
 from unittest.mock import patch, MagicMock
 from core.metadata_service import MetricDTO
 

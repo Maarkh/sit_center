@@ -7,7 +7,6 @@ Note: We do NOT import core.ml_anomaly directly because it pulls in tensorflow/t
 at module level. Instead, we test through the Celery task layer (which uses local
 imports) and mock the ML internals.
 """
-import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
 from uuid import uuid4

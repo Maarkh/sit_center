@@ -1,6 +1,6 @@
 # core/sla_service.py
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 from sqlalchemy import text
 from core.database import get_engine
 from config import logger

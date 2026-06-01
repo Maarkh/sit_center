@@ -1,0 +1,12 @@
+# Ruff configuration.
+# CI runs: ruff check . --ignore E501  (line-length is intentionally not enforced).
+
+[lint.per-file-ignores]
+# Intentional module-level imports that are not at the top of the file:
+#  - api/main.py: imports interleaved with app/middleware setup
+#  - core/exceptions.py: the "API error handlers" section imports after the exception classes
+#  - core/ml_anomaly.py: heavy ML imports guarded behind a HAS_ML_LIBS feature flag
+# Reordering these risks import-order / circular-dependency breakage, so E402 is ignored here.
+"api/main.py" = ["E402"]
+"core/exceptions.py" = ["E402"]
+"core/ml_anomaly.py" = ["E402"]

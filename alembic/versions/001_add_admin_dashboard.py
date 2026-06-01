@@ -7,7 +7,6 @@ Create Date: 2025-01-10 12:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers
 revision = 'add_admin_dashboard_001'

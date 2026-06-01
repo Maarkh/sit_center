@@ -1,6 +1,6 @@
 # api/main.py
 import json
-from fastapi import FastAPI, Depends, HTTPException, Response, Request
+from fastapi import FastAPI, Depends, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
@@ -12,7 +12,8 @@ setup_logging()
 from api.routes import metrics, dimensions, rules, ml_configs, alerts, data, webhooks, admin, incidents, forecasts
 from api.routes import auth as auth_routes
 from api.routes import audit as audit_routes
-from api.auth import Token, OAuth2PasswordRequestForm
+from api.auth import Token
+from fastapi.security import OAuth2PasswordRequestForm
 from core.exceptions import (
     situational_center_error_handler,
     sqlalchemy_error_handler,

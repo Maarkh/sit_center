@@ -1,5 +1,4 @@
 # tests/test_admin_api.py
-import pytest
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 

@@ -1,5 +1,4 @@
 # tests/test_alerts_logic.py
-import pytest
 from core.alerts import generate_alert_hash, is_steady_increase
 
 

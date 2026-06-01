@@ -1,5 +1,5 @@
 # core/metric_service.py
-from typing import List, Dict, Optional
+from typing import List, Optional
 from config import logger, get_cache, mask_secrets
 from dataclasses import dataclass
 from core.locking import global_lock

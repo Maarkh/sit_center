@@ -5,7 +5,7 @@ Webhook endpoints for external systems:
 - /webhook/idoit    → receive structured alerts → Telegram + i-doit incident
 """
 
-from fastapi import APIRouter, Request, HTTPException, Depends, status
+from fastapi import APIRouter, Request, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any
 import hmac

@@ -1,6 +1,5 @@
 # tests/test_resilience.py
 """Tests for graceful degradation: Redis fallback, i-doit retry queue."""
-import pytest
 from unittest.mock import patch, MagicMock
 
 

@@ -2,7 +2,7 @@
 """Tests for structured JSON logging."""
 import json
 import logging
-from config import JsonFormatter, mask_secrets
+from config import JsonFormatter
 
 
 class TestJsonFormatter:

@@ -1,10 +1,9 @@
 # core/models.py
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, Index, func, JSON, UUID, Boolean, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Index, func, UUID, Boolean, Text, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 import enum
-from datetime import datetime
 import uuid
 
 class Base(DeclarativeBase):

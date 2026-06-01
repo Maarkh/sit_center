@@ -1,5 +1,4 @@
 # tests/test_pubsub.py
-import pytest
 from unittest.mock import patch, MagicMock
 from core.pubsub import publish_alert, ALERT_CHANNEL
 import json

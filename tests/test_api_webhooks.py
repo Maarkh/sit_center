@@ -1,5 +1,4 @@
 # tests/test_api_webhooks.py
-import pytest
 from unittest.mock import patch
 
 

@@ -2,7 +2,6 @@
 """Tests for i-doit service — push/pull operations."""
 import pytest
 from unittest.mock import patch, MagicMock
-from datetime import datetime, timezone
 
 
 @pytest.fixture

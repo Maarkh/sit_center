@@ -1,10 +1,9 @@
 # core/kafka_consumer.py
 import json
-import time
 from typing import List, Dict, Any
 from kafka import KafkaConsumer
 from sqlalchemy import text
-from config import settings, logger, mask_secrets
+from config import logger, mask_secrets
 from core.database import get_engine
 
 TOPIC = "sit_center.metrics"
