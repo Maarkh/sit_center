@@ -1,7 +1,10 @@
 # api/routes/auth.py
 from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from fastapi.responses import RedirectResponse
+from fastapi.concurrency import run_in_threadpool
 from datetime import timedelta
+from functools import partial
+from typing import Optional
 from config import settings, logger
 from api.auth import (
     create_access_token,
@@ -14,6 +17,51 @@ from api.auth import (
 from api.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+def _oidc_sync_user_and_perms(username: str, email: Optional[str], sub: str, roles: list) -> list:
+    """Sync the OIDC user row and resolve its permissions.
+
+    Synchronous DB work — call via run_in_threadpool so the awaited OIDC callback
+    never blocks the event loop.
+    """
+    import json
+    from sqlalchemy import text
+    from core.database import get_engine
+
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO users (username, email, tenant_id, auth_provider, external_id, is_active)
+                    VALUES (:username, :email, 'default', 'oidc', :sub, true)
+                    ON CONFLICT (username) DO UPDATE SET
+                        email = EXCLUDED.email,
+                        auth_provider = 'oidc',
+                        external_id = EXCLUDED.external_id,
+                        is_active = true,
+                        updated_at = NOW()
+                """),
+                {"username": username, "email": email, "sub": sub},
+            )
+    except Exception as e:
+        logger.warning("Failed to sync OIDC user: %s", e)
+
+    permissions: list = []
+    try:
+        with engine.connect() as conn:
+            for role_name in roles:
+                r = conn.execute(
+                    text("SELECT permissions FROM roles WHERE name = :name AND tenant_id = 'default'"),
+                    {"name": role_name},
+                ).mappings().first()
+                if r:
+                    perms = r["permissions"]
+                    permissions.extend(json.loads(perms) if isinstance(perms, str) else perms)
+    except Exception as e:
+        logger.warning("Failed to resolve OIDC permissions: %s", e)
+    return permissions
 
 
 @router.get("/me", summary="Current authenticated user (for the SPA)")
@@ -69,32 +117,10 @@ async def callback_oidc(request: Request):
     if not username:
         raise HTTPException(401, "No username in OIDC token")
 
-    # Sync user to DB
-    try:
-        from sqlalchemy import text
-        from core.database import get_engine
-        engine = get_engine()
-        with engine.begin() as conn:
-            conn.execute(
-                text("""
-                    INSERT INTO users (username, email, tenant_id, auth_provider, external_id, is_active)
-                    VALUES (:username, :email, 'default', 'oidc', :sub, true)
-                    ON CONFLICT (username) DO UPDATE SET
-                        email = EXCLUDED.email,
-                        auth_provider = 'oidc',
-                        external_id = EXCLUDED.external_id,
-                        is_active = true,
-                        updated_at = NOW()
-                """),
-                {"username": username, "email": email, "sub": userinfo.get("sub", "")},
-            )
-    except Exception as e:
-        logger.warning("Failed to sync OIDC user: %s", e)
-
     # Map Keycloak roles -> local permissions. Keycloak realm roles live in the
     # ACCESS token claims, NOT in userinfo/id_token, and authlib does not expose
     # an "access_token_claims" key — so decode the access token to read them.
-    # (Without this every SSO user silently collapsed to "viewer".)
+    # (Without this every SSO user silently collapsed to "viewer".) CPU-only.
     kc_roles: list = []
     try:
         from jose import jwt as _jwt
@@ -109,22 +135,11 @@ async def callback_oidc(request: Request):
         kc_roles = (userinfo.get("realm_access", {}) or {}).get("roles", []) or []
     roles = kc_roles if kc_roles else ["viewer"]
 
-    # Resolve permissions from DB roles
-    permissions: list = []
-    try:
-        from sqlalchemy import text as _t
-        with engine.connect() as conn:
-            for role_name in roles:
-                r = conn.execute(
-                    _t("SELECT permissions FROM roles WHERE name = :name AND tenant_id = 'default'"),
-                    {"name": role_name},
-                ).mappings().first()
-                if r:
-                    import json as _json
-                    perms = r["permissions"]
-                    permissions.extend(_json.loads(perms) if isinstance(perms, str) else perms)
-    except Exception as e:
-        logger.warning("Failed to resolve OIDC permissions: %s", e)
+    # User sync + permission resolution are synchronous DB calls — run them off
+    # the event loop so this awaited handler doesn't block the worker.
+    permissions = await run_in_threadpool(
+        _oidc_sync_user_and_perms, username, email, userinfo.get("sub", ""), roles
+    )
 
     access_token = create_access_token(
         data={
@@ -137,11 +152,13 @@ async def callback_oidc(request: Request):
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    # Audit log for OIDC login
+    # Audit log for OIDC login (sync DB → off the event loop)
     try:
         from core.audit import log_audit
         ip = request.client.host if request.client else None
-        log_audit(username, "default", "login", "session", ip_address=ip)
+        await run_in_threadpool(
+            partial(log_audit, username, "default", "login", "session", ip_address=ip)
+        )
     except Exception as e:
         logger.warning("Failed to log OIDC audit: %s", e)
 

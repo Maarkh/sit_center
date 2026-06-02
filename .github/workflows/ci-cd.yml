@@ -42,10 +42,10 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install pip-audit bandit
-      # Blocking. CVE-2025-71176 is a pytest (dev/test-only) local /tmp DoS — not a
-      # runtime risk; ignored until the test stack can move to pytest >= 9.0.3.
+      # Blocking. Audits runtime deps only (requirements.txt). Test tooling lives
+      # in requirements-dev.txt (pytest >= 9.0.3), so there's nothing to ignore.
       - name: Dependency vulnerability scan (pip-audit)
-        run: pip-audit -r requirements.txt --ignore-vuln CVE-2025-71176
+        run: pip-audit -r requirements.txt
       - name: Static security analysis (bandit)
         run: bandit -r api core --severity-level medium --confidence-level medium -q
 
@@ -105,7 +105,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r requirements-dev.txt
       - name: Run tests
         run: |
           python -m pytest tests/ -v --tb=short -x --ignore=tests/test_ml.py
