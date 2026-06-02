@@ -111,9 +111,8 @@ def create_user(request: Request, data: UserCreate, current_user: TokenData = De
     engine = get_engine()
     password_hash = None
     if data.password:
-        from passlib.context import CryptContext
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        password_hash = pwd_context.hash(data.password)
+        from core.passwords import hash_password
+        password_hash = hash_password(data.password)
 
     try:
         with engine.begin() as conn:

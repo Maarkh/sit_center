@@ -5,13 +5,11 @@ from datetime import timedelta
 from typing import Optional, Dict, Any
 
 from fastapi import HTTPException
-from passlib.context import CryptContext
 from sqlalchemy import text as sa_text
 
 from api.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from core.passwords import verify_password
 from config import logger, settings, mask_secrets
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def _make_token(sub: str, tenant_id: str, roles: list, permissions: list) -> str:
@@ -89,7 +87,7 @@ def try_db_auth(username: str, password: str) -> Optional[Dict[str, Any]]:
                 # User genuinely not found in the DB → it's fine to fall through
                 # to other strategies (e.g. env-admin) in the caller.
                 return None
-            if not pwd_context.verify(password, user_row["password_hash"]):
+            if not verify_password(password, user_row["password_hash"]):
                 raise HTTPException(status_code=401, detail="Invalid credentials")
             token = _make_token(
                 user_row["username"],
@@ -113,7 +111,7 @@ def try_env_admin_auth(username: str, password: str) -> str:
     """Env-based admin fallback. Raises HTTPException on failure."""
     if username != settings.ADMIN_USERNAME:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not pwd_context.verify(password, settings.ADMIN_PASSWORD):
+    if not verify_password(password, settings.ADMIN_PASSWORD):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return _make_token(
         username,

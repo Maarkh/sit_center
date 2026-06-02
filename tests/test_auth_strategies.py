@@ -10,10 +10,10 @@ class TestEnvAdminAuth:
         from core.auth_strategies import try_env_admin_auth
 
         with patch("core.auth_strategies.settings") as mock_settings, \
-             patch("core.auth_strategies.pwd_context") as mock_pwd:
+             patch("core.auth_strategies.verify_password") as mock_verify:
             mock_settings.ADMIN_USERNAME = "admin"
             mock_settings.ADMIN_PASSWORD = "$2b$12$hash"
-            mock_pwd.verify.return_value = True
+            mock_verify.return_value = True
 
             token = try_env_admin_auth("admin", "password123")
             assert isinstance(token, str)
@@ -33,10 +33,10 @@ class TestEnvAdminAuth:
         from core.auth_strategies import try_env_admin_auth
 
         with patch("core.auth_strategies.settings") as mock_settings, \
-             patch("core.auth_strategies.pwd_context") as mock_pwd:
+             patch("core.auth_strategies.verify_password") as mock_verify:
             mock_settings.ADMIN_USERNAME = "admin"
             mock_settings.ADMIN_PASSWORD = "$2b$12$hash"
-            mock_pwd.verify.return_value = False
+            mock_verify.return_value = False
 
             with pytest.raises(HTTPException) as exc_info:
                 try_env_admin_auth("admin", "wrong_pass")
@@ -58,12 +58,12 @@ class TestDbAuth:
         }
 
         with patch("core.database.get_engine") as mock_engine, \
-             patch("core.auth_strategies.pwd_context") as mock_pwd:
+             patch("core.auth_strategies.verify_password") as mock_verify:
             conn = MagicMock()
             mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)
             mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
             conn.execute.return_value.mappings.return_value.first.return_value = mock_user_row
-            mock_pwd.verify.return_value = True
+            mock_verify.return_value = True
 
             result = try_db_auth("dbuser", "password")
             assert result is not None
@@ -97,12 +97,12 @@ class TestDbAuth:
         }
 
         with patch("core.database.get_engine") as mock_engine, \
-             patch("core.auth_strategies.pwd_context") as mock_pwd:
+             patch("core.auth_strategies.verify_password") as mock_verify:
             conn = MagicMock()
             mock_engine.return_value.connect.return_value.__enter__ = MagicMock(return_value=conn)
             mock_engine.return_value.connect.return_value.__exit__ = MagicMock(return_value=False)
             conn.execute.return_value.mappings.return_value.first.return_value = mock_user_row
-            mock_pwd.verify.return_value = False
+            mock_verify.return_value = False
 
             with pytest.raises(HTTPException) as exc_info:
                 try_db_auth("dbuser", "wrong_pass")

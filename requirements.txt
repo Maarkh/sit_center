@@ -26,7 +26,6 @@ prometheus_client>=0.19,<1
 slowapi>=0.1.9,<1
 psutil>=5.9,<7
 torch>=2.1
-passlib>=1.7,<2
 bcrypt>=4.1,<6
 python-multipart>=0.0.6,<1
 clickhouse-connect>=0.7,<1
