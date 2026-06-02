@@ -237,7 +237,8 @@ def prometheus_query_range(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, f"Invalid step: {mask_secrets(str(e))}")
+        logger.error("Invalid step parse error: %s", mask_secrets(str(e)))
+        raise HTTPException(400, "Invalid step format. Use: '15s', '1m', '2h', '1d'")
 
     where = ["metric_name = :metric", "timestamp >= :start", "timestamp <= :end", "tenant_id = :tenant_id"]
     params = {
@@ -374,35 +375,36 @@ def latest_by_region(
 
 @router.post("/query", response_model=DataQueryResponse)
 @limiter.limit("30/minute")
-async def query_data(
-    request: DataQueryRequest,
+def query_data(
+    request: Request,
+    payload: DataQueryRequest,
     current_user: TokenData = Depends(get_current_user)
 ):
     from core.metadata_service import metadata_service
-    metric = metadata_service.get_metric(request.metric_name, tenant_id=current_user.tenant_id)
+    metric = metadata_service.get_metric(payload.metric_name, tenant_id=current_user.tenant_id)
     if not metric or not metric.is_active:
-        raise HTTPException(404, f"Metric '{request.metric_name}' not found")
+        raise HTTPException(404, f"Metric '{payload.metric_name}' not found")
 
     where = ["metric_name = :metric_name", "tenant_id = :tenant_id"]
-    params = {"metric_name": request.metric_name, "tenant_id": current_user.tenant_id}
+    params = {"metric_name": payload.metric_name, "tenant_id": current_user.tenant_id}
 
-    if request.start_time:
+    if payload.start_time:
         where.append("timestamp >= :start")
-        params["start"] = request.start_time # type: ignore
-    if request.end_time:
+        params["start"] = payload.start_time # type: ignore
+    if payload.end_time:
         where.append("timestamp <= :end")
-        params["end"] = request.end_time # type: ignore
+        params["end"] = payload.end_time # type: ignore
 
-    if request.dimensions:
-        for i, (k, v) in enumerate(request.dimensions.items()):
+    if payload.dimensions:
+        for i, (k, v) in enumerate(payload.dimensions.items()):
             if k not in ALLOWED_DIMENSIONS:
                 raise HTTPException(400, f"Dimension '{k}' not allowed")
             expr, p = safe_jsonb_eq("dimensions", f"dim_{i}", k, str(v))
             where.append(expr)
             params.update(p)
 
-    if request.dimension_in:
-        for i, (k, vals) in enumerate(request.dimension_in.items()):
+    if payload.dimension_in:
+        for i, (k, vals) in enumerate(payload.dimension_in.items()):
             if k not in ALLOWED_DIMENSIONS:
                 raise HTTPException(400, f"Dimension '{k}' not allowed")
             if not isinstance(vals, list) or len(vals) > 50:
@@ -417,7 +419,7 @@ async def query_data(
             params[f"key_in_{i}"] = k
             params[f"vals_in_{i}"] = clean_vals # type: ignore
 
-    limit = min(request.limit, MAX_QUERY_RESULTS)
+    limit = min(payload.limit, MAX_QUERY_RESULTS)
     params["limit"] = limit # type: ignore
 
     query = text(f"""
@@ -442,7 +444,7 @@ async def query_data(
                 for row in rows
             ]
             return DataQueryResponse(
-                metric_name=request.metric_name,
+                metric_name=payload.metric_name,
                 points=points,
                 total=len(points)
             )

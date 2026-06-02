@@ -149,7 +149,7 @@ app.include_router(ws_router)
 
 @app.post("/token", response_model=Token, tags=["System"], summary="Authenticate and get JWT token")
 @limiter.limit("5/minute")
-async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     from core.auth_strategies import try_ldap_auth, try_db_auth, try_env_admin_auth
     from core.audit import log_audit
     ip = request.client.host if request.client else None
@@ -188,7 +188,7 @@ async def frontend_errors(request: Request):
 
 
 @app.get("/health", tags=["System"])
-async def health():
+def health():
     """Aggregated health check for all dependencies."""
     import time
     checks = {}
@@ -248,7 +248,7 @@ async def health():
     )
 
 @app.get("/metric", tags=["System"], summary="Prometheus metrics endpoint")
-async def metric():
+def metric():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from api.auth import TokenData
 from core.rbac import require_permission
 from core.audit import log_audit
 from api.limiter import limiter
-from config import mask_secrets
+from config import mask_secrets, logger
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
@@ -73,7 +73,8 @@ def list_alerts(
             rows = conn.execute(query, params).mappings().all()
             return [_row_to_alert(row) for row in rows]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+        logger.error("alerts endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{alert_id}", response_model=AlertRead, summary="Get alert by ID")
@@ -96,7 +97,8 @@ def get_alert(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+        logger.error("alerts endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{alert_id}/suppress", status_code=204, summary="Suppress alert by fingerprint")
@@ -125,7 +127,8 @@ def suppress_alert(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+        logger.error("alerts endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{alert_id}/acknowledge", response_model=AlertRead, summary="Acknowledge firing alert")
@@ -171,7 +174,8 @@ def acknowledge_alert(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, mask_secrets(str(e)))
+        logger.error("alerts endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(500, "Internal server error")
 
 
 @router.post("/{alert_id}/resolve", response_model=AlertRead, summary="Resolve alert")
@@ -217,4 +221,5 @@ def resolve_alert(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, mask_secrets(str(e)))
+        logger.error("alerts endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(500, "Internal server error")

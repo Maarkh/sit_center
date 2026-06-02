@@ -1,6 +1,7 @@
 # core/database.py
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
+from sqlalchemy.orm import sessionmaker, Session
 from config import settings, get_database_url
 import logging
 import threading
@@ -54,3 +55,26 @@ def get_engine():
         logger.info(f"SQLAlchemy engine initialized (pool_size={pool_size}, max_overflow={max_overflow})")
 
     return _engine
+
+
+def get_session() -> Session:
+    """Return a new SQLAlchemy Session bound to the shared engine.
+
+    The engine is resolved per call via get_engine() (not bound at import), so
+    code/tests that patch core.database.get_engine still bind to the right engine.
+    Prefer this over rebuilding `sessionmaker(bind=...)` inline at each call site.
+    """
+    return sessionmaker(bind=get_engine())()
+
+
+def get_db():
+    """FastAPI dependency: yields a request-scoped Session and always closes it.
+
+        @router.get(...)
+        def handler(db: Session = Depends(get_db)): ...
+    """
+    db = get_session()
+    try:
+        yield db
+    finally:
+        db.close()

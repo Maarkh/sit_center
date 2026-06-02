@@ -2,20 +2,51 @@ type MessageHandler = (data: unknown) => void;
 
 export class AlertWebSocket {
   private ws: WebSocket | null = null;
-  private url: string;
+  private token: string;
   private handlers: MessageHandler[] = [];
   private reconnectDelay = 1000;
   private maxDelay = 30000;
   private shouldReconnect = true;
 
   constructor(token: string) {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.url = `${proto}//${window.location.host}/ws/alerts?token=${token}`;
+    // Keep the JWT in memory only. It is exchanged for a short-lived, single-use
+    // ticket right before connecting, so the long-lived token never appears in
+    // the WebSocket URL (which lands in proxy/access logs and history).
+    this.token = token;
   }
 
-  connect() {
+  private async fetchTicket(): Promise<string | null> {
+    try {
+      const resp = await fetch('/ws/ticket', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.token}` },
+      });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      return (data?.ticket as string) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private scheduleReconnect() {
+    if (!this.shouldReconnect) return;
+    setTimeout(() => { void this.connect(); }, this.reconnectDelay);
+    this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxDelay);
+  }
+
+  async connect() {
     this.shouldReconnect = true;
-    this.ws = new WebSocket(this.url);
+
+    const ticket = await this.fetchTicket();
+    if (!ticket) {
+      this.scheduleReconnect();
+      return;
+    }
+
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${proto}//${window.location.host}/ws/alerts?ticket=${ticket}`;
+    this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
       this.reconnectDelay = 1000;
@@ -29,10 +60,7 @@ export class AlertWebSocket {
     };
 
     this.ws.onclose = () => {
-      if (this.shouldReconnect) {
-        setTimeout(() => this.connect(), this.reconnectDelay);
-        this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxDelay);
-      }
+      this.scheduleReconnect();
     };
 
     this.ws.onerror = () => {

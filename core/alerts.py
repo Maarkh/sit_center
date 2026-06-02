@@ -8,13 +8,12 @@ from typing import Tuple, Optional, Dict, List
 from dataclasses import dataclass
 import pandas as pd
 from config import settings, logger, get_cache
-from core.database import get_engine
+from core.database import get_engine, get_session
 from core.notifications import notify
 from core.smart_alerts import check_growth_alert, check_deviation_alert
 from core.alert_settings import AlertSettings
 from core.metric_service import get_metric_by_column
 from core.models import AlertEvent, Incident
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 import json
 
@@ -122,9 +121,7 @@ def create_incident_buffered(alert_message: str, metric: str, region: str, value
         _create_incident_directly(data)
 
 def _create_incident_directly(data: Dict):
-    engine = get_engine_proxy()
-    Session = sessionmaker(bind=engine)
-    s = Session()
+    s = get_session()
     try:
         incident = Incident(**data)
         s.add(incident)
@@ -167,9 +164,7 @@ def process_incident_buffer():
             if not batch:
                 continue
 
-            engine = get_engine_proxy()
-            Session = sessionmaker(bind=engine)
-            s = Session()
+            s = get_session()
             try:
                 s.bulk_insert_mappings(Incident, batch)
                 s.commit()
@@ -293,9 +288,7 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         return False, last_alert_region
 
     # Сохранение алерта
-    engine = get_engine_proxy()
-    Session = sessionmaker(bind=engine)
-    s = Session()
+    s = get_session()
 
     # Best-effort lock so two concurrent workers don't both create this same
     # (tenant, alert). Redis being down must NOT block alerting → best-effort:

@@ -10,7 +10,7 @@ from core.rbac import require_permission
 from core.audit import log_audit
 from api.limiter import limiter
 from sqlalchemy import text
-from config import mask_secrets
+from config import mask_secrets, logger
 
 router = APIRouter(prefix="/rules", tags=["Rules"])
 
@@ -33,7 +33,8 @@ def create_rule(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=400, detail="Could not save (invalid data or duplicate)")
 
 
 @router.get("/", response_model=List[RuleRead], summary="List alerting rules")
@@ -79,7 +80,8 @@ def update_rule(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=400, detail="Could not save (invalid data or duplicate)")
 
 
 @router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Deactivate alerting rule")
@@ -105,7 +107,8 @@ def delete_rule(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 def _get_rule_by_id(service: MetadataService, rule_id: UUID, tenant_id: str = "default"):

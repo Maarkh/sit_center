@@ -114,7 +114,7 @@ def create_idoit_incident(alert_data: IdoitAlertData) -> Dict[str, Any]:
 
 @router.post("/grafana", status_code=status.HTTP_200_OK)
 @limiter.limit("100/minute")
-async def grafana_webhook(
+def grafana_webhook(
     request: Request,
     payload: GrafanaAlert
 ):
@@ -130,7 +130,7 @@ async def grafana_webhook(
 
 @router.post("/idoit", status_code=status.HTTP_200_OK)
 @limiter.limit("100/minute")
-async def idoit_webhook(
+def idoit_webhook(
     request: Request,
     payload: IdoitAlertData
 ):
@@ -168,7 +168,7 @@ class IdoitSyncPayload(BaseModel):
 
 @router.post("/idoit/sync", status_code=status.HTTP_200_OK)
 @limiter.limit("100/minute")
-async def idoit_sync_webhook(request: Request, payload: IdoitSyncPayload):
+def idoit_sync_webhook(request: Request, payload: IdoitSyncPayload):
     """
     Inbound webhook from i-doit.
     Receives status/assignment updates and syncs them back to local incidents.

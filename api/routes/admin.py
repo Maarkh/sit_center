@@ -9,7 +9,7 @@ from core.rbac import require_role
 from core.audit import log_audit
 from api.auth import TokenData
 from api.limiter import limiter
-from config import mask_secrets
+from config import mask_secrets, logger
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -88,7 +88,8 @@ def create_tenant(request: Request, data: TenantCreate, current_user: TokenData 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, mask_secrets(str(e)))
+        logger.error("admin endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(400, "Could not complete request (invalid data or duplicate)")
 
 
 # --- Users ---
@@ -134,7 +135,8 @@ def create_user(request: Request, data: UserCreate, current_user: TokenData = De
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, mask_secrets(str(e)))
+        logger.error("admin endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(400, "Could not complete request (invalid data or duplicate)")
 
 
 # --- Roles ---
@@ -175,7 +177,8 @@ def create_role(request: Request, data: RoleCreate, current_user: TokenData = De
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, mask_secrets(str(e)))
+        logger.error("admin endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(400, "Could not complete request (invalid data or duplicate)")
 
 
 # --- User-Role assignment ---
@@ -196,7 +199,8 @@ def assign_role(request: Request, data: UserRoleAssign, current_user: TokenData 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, mask_secrets(str(e)))
+        logger.error("admin endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(400, "Could not complete request (invalid data or duplicate)")
 
 
 @router.delete("/user-roles", status_code=status.HTTP_204_NO_CONTENT, summary="Remove role from user")

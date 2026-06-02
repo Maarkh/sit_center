@@ -9,7 +9,7 @@ from core.rbac import require_permission
 from core.audit import log_audit
 from api.limiter import limiter
 from sqlalchemy import text
-from config import mask_secrets
+from config import mask_secrets, logger
 
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
 
@@ -32,7 +32,8 @@ def create_metric(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=400, detail="Could not save (invalid data or duplicate)")
 
 
 @router.get("/", response_model=List[MetricRead], summary="List all metric definitions")
@@ -78,7 +79,8 @@ def update_metric(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=400, detail="Could not save (invalid data or duplicate)")
 
 
 @router.delete("/{metric_name}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete metric definition")
@@ -104,4 +106,5 @@ def delete_metric(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=500, detail="Internal server error")

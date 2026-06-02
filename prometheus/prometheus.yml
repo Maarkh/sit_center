@@ -1,0 +1,19 @@
+# Prometheus scrape configuration for the Situational Center stack.
+# The Grafana provisioning (grafana/provisioning/datasources/prometheus.yml)
+# points its Prometheus datasource at http://prometheus:9090, which this service
+# serves. The FastAPI app exposes metrics at /metric (singular).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'sit-center-api'
+    metrics_path: /metric
+    static_configs:
+      - targets: ['api:8000']
+
+  # If running behind the HA nginx upstream instead of a single `api`:
+  # - job_name: 'sit-center-api-ha'
+  #   metrics_path: /metric
+  #   static_configs:
+  #     - targets: ['api-1:8000', 'api-2:8000']

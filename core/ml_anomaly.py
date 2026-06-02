@@ -239,14 +239,20 @@ def find_recent_ml_anomalies(time_filter="6h", metrics=None, methods=None, tenan
 
     all_anomalies = []
 
-    max_workers = min(settings.ML_MAX_WORKERS or 4, os.cpu_count() or 4)
+    # Prophet (cmdstanpy) and Keras/TF keep non-thread-safe global state, so we
+    # must NOT fit multiple models concurrently in threads — that can corrupt or
+    # crash the interpreter. When ML libs are present, run groups sequentially.
+    if HAS_ML_LIBS:
+        max_workers = 1
+    else:
+        max_workers = min(settings.ML_MAX_WORKERS or 4, os.cpu_count() or 4)
 
     for metric in target_metrics:
         metric_df = df[df["metric_name"] == metric]
         if metric_df.empty:
             continue
 
-        ml_configs = [cfg for cfg in metadata_service.list_active_ml_configs() if cfg.metric_name == metric]
+        ml_configs = [cfg for cfg in metadata_service.list_active_ml_configs(tenant_id=tenant_id) if cfg.metric_name == metric]
         ml_configs = ml_configs or get_or_create_default_ml_configs(metric)
 
         for cfg in ml_configs:
@@ -631,8 +637,8 @@ def detect_anomaly_clustering(df: pd.DataFrame, metric_col: str) -> List[Dict]:
     return anomalies
     
     
-def retrain_all_models():
-    logger.info("Начало переобучения ML-моделей")
+def retrain_all_models(tenant_id: str = "default"):
+    logger.info("Начало переобучения ML-моделей (tenant=%s)", tenant_id)
     engine = get_engine()
     Session = sessionmaker(bind=engine)
 
@@ -648,7 +654,8 @@ def retrain_all_models():
             .join(MetadataMetric)
             .filter(
                 MetadataMLConfig.is_active.is_(True),
-                MetadataMetric.is_active.is_(True)
+                MetadataMetric.is_active.is_(True),
+                MetadataMLConfig.tenant_id == tenant_id,
             )
             .all()
         )
@@ -685,6 +692,7 @@ def retrain_all_models():
             FROM canonical_metrics
             WHERE metric_name = :metric_name
               AND timestamp >= :cutoff
+              AND tenant_id = :tenant_id
               AND {dim_filter}
             ORDER BY timestamp
             LIMIT 10000
@@ -693,7 +701,7 @@ def retrain_all_models():
             df = pd.read_sql(
                 query,
                 engine,
-                params={"metric_name": metric_name, "cutoff": cutoff}
+                params={"metric_name": metric_name, "cutoff": cutoff, "tenant_id": tenant_id}
             )
 
             if df.empty:
@@ -730,7 +738,7 @@ def retrain_all_models():
 
                     # Формируем ключ кэша
                     group_key = "_".join(str(v) for v in group_tuple) if isinstance(group_tuple, tuple) else str(group_tuple)
-                    cache_key = f"ml_model:{metric_name}:{group_key}"
+                    cache_key = f"ml_model:{tenant_id}:{metric_name}:{group_key}"
 
                     cache = get_cache()
                     cache.set(cache_key, joblib.dumps(model), ex=60*60*24*settings.ml_model_cache_days)

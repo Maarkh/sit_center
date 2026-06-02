@@ -7,7 +7,7 @@ from sqlalchemy import text
 from core.database import get_engine
 from core.rbac import require_permission
 from api.auth import TokenData
-from config import mask_secrets
+from config import mask_secrets, logger
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
@@ -65,4 +65,5 @@ def get_audit_logs(
             rows = conn.execute(query, params).mappings().all()
             return [AuditLogEntry(**row) for row in rows]
     except Exception as e:
-        raise HTTPException(500, mask_secrets(str(e)))
+        logger.error("audit endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(500, "Internal server error")

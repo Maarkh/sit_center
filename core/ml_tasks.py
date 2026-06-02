@@ -63,7 +63,8 @@ def run_ml_anomaly_check():
 def retrain_ml_models():
     try:
         from core.ml_anomaly import retrain_all_models
-        retrain_all_models()
+        for tenant_id in _active_tenant_ids():
+            retrain_all_models(tenant_id=tenant_id)
         return {"status": "success"}
     except Exception as e:
         logger.exception("Retrain ML failed")

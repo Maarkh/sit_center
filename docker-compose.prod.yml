@@ -36,9 +36,15 @@ services:
       timeout: 5s
       retries: 3
 
-  # ——— Airbyte: PostgreSQL (только для Airbyte) ———
+  # ——— Airbyte (ELT) ———
+  # ⚠️ Весь стек Airbyte вынесен в compose-профиль "airbyte" и НЕ стартует по
+  # умолчанию. Причина: airbyte-worker монтирует host docker.sock (по сути root
+  # на хосте). Запускать только осознанно на доверенном хосте:
+  #     docker compose --profile airbyte up -d
+  # Для продакшена предпочтительнее разворачивать Airbyte отдельно (Kubernetes).
   airbyte-db:
     image: postgres:13
+    profiles: ["airbyte"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -57,6 +63,7 @@ services:
   # ——— Airbyte: Temporal ———
   airbyte-temporal:
     image: airbyte/temporal:${AIRBYTE_VERSION:-0.50.4}
+    profiles: ["airbyte"]
     environment:
       - DB=postgresql
       - POSTGRES_USER=${POSTGRES_USER}
@@ -73,6 +80,7 @@ services:
   # ——— Airbyte: Server ———
   airbyte-server:
     image: airbyte/server:${AIRBYTE_VERSION:-0.50.4}
+    profiles: ["airbyte"]
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airbyte-db:5432/airbyte
       - CONFIG_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airbyte-db:5432/airbyte
@@ -94,6 +102,7 @@ services:
   # ——— Airbyte: Worker ———
   airbyte-worker:
     image: airbyte/worker:${AIRBYTE_VERSION:-0.50.4}
+    profiles: ["airbyte"]
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airbyte-db:5432/airbyte
       - TEMPORAL_HOST=airbyte-temporal
@@ -107,6 +116,9 @@ services:
         condition: service_started
     volumes:
       - airbyte_workspace:/tmp/workspace
+      # ⚠️ Доступ к host docker.sock = фактически root на хосте. Требуется только
+      # для docker-режима Airbyte (worker запускает контейнеры коннекторов).
+      # Поэтому весь стек Airbyte спрятан за профилем "airbyte" (см. выше).
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - app-network
@@ -115,6 +127,7 @@ services:
   # ——— Airbyte: Web UI ———
   airbyte-webapp:
     image: airbyte/webapp:${AIRBYTE_VERSION:-0.50.4}
+    profiles: ["airbyte"]
     ports:
       # Только localhost: админ-UI Airbyte не публикуем наружу.
       - "127.0.0.1:8001:80"
@@ -162,6 +175,29 @@ services:
       retries: 3
       start_period: 20s
 
+  # ——— Prometheus (scrapes API /metric; Grafana datasource points here) ———
+  prometheus:
+    image: prom/prometheus:v2.54.1  # pinned for reproducible deploys
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      # Только localhost: Prometheus наружу не публикуем.
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - api
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # ——— Grafana ———
   grafana:
     image: grafana/grafana:11.3.0  # pinned (was latest) for reproducible deploys
@@ -174,9 +210,13 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
+      # Provisioning dashboards.yml loads from here — mount the dashboard JSON in.
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       db:
         condition: service_healthy
+      prometheus:
+        condition: service_started
     networks:
       - app-network
     restart: unless-stopped
@@ -477,6 +517,7 @@ volumes:
   postgres_data:
   redis_data:
   grafana_data:
+  prometheus_data:
   airbyte_db_data:
   airbyte_workspace:
   idoit_mysql_data:

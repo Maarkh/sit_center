@@ -562,4 +562,5 @@ def create_sla_policy(
         log_audit(current_user.username, current_user.tenant_id, "create", "sla_policy", resource_id=str(row["id"]))
         return SlaPolicyRead(**row)
     except Exception as e:
-        raise HTTPException(400, f"Failed to create SLA policy: {mask_secrets(str(e))}")
+        logger.error("create_sla_policy failed: %s", mask_secrets(str(e)))
+        raise HTTPException(400, "Failed to create SLA policy (invalid data or duplicate)")

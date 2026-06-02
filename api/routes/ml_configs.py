@@ -9,7 +9,7 @@ from api.auth import TokenData
 from core.rbac import require_permission
 from core.audit import log_audit
 from sqlalchemy import text
-from config import mask_secrets
+from config import mask_secrets, logger
 
 router = APIRouter(prefix="/ml/configs", tags=["ML Configs"])
 
@@ -30,7 +30,8 @@ def create_ml_config(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=400, detail="Could not save (invalid data or duplicate)")
 
 
 @router.get("/", response_model=List[MLConfigRead])
@@ -73,7 +74,8 @@ def update_ml_config(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=400, detail="Could not save (invalid data or duplicate)")
 
 
 @router.delete("/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -97,4 +99,5 @@ def delete_ml_config(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=mask_secrets(str(e)))
+        logger.error("metadata endpoint error: %s", mask_secrets(str(e)))
+        raise HTTPException(status_code=500, detail="Internal server error")
