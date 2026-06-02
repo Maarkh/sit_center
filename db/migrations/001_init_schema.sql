@@ -181,15 +181,24 @@ CREATE INDEX IF NOT EXISTS idx_ml_dimensions ON ml_anomalies USING GIN (dimensio
 
 
 -- === 9. Инциденты (встроенный трекер или i-doit sync) ===
+-- Column set aligned with the application (api/schemas.IncidentCreate, models.Incident,
+-- api/routes/incidents.py). The SLA/escalation columns come from 008, i-doit sync from 009.
 CREATE TABLE IF NOT EXISTS incidents (
     id SERIAL PRIMARY KEY,
+    alert_message TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    region TEXT NOT NULL,
+    value TEXT,
+    priority TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new',
+    detected_at TIMESTAMPTZ DEFAULT NOW(),
+    assigned_to TEXT,
+    started_at TIMESTAMPTZ,
+    resolved_at TIMESTAMPTZ,
+    closed_at TIMESTAMPTZ,
+    description TEXT,
     alert_event_id UUID REFERENCES alert_events(id) ON DELETE SET NULL,
     external_id TEXT,  -- id в i-doit / Jira и т.д.
-    title TEXT NOT NULL,
-    description TEXT,
-    status TEXT NOT NULL DEFAULT 'new',
-    priority TEXT NOT NULL,
-    assigned_to TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

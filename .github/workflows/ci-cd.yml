@@ -107,16 +107,103 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
       - name: Run tests
+        # Integration tests run in the dedicated `integration` job (real TimescaleDB
+        # with migrations applied); this job uses plain postgres for unit tests.
         run: |
-          python -m pytest tests/ -v --tb=short -x --ignore=tests/test_ml.py
+          python -m pytest tests/ -v --tb=short -x --ignore=tests/test_ml.py --ignore=tests/integration
       - name: Upload coverage
         if: always()
         run: |
-          python -m pytest tests/ --ignore=tests/test_ml.py --cov=api --cov=core --cov-report=term-missing || true
+          python -m pytest tests/ --ignore=tests/test_ml.py --ignore=tests/integration --cov=api --cov=core --cov-report=term-missing || true
+
+  # Deploy-path guard: apply db/migrations to a REAL TimescaleDB (catches schema
+  # regressions like the hypertable PK / continuous-aggregate policy), then run the
+  # integration suite against it (auth, incident lifecycle, tenant isolation).
+  integration:
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      timescaledb:
+        image: timescale/timescaledb:2.17.2-pg15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_user -d test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TESTING: "1"
+      COOKIE_SECURE: "false"
+      LOG_FORMAT: text
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+      POSTGRES_SERVER: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: test_db
+      DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_db
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      SECRET_KEY: integration-ci-secret-key-0123456789abcdef
+      ADMIN_USERNAME: admin
+      # bcrypt hash of "admin" so the admin_token fixture can log in (tests run, not skip)
+      ADMIN_PASSWORD: "$2b$12$og87/j8zmULE7nd6EUpud.rS/8xpxmW5GaciRZBG.hkHQztviVeri"
+      I_DOIT_API_KEY: test-key
+      I_DOIT_API_URL: http://localhost/api
+      WEBHOOK_API_KEY: test-webhook-key
+      KAFKA_ENABLED: "false"
+      CLICKHOUSE_ENABLED: "false"
+      LDAP_ENABLED: "false"
+      OIDC_ENABLED: "false"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Apply migrations (deploy-path guard)
+        run: |
+          for f in $(ls db/migrations/*.sql | sort); do
+            echo "::group::apply $(basename "$f")"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+            echo "::endgroup::"
+          done
+      - name: Verify schema (hypertable + continuous aggregate + tenant_id)
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+            "SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name='canonical_metrics';" | grep -q 1
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+            "SELECT 1 FROM timescaledb_information.continuous_aggregates WHERE view_name='cagg_hourly_metrics';" | grep -q 1
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
+            "SELECT 1 FROM information_schema.columns WHERE table_name='canonical_metrics' AND column_name='tenant_id';" | grep -q 1
+      - name: Install Python deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Integration tests (against real migrated DB)
+        run: |
+          python -m pytest tests/integration/ -v --tb=short
 
   build:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, integration]
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     # `secrets` can't be used in step-level `if`, so surface presence via env.
     env:

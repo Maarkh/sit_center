@@ -25,6 +25,9 @@ class TestHealthAndAuth:
         assert resp.status_code in (200, 401)
 
     def test_unauthenticated_rejected(self, integration_client):
+        # The session-scoped client may carry an auth cookie from a prior login;
+        # clear it so this genuinely tests the unauthenticated path.
+        integration_client.cookies.clear()
         resp = integration_client.get("/api/v1/metrics/")
         assert resp.status_code in (401, 403)
 
@@ -81,8 +84,9 @@ class TestIncidentLifecycle:
             },
             headers=admin_headers,
         )
-        if resp.status_code != 201:
-            pytest.skip(f"Create incident failed: {resp.status_code}")
+        # Fail (not skip) if creation breaks — this is the guard that would have
+        # caught the incidents-table schema divergence.
+        assert resp.status_code == 201, f"Create incident failed: {resp.status_code} {resp.text}"
 
         incident_id = resp.json()["id"]
 
@@ -152,8 +156,9 @@ class TestIncidentLifecycle:
             },
             headers=admin_headers,
         )
-        if resp.status_code != 201:
-            pytest.skip(f"Create incident failed: {resp.status_code}")
+        # Fail (not skip) if creation breaks — this is the guard that would have
+        # caught the incidents-table schema divergence.
+        assert resp.status_code == 201, f"Create incident failed: {resp.status_code} {resp.text}"
 
         incident_id = resp.json()["id"]
 

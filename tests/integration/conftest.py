@@ -33,21 +33,30 @@ os.environ.setdefault("LDAP_ENABLED", "false")
 os.environ.setdefault("OIDC_ENABLED", "false")
 
 
+# Connection params come from env (set by the CI job to point at the service
+# containers, or by docker-compose.test.yml defaults for local runs).
+PG_HOST = os.environ.get("POSTGRES_SERVER", "localhost")
+PG_PORT = int(os.environ.get("POSTGRES_PORT", "5444"))
+PG_USER = os.environ.get("POSTGRES_USER", "test_user")
+PG_PASS = os.environ.get("POSTGRES_PASSWORD", "test_pass")
+PG_DB = os.environ.get("POSTGRES_DB", "test_db")
+RD_HOST = os.environ.get("REDIS_HOST", "localhost")
+RD_PORT = int(os.environ.get("REDIS_PORT", "6399"))
+DB_URL = os.environ.get("DATABASE_URL") or f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}:{PG_PORT}/{PG_DB}"
+
+
 def _wait_for_pg(max_wait=30):
     """Block until PostgreSQL is ready."""
     import psycopg2
     start = time.time()
     while time.time() - start < max_wait:
         try:
-            conn = psycopg2.connect(
-                host="localhost", port=5444,
-                user="test_user", password="test_pass", dbname="test_db",
-            )
+            conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, user=PG_USER, password=PG_PASS, dbname=PG_DB)
             conn.close()
             return True
         except Exception:
             time.sleep(0.5)
-    pytest.skip("PostgreSQL not available at localhost:5444 — run docker compose -f docker-compose.test.yml up -d")
+    pytest.skip(f"PostgreSQL not available at {PG_HOST}:{PG_PORT} — run docker compose -f docker-compose.test.yml up -d")
 
 
 def _wait_for_redis(max_wait=15):
@@ -56,13 +65,13 @@ def _wait_for_redis(max_wait=15):
     start = time.time()
     while time.time() - start < max_wait:
         try:
-            client = r.Redis(host="localhost", port=6399)
+            client = r.Redis(host=RD_HOST, port=RD_PORT)
             client.ping()
             client.close()
             return True
         except Exception:
             time.sleep(0.5)
-    pytest.skip("Redis not available at localhost:6399 — run docker compose -f docker-compose.test.yml up -d")
+    pytest.skip(f"Redis not available at {RD_HOST}:{RD_PORT} — run docker compose -f docker-compose.test.yml up -d")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -74,7 +83,7 @@ def _wait_for_infra():
 @pytest.fixture(scope="session")
 def db_engine():
     from sqlalchemy import create_engine
-    engine = create_engine("postgresql://test_user:test_pass@localhost:5444/test_db")
+    engine = create_engine(DB_URL)
     yield engine
     engine.dispose()
 
