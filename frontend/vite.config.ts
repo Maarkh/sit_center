@@ -20,6 +20,11 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      // Cookie-auth endpoints: /auth/me (rehydrate), /auth/logout, OIDC callbacks.
+      '/auth': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
       '/ws': {
         target: 'ws://localhost:8000',
         ws: true,

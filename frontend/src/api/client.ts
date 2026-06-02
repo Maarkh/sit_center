@@ -31,12 +31,18 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url: string = error.config?.url || '';
+    const status = error.response?.status;
+    // 401 on the auth probe (/auth/me) or a login attempt (/token) is expected and
+    // is handled by the caller. Hard-redirecting on those would loop on load
+    // (getMe 401 -> redirect -> reload -> getMe ...), so skip them.
+    const authProbe = url.includes('/auth/me') || url.includes('/token');
+    if (status === 401 && !authProbe) {
       void useAuthStore.getState().logout();
       window.location.href = '/login';
-    } else if (error.response?.status === 403) {
+    } else if (status === 403) {
       message.error('Access denied');
-    } else if (error.response?.data?.detail) {
+    } else if (!authProbe && error.response?.data?.detail) {
       message.error(error.response.data.detail);
     }
     return Promise.reject(error);
