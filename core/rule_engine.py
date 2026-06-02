@@ -77,20 +77,20 @@ class RuleEngine:
     def __init__(self):
         self.parser = PromQLParser()
 
-    def evaluate_all_rules(self) -> List[EvalResult]:
-        rules = metadata_service.list_active_rules()
+    def evaluate_all_rules(self, tenant_id: str = "default") -> List[EvalResult]:
+        rules = metadata_service.list_active_rules(tenant_id=tenant_id)
         results: List[EvalResult] = []
 
         for rule in rules:
             try:
-                rule_results = self._evaluate_rule(rule)
+                rule_results = self._evaluate_rule(rule, tenant_id=tenant_id)
                 results.extend(rule_results)
             except Exception as e:
                 logger.error("Error evaluating rule %s: %s", rule.name, mask_secrets(str(e)))
 
         return results
 
-    def _evaluate_rule(self, rule: RuleDTO) -> List[EvalResult]:
+    def _evaluate_rule(self, rule: RuleDTO, tenant_id: str = "default") -> List[EvalResult]:
         condition = rule.condition
         expr = condition.get("expr") if isinstance(condition, dict) else getattr(condition, "expr", None)
         if not expr:
@@ -102,8 +102,12 @@ class RuleEngine:
 
         # Query the latest values for this metric, grouped by dimensions
         engine = get_engine()
-        where_parts = ["metric_name = :metric_name", "timestamp >= NOW() - INTERVAL '5 minutes'"]
-        params: Dict[str, Any] = {"metric_name": parsed.metric_name}
+        where_parts = [
+            "metric_name = :metric_name",
+            "timestamp >= NOW() - INTERVAL '5 minutes'",
+            "tenant_id = :tenant_id",
+        ]
+        params: Dict[str, Any] = {"metric_name": parsed.metric_name, "tenant_id": tenant_id}
 
         for i, (k, v) in enumerate(parsed.labels.items()):
             where_parts.append(f"dimensions->>:key_{i} = :val_{i}")

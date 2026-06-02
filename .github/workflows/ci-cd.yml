@@ -7,6 +7,11 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+# Least privilege: workflow only needs to read the repo. Anything that needs
+# more (e.g. pushing images) authenticates with its own dedicated secret.
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest

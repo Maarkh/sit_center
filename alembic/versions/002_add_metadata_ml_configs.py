@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = '002_add_ml_configs'
-down_revision = '001_add_admin_dashboard'
+down_revision = 'add_admin_dashboard_001'
 branch_labels = None
 depends_on = None
 

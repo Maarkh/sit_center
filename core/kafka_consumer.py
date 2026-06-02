@@ -18,7 +18,9 @@ class MetricKafkaConsumer:
             bootstrap_servers=bootstrap_servers,
             group_id=group_id,
             value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-            auto_offset_reset="latest",
+            # earliest: on a fresh group, replay the backlog rather than silently
+            # skipping everything produced before the consumer first connected.
+            auto_offset_reset="earliest",
             enable_auto_commit=False,
             max_poll_records=BATCH_SIZE,
         )
@@ -29,7 +31,18 @@ class MetricKafkaConsumer:
         logger.info("Kafka consumer started")
         try:
             while True:
-                self._poll_and_insert()
+                try:
+                    self._poll_and_insert()
+                except Exception as e:
+                    # Insert failed → offsets were NOT committed. Rewind the
+                    # in-memory position back to the last committed offset so the
+                    # same records are re-delivered on the next poll instead of
+                    # being silently skipped (at-least-once delivery).
+                    logger.error(
+                        "Kafka poll/insert cycle failed, rewinding to committed offsets: %s",
+                        mask_secrets(str(e)),
+                    )
+                    self._seek_to_committed()
         except KeyboardInterrupt:
             logger.info("Kafka consumer shutting down")
         finally:
@@ -37,8 +50,10 @@ class MetricKafkaConsumer:
 
     def _poll_and_insert(self):
         messages = self.consumer.poll(timeout_ms=POLL_TIMEOUT_MS)
-        batch: List[Dict[str, Any]] = []
+        if not messages:
+            return
 
+        batch: List[Dict[str, Any]] = []
         for tp, records in messages.items():
             for record in records:
                 msg = record.value
@@ -51,14 +66,21 @@ class MetricKafkaConsumer:
                     "source": msg.get("source", "kafka"),
                 })
 
-                if len(batch) >= BATCH_SIZE:
-                    self._bulk_insert(batch)
-                    batch = []
-
         if batch:
+            # Raises on failure → commit below is skipped → at-least-once.
             self._bulk_insert(batch)
 
+        # Only advance committed offsets after the batch is durably persisted.
         self.consumer.commit()
+
+    def _seek_to_committed(self):
+        """Rewind every assigned partition to its last committed offset."""
+        for tp in self.consumer.assignment():
+            committed = self.consumer.committed(tp)
+            if committed is not None:
+                self.consumer.seek(tp, committed)
+            else:
+                self.consumer.seek_to_beginning(tp)
 
     def _bulk_insert(self, batch: List[Dict[str, Any]]):
         if not batch:
@@ -69,9 +91,9 @@ class MetricKafkaConsumer:
                     COALESCE(:timestamp::timestamptz, NOW()),
                     :dimensions::jsonb, :tags::jsonb, :source)
         """)
-        try:
-            with self.engine.begin() as conn:
-                conn.execute(insert_sql, batch)
-            logger.debug("Inserted %d metrics from Kafka", len(batch))
-        except Exception as e:
-            logger.error("Kafka bulk insert failed: %s", mask_secrets(str(e)))
+        # Let exceptions propagate: the caller relies on a raised error to skip
+        # the offset commit. Swallowing here would commit offsets for data that
+        # was never written, permanently losing the batch.
+        with self.engine.begin() as conn:
+            conn.execute(insert_sql, batch)
+        logger.debug("Inserted %d metrics from Kafka", len(batch))

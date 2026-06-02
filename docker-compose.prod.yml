@@ -378,10 +378,10 @@ services:
   idoit-db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${IDOIT_DB_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${IDOIT_DB_ROOT_PASSWORD:?set IDOIT_DB_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: ${IDOIT_DB_NAME:-idoit}
       MYSQL_USER: ${IDOIT_DB_USER:-idoit}
-      MYSQL_PASSWORD: ${IDOIT_DB_PASS:-idoit}
+      MYSQL_PASSWORD: ${IDOIT_DB_PASS:?set IDOIT_DB_PASS in .env}
     volumes:
       - idoit_mysql_data:/var/lib/mysql
     networks:
@@ -398,9 +398,9 @@ services:
       IDOIT_DB_HOST: idoit-db
       IDOIT_DB_NAME: ${IDOIT_DB_NAME:-idoit}
       IDOIT_DB_USERNAME: ${IDOIT_DB_USER:-idoit}
-      IDOIT_DB_PASSWORD: ${IDOIT_DB_PASS:-idoit}
-      IDOIT_DB_ROOT_PASSWORD: ${IDOIT_DB_ROOT_PASSWORD:-root}
-      IDOIT_ADMIN_PASSWORD: ${IDOIT_ADMIN_PASS:-admin}
+      IDOIT_DB_PASSWORD: ${IDOIT_DB_PASS:?set IDOIT_DB_PASS in .env}
+      IDOIT_DB_ROOT_PASSWORD: ${IDOIT_DB_ROOT_PASSWORD:?set IDOIT_DB_ROOT_PASSWORD in .env}
+      IDOIT_ADMIN_PASSWORD: ${IDOIT_ADMIN_PASS:?set IDOIT_ADMIN_PASS in .env}
       IDOIT_DEFAULT_TENANT: sit-center
     ports:
       # Только localhost: панель i-doit — через reverse-proxy/VPN.
@@ -426,7 +426,7 @@ services:
     environment:
       POSTGRES_DB: keycloak
       POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in .env}
     volumes:
       - keycloak_db_data:/var/lib/postgresql/data
     networks:
@@ -438,6 +438,10 @@ services:
       retries: 5
 
   # ——— Keycloak (OIDC SSO) ———
+  # ⚠️ PROD: `start-dev` отключает TLS и оптимизации и НЕ предназначен для
+  # продакшена. Перед боевым запуском замените на `start` с настроенными
+  # KC_HOSTNAME, KC_PROXY=edge и TLS на reverse-proxy (порт ниже слушает только
+  # 127.0.0.1 и должен публиковаться исключительно через TLS-reverse-proxy).
   keycloak:
     image: quay.io/keycloak/keycloak:23.0
     command: start-dev
@@ -445,9 +449,9 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in .env}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in .env}
       KC_HEALTH_ENABLED: "true"
     ports:
       # Только localhost: Keycloak публикуем только через TLS-reverse-proxy.

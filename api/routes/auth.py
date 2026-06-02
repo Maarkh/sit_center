@@ -65,9 +65,22 @@ async def callback_oidc(request: Request):
     except Exception as e:
         logger.warning("Failed to sync OIDC user: %s", e)
 
-    # Map Keycloak roles -> local permissions
-    realm_access = token.get("access_token_claims", {}).get("realm_access", {})
-    kc_roles = realm_access.get("roles", [])
+    # Map Keycloak roles -> local permissions. Keycloak realm roles live in the
+    # ACCESS token claims, NOT in userinfo/id_token, and authlib does not expose
+    # an "access_token_claims" key — so decode the access token to read them.
+    # (Without this every SSO user silently collapsed to "viewer".)
+    kc_roles: list = []
+    try:
+        from jose import jwt as _jwt
+        access_jwt = token.get("access_token", "")
+        if access_jwt:
+            claims = _jwt.get_unverified_claims(access_jwt)
+            kc_roles = (claims.get("realm_access", {}) or {}).get("roles", []) or []
+    except Exception as e:
+        logger.warning("Failed to decode OIDC access-token roles: %s", e)
+    if not kc_roles:
+        # Some providers surface realm_access via userinfo instead.
+        kc_roles = (userinfo.get("realm_access", {}) or {}).get("roles", []) or []
     roles = kc_roles if kc_roles else ["viewer"]
 
     # Resolve permissions from DB roles
@@ -106,6 +119,9 @@ async def callback_oidc(request: Request):
     except Exception as e:
         logger.warning("Failed to log OIDC audit: %s", e)
 
-    # Redirect to frontend with token
+    # Return the JWT in the URL FRAGMENT, not a query parameter. Fragments are
+    # never sent to the server, so the token stays out of access logs, proxy
+    # logs and the Referer header. The SPA reads it from window.location.hash
+    # and should clear the hash immediately after storing it.
     base_url = getattr(settings, "OIDC_BASE_URL", str(request.base_url).rstrip("/"))
-    return RedirectResponse(f"{base_url}/?token={access_token}")
+    return RedirectResponse(f"{base_url}/#token={access_token}")

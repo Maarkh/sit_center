@@ -13,4 +13,9 @@ COPY . .
 
 ENV PYTHONPATH=/app
 
+# Запуск под непривилегированным пользователем (uid/gid 1000), не root.
+RUN groupadd -r -g 1000 app && useradd -r -u 1000 -g app -m -d /home/app app \
+    && chown -R 1000:1000 /app
+USER 1000
+
 CMD ["python", "kafka_consumer_main.py"]

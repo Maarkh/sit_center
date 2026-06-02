@@ -31,9 +31,10 @@ def create_mv():
             logger.error(f"MV refresh failed: {e2}")
             return False
 
-def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.DataFrame:
+def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero", tenant_id: str = "default") -> pd.DataFrame:
     """Загружает данные из PostgreSQL с улучшенной обработкой ошибок"""
-    key = f"data_from_db_{time_filter}_{fill_missing}"
+    # tenant_id is part of the cache key so tenants never read each other's cached frames.
+    key = f"data_from_db_{tenant_id}_{time_filter}_{fill_missing}"
 
     try:
         data = get_cache().get(key)
@@ -59,7 +60,7 @@ def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.
         cutoff = now - time_deltas.get(time_filter, timedelta(hours=1))
 
         # 🔴 ИСПРАВЛЕНО: динамический SELECT по метрикам из metadata_metrics
-        metrics = [m.metric_name for m in metadata_service.list_metrics(active_only=True)]
+        metrics = [m.metric_name for m in metadata_service.list_metrics(active_only=True, tenant_id=tenant_id)]
         if not metrics:
             logger.warning("⚠️ Нет активных метрик для загрузки")
             metrics = ["complaints", "closed"]  # fallback
@@ -79,11 +80,12 @@ def get_data_from_db(time_filter: str = "1h", fill_missing: str = "zero") -> pd.
             WHERE cm.metric_name = ANY(:metrics)
               AND cm.timestamp >= :cutoff
               AND cm.dimensions ? 'region'
+              AND cm.tenant_id = :tenant_id
             GROUP BY timestamp, cm.dimensions->>'region'
             ORDER BY timestamp DESC
         """)
 
-        df_raw = pd.read_sql(query, engine, params={"cutoff": cutoff, "metrics": metrics}) # type: ignore
+        df_raw = pd.read_sql(query, engine, params={"cutoff": cutoff, "metrics": metrics, "tenant_id": tenant_id}) # type: ignore
 
         get_cache().setex(key, CACHE_TTL, df_raw.to_json(orient="split"))
         return df_raw.copy()

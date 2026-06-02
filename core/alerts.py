@@ -274,7 +274,8 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
             from core.ml_anomaly import find_recent_ml_anomalies
             anomalies = find_recent_ml_anomalies(
                 time_filter="1h",
-                metrics=[col]
+                metrics=[col],
+                tenant_id=tenant_id,
             )
             recent = [
                 a for a in anomalies
@@ -295,6 +296,21 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
     engine = get_engine_proxy()
     Session = sessionmaker(bind=engine)
     s = Session()
+
+    # Best-effort lock so two concurrent workers don't both create this same
+    # (tenant, alert). Redis being down must NOT block alerting → best-effort:
+    # on any Redis error we simply proceed without the lock.
+    lock_key = f"alert_create_lock:{tenant_id}:{alert_hash}"
+    lock_acquired = False
+    try:
+        lock_acquired = bool(get_cache().set(lock_key, "1", nx=True, ex=15))
+        if not lock_acquired:
+            # Another worker is already creating this exact alert right now.
+            s.close()
+            return False, last_alert_region
+    except Exception:
+        lock_acquired = False
+
     try:
         existing = s.query(AlertEvent).filter_by(alert_hash=alert_hash, tenant_id=tenant_id).first()
         if existing and existing.sent_at and (
@@ -316,29 +332,43 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
             tenant_id=tenant_id,
         )
         s.add(new_alert)
-        s.flush()
+        # Persist the alert row FIRST. The side-effects below (notification,
+        # incident, pub/sub) are irreversible, so they must run only after the
+        # row is durably committed — otherwise a failed commit would send a
+        # notification for an alert that was never recorded.
+        s.commit()
+        alert_id = str(new_alert.id)
+        event_time_iso = new_alert.event_time.isoformat()
 
-        # Отправка
-        notify(msg, prio)
-        new_alert.sent = True
-        new_alert.sent_at = datetime.now(timezone.utc)
+        # Отправка (queued + idempotent). A failure here must not orphan or
+        # roll back the already-committed alert row.
+        try:
+            notify(msg, prio)
+        except Exception as e:
+            logger.warning(f"Notification enqueue failed (alert {alert_id} already recorded): {e}")
 
         # Инцидент
-        create_incident_buffered(msg, selected, region, val, prio, tenant_id=tenant_id)
-        new_alert.incident_created = True
-        new_alert.incident_created_at = datetime.now(timezone.utc)
+        try:
+            create_incident_buffered(msg, selected, region, val, prio, tenant_id=tenant_id)
+            new_alert.incident_created = True
+            new_alert.incident_created_at = datetime.now(timezone.utc)
+        except Exception as e:
+            logger.warning(f"Incident buffering failed for alert {alert_id}: {e}")
 
+        new_alert.sent = True
+        new_alert.sent_at = datetime.now(timezone.utc)
         s.commit()
 
         # Publish to Redis Pub/Sub for WebSocket clients
         alert_payload = {
             "type": "alert",
-            "id": str(new_alert.id),
+            "id": alert_id,
             "metric": selected,
             "dimensions": {"region": region},
             "value": float(val),
             "status": "firing",
-            "event_time": new_alert.event_time.isoformat(),
+            "event_time": event_time_iso,
+            "tenant_id": tenant_id,
         }
         try:
             from core.pubsub import publish_alert
@@ -359,7 +389,7 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         history.append(AlertLog(time.time(), selected, region, val, prio))
         save_alert_history(history, tenant_id=tenant_id)
 
-        logger.info(f"✅ Алерт создан: {new_alert.id}")
+        logger.info(f"✅ Алерт создан: {alert_id}")
         return True, region
 
     except IntegrityError:
@@ -371,3 +401,8 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         return False, last_alert_region
     finally:
         s.close()
+        if lock_acquired:
+            try:
+                get_cache().delete(lock_key)
+            except Exception:
+                pass

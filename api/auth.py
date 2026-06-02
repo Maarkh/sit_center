@@ -1,4 +1,5 @@
 # api/auth.py
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from fastapi import Depends, HTTPException, status
@@ -10,6 +11,25 @@ from config import settings
 
 if not settings.secret_key:
     raise RuntimeError("SECRET_KEY is not set. Set SECRET_KEY in env or .env and restart the app.")
+
+# Fail fast on weak / placeholder keys in real deployments. With a guessable
+# SECRET_KEY an attacker can forge a JWT (tenant_id/roles/permissions are read
+# straight from the token) and impersonate an admin of any tenant. Skipped under
+# TESTING so the test suites can run with short fixed keys.
+if os.getenv("TESTING", "").lower() not in ("1", "true"):
+    _WEAK_SECRETS = {
+        "change-me-to-random-secret",
+        "changeme",
+        "secret",
+        "your-secret-key",
+        "test-secret-key-for-ci",
+    }
+    if settings.secret_key in _WEAK_SECRETS or len(settings.secret_key) < 32:
+        raise RuntimeError(
+            "SECRET_KEY is weak or set to the example default. Generate a strong random key "
+            '(e.g. `python -c "import secrets; print(secrets.token_urlsafe(48))"`) '
+            "and set SECRET_KEY before starting the app."
+        )
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"

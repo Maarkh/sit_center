@@ -175,7 +175,7 @@ def detect_anomaly_prophet_isolation(
     return anomalies
 
 
-def find_recent_ml_anomalies(time_filter="6h", metrics=None, methods=None):
+def find_recent_ml_anomalies(time_filter="6h", metrics=None, methods=None, tenant_id="default"):
     if methods is None:
         methods = settings.ml_methods or ["prophet", "lstm", "clustering"]
 
@@ -185,7 +185,7 @@ def find_recent_ml_anomalies(time_filter="6h", metrics=None, methods=None):
 
     engine = get_engine()
 
-    active_metrics = {m.metric_name for m in metadata_service.list_metrics(active_only=True)}
+    active_metrics = {m.metric_name for m in metadata_service.list_metrics(active_only=True, tenant_id=tenant_id)}
     target_metrics = set(metrics) if metrics else active_metrics
 
     query_base = """
@@ -198,6 +198,7 @@ def find_recent_ml_anomalies(time_filter="6h", metrics=None, methods=None):
         FROM canonical_metrics
         WHERE metric_name = ANY(:metrics)
           AND timestamp >= :cutoff
+          AND tenant_id = :tenant_id
         ORDER BY timestamp
     """
 
@@ -211,6 +212,7 @@ def find_recent_ml_anomalies(time_filter="6h", metrics=None, methods=None):
             batch = conn.execute(batch_query, {
                 "metrics": list(target_metrics),
                 "cutoff": cutoff,
+                "tenant_id": tenant_id,
                 "offset": offset,
                 "batch_size": batch_size
             }).mappings().all()
@@ -295,7 +297,8 @@ def find_recent_ml_anomalies(time_filter="6h", metrics=None, methods=None):
                         predicted=a.get("predicted"),
                         residual=a.get("residual"),
                         confidence=a.get("confidence"),
-                        method=a["method"]
+                        method=a["method"],
+                        tenant_id=tenant_id,
                     )
                     session.add(anomaly)
                 session.commit()
@@ -304,7 +307,7 @@ def find_recent_ml_anomalies(time_filter="6h", metrics=None, methods=None):
                 logger.error(f"❌ Ошибка сохранения: {mask_secrets(str(e))}")
                 session.rollback()
 
-    get_cache().set("ml_anomalies", serialize_anomalies(all_anomalies), ex=300)
+    get_cache().set(f"ml_anomalies:{tenant_id}", serialize_anomalies(all_anomalies), ex=300)
     return all_anomalies
 
 

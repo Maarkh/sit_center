@@ -24,13 +24,25 @@ def _get_producer() -> KafkaProducer:
 
 def publish_alert_event(data: dict) -> None:
     try:
-        _get_producer().send(TOPIC_ALERTS, value=data)
+        producer = _get_producer()
+        future = producer.send(TOPIC_ALERTS, value=data)
+        future.add_errback(
+            lambda e: logger.error("Kafka alert delivery failed: %s", mask_secrets(str(e)))
+        )
+        # Alerts are low-volume and important: block briefly so a broker error
+        # surfaces here instead of being silently swallowed by fire-and-forget.
+        producer.flush(timeout=5)
     except Exception as e:
         logger.error("Kafka publish_alert_event failed: %s", mask_secrets(str(e)))
 
 
 def publish_metric_event(data: dict) -> None:
     try:
-        _get_producer().send(TOPIC_METRICS, value=data)
+        future = _get_producer().send(TOPIC_METRICS, value=data)
+        # High-volume path: don't block on flush, but still surface async
+        # delivery errors instead of dropping them silently.
+        future.add_errback(
+            lambda e: logger.error("Kafka metric delivery failed: %s", mask_secrets(str(e)))
+        )
     except Exception as e:
         logger.error("Kafka publish_metric_event failed: %s", mask_secrets(str(e)))

@@ -48,13 +48,21 @@ def test_oidc_login_enabled_redirects(api_client):
 
 
 def test_oidc_callback_success_issues_token(api_client):
+    from jose import jwt as jose_jwt
+    # Keycloak realm roles live in the ACCESS-token claims — encode a real JWT so
+    # the callback's get_unverified_claims() decode path is exercised.
+    access_jwt = jose_jwt.encode(
+        {"sub": "kc-1", "realm_access": {"roles": ["viewer"]}},
+        "irrelevant-signing-key",
+        algorithm="HS256",
+    )
     token = {
         "userinfo": {
             "preferred_username": "alice",
             "email": "alice@example.com",
             "sub": "kc-1",
         },
-        "access_token_claims": {"realm_access": {"roles": ["viewer"]}},
+        "access_token": access_jwt,
     }
     mock_oauth = MagicMock()
     mock_oauth.keycloak.authorize_access_token = AsyncMock(return_value=token)
@@ -64,7 +72,8 @@ def test_oidc_callback_success_issues_token(api_client):
          patch("core.audit.log_audit"):
         resp = api_client.get("/auth/callback/oidc", follow_redirects=False)
     assert resp.status_code in (302, 307)
-    assert "token=" in resp.headers["location"]
+    # The JWT must be returned in the URL fragment, never a query parameter.
+    assert "#token=" in resp.headers["location"]
 
 
 def test_oidc_callback_auth_failure(api_client):

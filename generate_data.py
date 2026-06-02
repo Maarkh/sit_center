@@ -7,6 +7,8 @@
 """
 
 import argparse
+import glob
+import os
 import random
 import pandas as pd
 from datetime import datetime, timedelta, timezone
@@ -19,132 +21,6 @@ from core.config_service import ConfigService
 from core.locking import global_lock
 import io
 
-# --- 1. Схема БД: DDL ---
-INIT_SCHEMA_SQL = """
--- 1. Расширения
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- 2. Основная таблица данных
-CREATE TABLE IF NOT EXISTS canonical_metrics (
-    id BIGSERIAL PRIMARY KEY,
-    metric_name TEXT NOT NULL,
-    value NUMERIC NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    dimensions JSONB NOT NULL DEFAULT '{}',
-    tags JSONB NOT NULL DEFAULT '{}',
-    source TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Индексы
-CREATE INDEX IF NOT EXISTS idx_canonical_ts ON canonical_metrics (timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_canonical_metric ON canonical_metrics (metric_name);
-CREATE INDEX IF NOT EXISTS idx_canonical_dimensions_gin ON canonical_metrics USING GIN (dimensions);
-CREATE INDEX IF NOT EXISTS idx_canonical_tags_gin ON canonical_metrics USING GIN (tags);
-
--- 3. Метаданные метрик
-CREATE TABLE IF NOT EXISTS metadata_metrics (
-    metric_name TEXT PRIMARY KEY,
-    display_name TEXT NOT NULL,
-    description TEXT,
-    unit TEXT DEFAULT '',
-    default_threshold NUMERIC,
-    default_critical_threshold NUMERIC,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 4. Метаданные измерений
-CREATE TABLE IF NOT EXISTS metadata_dimensions (
-    dimension_key TEXT PRIMARY KEY,
-    description TEXT,
-    allowed_values JSONB,
-    is_required BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 5. Правила
-CREATE TABLE IF NOT EXISTS metadata_rules (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    description TEXT,
-    condition JSONB NOT NULL,
-    labels JSONB NOT NULL DEFAULT '{}',
-    actions JSONB NOT NULL DEFAULT '[]',
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 6. ML-конфиги
-CREATE TABLE IF NOT EXISTS metadata_ml_configs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    metric_name TEXT NOT NULL REFERENCES metadata_metrics(metric_name),
-    group_by TEXT[] NOT NULL DEFAULT '{}',
-    methods TEXT[] NOT NULL DEFAULT '{"prophet"}',
-    method_params JSONB NOT NULL DEFAULT '{}',
-    retrain_schedule TEXT DEFAULT '0 3 * * *',
-    auto_alert BOOLEAN DEFAULT true,
-    alert_severity TEXT DEFAULT 'warning',
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 7. Алерты
-CREATE TABLE IF NOT EXISTS alert_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    rule_id UUID REFERENCES metadata_rules(id),
-    ml_config_id UUID REFERENCES metadata_ml_configs(id),
-    metric_name TEXT NOT NULL,
-    dimensions JSONB NOT NULL DEFAULT '{}',
-    value NUMERIC NOT NULL,
-    event_time TIMESTAMPTZ NOT NULL,
-    detected_at TIMESTAMPTZ DEFAULT NOW(),
-    status TEXT NOT NULL DEFAULT 'firing',
-    resolved_at TIMESTAMPTZ,
-    sent BOOLEAN DEFAULT false,
-    sent_at TIMESTAMPTZ,
-    delivery_attempts INT DEFAULT 0,
-    last_error TEXT,
-    fingerprint TEXT NOT NULL,
-    escalation_level INT DEFAULT 0,
-    last_escalation TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_alerts_firing ON alert_events (status) WHERE status = 'firing';
-CREATE INDEX IF NOT EXISTS idx_alerts_fingerprint ON alert_events (fingerprint);
-
--- 8. ML-аномалии
-CREATE TABLE IF NOT EXISTS ml_anomalies (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ml_config_id UUID NOT NULL REFERENCES metadata_ml_configs(id),
-    metric_name TEXT NOT NULL,
-    dimensions JSONB NOT NULL DEFAULT '{}',
-    timestamp TIMESTAMPTZ NOT NULL,
-    value NUMERIC NOT NULL,
-    predicted NUMERIC,
-    residual NUMERIC,
-    confidence NUMERIC,
-    method TEXT NOT NULL,
-    model_version TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 9. Таблица конфигураций (для ConfigService)
-CREATE TABLE IF NOT EXISTS config_tables (
-    name TEXT PRIMARY KEY,
-    model_class TEXT NOT NULL,
-    cache_key TEXT NOT NULL,
-    ttl INTEGER NOT NULL DEFAULT 300,
-    is_active BOOLEAN DEFAULT TRUE,
-    description TEXT,
-    schema_name TEXT DEFAULT 'public'
-);
-"""
 
 def bulk_insert_canonical_metrics(engine, records: list):
     if not records:
@@ -180,13 +56,50 @@ def bulk_insert_canonical_metrics(engine, records: list):
             cur.close()
         conn.close()
 
+MIGRATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "db", "migrations")
+
+
 def init_db_schema(engine):
-    """Инициализирует схему базы данных."""
-    logger.info("🔧 Инициализация схемы БД...")
-    with engine.connect() as conn:
-        conn.execute(text(INIT_SCHEMA_SQL))
-        conn.commit()
-    logger.info("✅ Схема БД инициализирована.")
+    """Применяет канонические SQL-миграции из db/migrations/.
+
+    Это те же файлы, что монтируются в docker-entrypoint-initdb.d в проде, поэтому
+    локальная схема (tenant_id, multi-tenancy, TimescaleDB, индексы, audit, SLA)
+    полностью совпадает с продакшеном. Единый источник истины вместо устаревшего
+    встроенного INIT_SCHEMA_SQL, который расходился со схемой прод-БД.
+    """
+    logger.info("🔧 Инициализация схемы БД из db/migrations/ ...")
+    files = sorted(glob.glob(os.path.join(MIGRATIONS_DIR, "*.sql")))
+    if not files:
+        raise RuntimeError(f"Не найдено ни одной миграции в {MIGRATIONS_DIR}")
+
+    raw = engine.raw_connection()
+    dbapi = getattr(raw, "dbapi_connection", None) or getattr(raw, "connection", raw)
+    try:
+        # autocommit: применяем каждый файл как psql (нужно для CREATE EXTENSION /
+        # create_hypertable, которые не работают внутри явной транзакции).
+        dbapi.autocommit = True
+        cur = dbapi.cursor()
+        for path in files:
+            name = os.path.basename(path)
+            with open(path, "r", encoding="utf-8") as fh:
+                sql = fh.read()
+            if not sql.strip():
+                continue
+            try:
+                cur.execute(sql)
+                logger.info("  ✔ %s", name)
+            except Exception as e:
+                # Напр. 005_timescaledb.sql не применится на обычном PostgreSQL без
+                # расширения timescaledb — для локальной разработки это нормально.
+                logger.warning("  ⚠ %s пропущен: %s", name, mask_secrets(str(e)))
+        cur.close()
+    finally:
+        try:
+            dbapi.autocommit = False
+        except Exception:
+            pass
+        raw.close()
+    logger.info("✅ Схема БД инициализирована из db/migrations/.")
 
 
 # --- 2. Метаданные: метрики, dimensions, правила ---

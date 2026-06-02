@@ -62,7 +62,11 @@ def prometheus_label_values1(current_user: TokenData = Depends(get_current_user)
     try:
         with engine.connect() as conn:
             result = conn.execute(
-                text("SELECT DISTINCT metric_name FROM canonical_metrics ORDER BY metric_name")
+                text(
+                    "SELECT DISTINCT metric_name FROM canonical_metrics "
+                    "WHERE tenant_id = :tenant_id ORDER BY metric_name"
+                ),
+                {"tenant_id": current_user.tenant_id},
             )
             return [row[0] for row in result]
     except Exception as e:
@@ -73,7 +77,7 @@ def prometheus_label_values1(current_user: TokenData = Depends(get_current_user)
 @router.get("/prometheus/api/v1/label/{label_name}/values", response_model=List[str])
 def prometheus_label_values(label_name: str, current_user: TokenData = Depends(get_current_user)):
     if label_name == "__name__":
-        return prometheus_label_values1()
+        return prometheus_label_values1(current_user)
 
     label_name = validate_label_name(label_name)
 
@@ -87,8 +91,11 @@ def prometheus_label_values(label_name: str, current_user: TokenData = Depends(g
     try:
         with engine.connect() as conn:
             has_key = conn.execute(
-                text("SELECT EXISTS(SELECT 1 FROM canonical_metrics WHERE dimensions ? :label_name LIMIT 1)"),
-                {"label_name": label_name}
+                text(
+                    "SELECT EXISTS(SELECT 1 FROM canonical_metrics "
+                    "WHERE dimensions ? :label_name AND tenant_id = :tenant_id LIMIT 1)"
+                ),
+                {"label_name": label_name, "tenant_id": current_user.tenant_id}
             ).scalar()
             if not has_key:
                 return []
@@ -98,10 +105,11 @@ def prometheus_label_values(label_name: str, current_user: TokenData = Depends(g
                 FROM canonical_metrics
                 WHERE dimensions ? :label_name
                   AND dimensions->>:label_name IS NOT NULL
+                  AND tenant_id = :tenant_id
                 ORDER BY value
                 LIMIT 1000
             """)
-            result = conn.execute(values_query, {"label_name": label_name})
+            result = conn.execute(values_query, {"label_name": label_name, "tenant_id": current_user.tenant_id})
             return [row[0] for row in result if row[0]]
     except Exception as e:
         logger.error(f"Error fetching label values for {label_name}: {mask_secrets(str(e))}")
@@ -128,8 +136,8 @@ def prometheus_series(
         metric_name, filters_str = match_obj.groups()
         
         # Строим запрос с параметрами
-        where_parts = ["metric_name = :metric"]
-        params: Dict[str, Any] = {"metric": metric_name}
+        where_parts = ["metric_name = :metric", "tenant_id = :tenant_id"]
+        params: Dict[str, Any] = {"metric": metric_name, "tenant_id": current_user.tenant_id}
         
         if filters_str:
             for i, kv in enumerate(filters_str.split(",")):
@@ -212,7 +220,10 @@ def prometheus_query_range(
     metric_name, filters_str = match_obj.groups()
 
     from core.metadata_service import metadata_service
-    valid_metrics = {m.metric_name for m in metadata_service.list_metrics(active_only=True)}
+    valid_metrics = {
+        m.metric_name
+        for m in metadata_service.list_metrics(active_only=True, tenant_id=current_user.tenant_id)
+    }
     if metric_name not in valid_metrics:
         raise HTTPException(404, f"Metric '{metric_name}' not found or inactive")
 
@@ -228,12 +239,13 @@ def prometheus_query_range(
     except Exception as e:
         raise HTTPException(400, f"Invalid step: {mask_secrets(str(e))}")
 
-    where = ["metric_name = :metric", "timestamp >= :start", "timestamp <= :end"]
+    where = ["metric_name = :metric", "timestamp >= :start", "timestamp <= :end", "tenant_id = :tenant_id"]
     params = {
         "metric": metric_name,
         "start": datetime.fromtimestamp(start, tz=timezone.utc),
         "end": datetime.fromtimestamp(end, tz=timezone.utc),
         "step_sec": step_sec,
+        "tenant_id": current_user.tenant_id,
     }
 
     if filters_str:
@@ -326,6 +338,7 @@ def analytics_query_range(
         end=end_dt,
         aggregation=aggregation,
         interval=ch_interval,
+        tenant_id=current_user.tenant_id,
     )
     return {"status": "success", "data": data}
 
@@ -366,12 +379,12 @@ async def query_data(
     current_user: TokenData = Depends(get_current_user)
 ):
     from core.metadata_service import metadata_service
-    metric = metadata_service.get_metric(request.metric_name)
+    metric = metadata_service.get_metric(request.metric_name, tenant_id=current_user.tenant_id)
     if not metric or not metric.is_active:
         raise HTTPException(404, f"Metric '{request.metric_name}' not found")
 
-    where = ["metric_name = :metric_name"]
-    params = {"metric_name": request.metric_name}
+    where = ["metric_name = :metric_name", "tenant_id = :tenant_id"]
+    params = {"metric_name": request.metric_name, "tenant_id": current_user.tenant_id}
 
     if request.start_time:
         where.append("timestamp >= :start")

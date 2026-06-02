@@ -168,18 +168,46 @@ class TestIncidentLifecycle:
 
 class TestTenantIsolation:
     def test_data_scoped_to_tenant(self, integration_client, admin_headers, db_engine):
-        """Verify that list endpoints return tenant-scoped data."""
+        """Two tenants' metrics must NOT leak across the tenant boundary.
+
+        Seeds canonical_metrics for tenant 'default' and tenant 'tenant-b', then
+        queries as the default-tenant admin and asserts the other tenant's metric
+        is invisible. This is a real isolation assertion — it FAILS (not skips)
+        if tenant filtering regresses.
+        """
         try:
             with db_engine.connect() as conn:
-                conn.execute(text("SELECT 1 FROM metadata_metrics LIMIT 1"))
+                conn.execute(text("SELECT 1 FROM canonical_metrics LIMIT 1"))
         except Exception:
-            pytest.skip("metadata_metrics table not found")
+            pytest.skip("canonical_metrics table not found — migrations not applied")
 
-        resp = integration_client.get("/api/v1/metrics/", headers=admin_headers)
-        assert resp.status_code == 200
-        # All returned metrics should belong to the admin's tenant (default)
-        # We can't assert tenant_id directly since it's not in MetricRead,
-        # but we verify the query doesn't error out with tenant filtering
+        own = "iso_default_metric"
+        other = "iso_other_metric"
+        insert = text(
+            "INSERT INTO canonical_metrics "
+            "(metric_name, value, timestamp, dimensions, tags, source, tenant_id) "
+            "VALUES (:m, :v, NOW(), '{}'::jsonb, '{}'::jsonb, 'itest', :t)"
+        )
+        try:
+            with db_engine.begin() as conn:
+                conn.execute(insert, {"m": own, "v": 111.0, "t": "default"})
+                conn.execute(insert, {"m": other, "v": 999.0, "t": "tenant-b"})
+
+            # Admin token belongs to tenant "default".
+            resp = integration_client.get(
+                "/api/v1/data/prometheus/api/v1/label/__name__/values",
+                headers=admin_headers,
+            )
+            assert resp.status_code == 200
+            names = resp.json()
+            assert own in names, "own-tenant metric should be visible"
+            assert other not in names, "other tenant's metric leaked across the boundary!"
+        finally:
+            with db_engine.begin() as conn:
+                conn.execute(
+                    text("DELETE FROM canonical_metrics WHERE metric_name IN (:a, :b)"),
+                    {"a": own, "b": other},
+                )
 
 
 class TestApiVersioning:

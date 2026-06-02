@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 from sqlalchemy import text as sa_text
 
 from api.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from config import logger, settings
+from config import logger, settings, mask_secrets
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -86,6 +86,8 @@ def try_db_auth(username: str, password: str) -> Optional[Dict[str, Any]]:
             ).mappings().first()
 
             if not user_row or not user_row["password_hash"]:
+                # User genuinely not found in the DB → it's fine to fall through
+                # to other strategies (e.g. env-admin) in the caller.
                 return None
             if not pwd_context.verify(password, user_row["password_hash"]):
                 raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -98,8 +100,13 @@ def try_db_auth(username: str, password: str) -> Optional[Dict[str, Any]]:
             return {"token": token, "username": user_row["username"], "tenant_id": user_row["tenant_id"]}
     except HTTPException:
         raise
-    except Exception:
-        return None
+    except Exception as e:
+        # A DB/operational error is NOT the same as "user not found". Fail CLOSED:
+        # returning None here would let the login flow fall through to the
+        # env-admin fallback, granting full admin to anyone who knows the admin
+        # credentials whenever the database is merely unreachable.
+        logger.error(f"DB auth error (failing closed): {mask_secrets(str(e))}")
+        raise HTTPException(status_code=503, detail="Authentication service temporarily unavailable")
 
 
 def try_env_admin_auth(username: str, password: str) -> str:

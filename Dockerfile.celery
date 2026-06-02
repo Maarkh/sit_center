@@ -23,5 +23,11 @@ RUN chmod +x wait-for-db-and-start.sh
 # Переменные окружения (временные, переопределятся в docker-compose)
 ENV PYTHONPATH=/app
 
+# Запуск под непривилегированным пользователем (uid/gid 1000 — совпадает с
+# securityContext в Helm-чарте). Контейнер не должен работать от root.
+RUN groupadd -r -g 1000 app && useradd -r -u 1000 -g app -m -d /home/app app \
+    && chown -R 1000:1000 /app
+USER 1000
+
 # Команда по умолчанию — будет переопределена в docker-compose
 CMD ["celery", "-A", "tasks.celery_app", "worker", "-l", "INFO", "--concurrency", "2"]

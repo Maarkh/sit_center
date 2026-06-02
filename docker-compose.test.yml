@@ -35,7 +35,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: api/Dockerfile.api
     environment:
       DATABASE_URL: postgresql://test_user:test_pass@test-db:5432/test_db
       REDIS_URL: redis://test-redis:6379/0

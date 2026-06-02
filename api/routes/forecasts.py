@@ -23,7 +23,10 @@ def predict_metric(
     """
     from core.metadata_service import metadata_service
 
-    valid_metrics = {m.metric_name for m in metadata_service.list_metrics(active_only=True)}
+    valid_metrics = {
+        m.metric_name
+        for m in metadata_service.list_metrics(active_only=True, tenant_id=current_user.tenant_id)
+    }
     if metric_name not in valid_metrics:
         raise HTTPException(404, f"Metric '{metric_name}' not found or inactive")
 
@@ -32,7 +35,7 @@ def predict_metric(
         dimensions["region"] = region
 
     try:
-        points = _generate_forecast(metric_name, dimensions, horizon_hours)
+        points = _generate_forecast(metric_name, dimensions, horizon_hours, current_user.tenant_id)
     except ImportError:
         raise HTTPException(501, "ML libraries not available for forecasting")
     except ValueError as e:
@@ -49,7 +52,7 @@ def predict_metric(
     )
 
 
-def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hours: int):
+def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hours: int, tenant_id: str = "default"):
     """Try cached model first, fall back to fitting on recent data."""
     import pandas as pd
 
@@ -65,7 +68,7 @@ def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hou
 
     # Try to load a pre-trained model from cache
     group_key = "_".join(f"{k}={v}" for k, v in sorted(dimensions.items())) or "all"
-    cache_key = f"ml_model:{metric_name}:{group_key}"
+    cache_key = f"ml_model:{tenant_id}:{metric_name}:{group_key}"
     cache = get_cache()
     model_bytes = cache.get(cache_key)
     model = None
@@ -81,8 +84,8 @@ def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hou
         engine = get_engine()
         cutoff = datetime.now(timezone.utc) - timedelta(days=14)
 
-        where = ["metric_name = :metric", "timestamp >= :cutoff"]
-        params: dict = {"metric": metric_name, "cutoff": cutoff}
+        where = ["metric_name = :metric", "timestamp >= :cutoff", "tenant_id = :tenant_id"]
+        params: dict = {"metric": metric_name, "cutoff": cutoff, "tenant_id": tenant_id}
 
         if dimensions.get("region"):
             where.append("dimensions->>'region' = :region")
