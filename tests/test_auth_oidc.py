@@ -72,8 +72,10 @@ def test_oidc_callback_success_issues_token(api_client):
          patch("core.audit.log_audit"):
         resp = api_client.get("/auth/callback/oidc", follow_redirects=False)
     assert resp.status_code in (302, 307)
-    # The JWT must be returned in the URL fragment, never a query parameter.
-    assert "#token=" in resp.headers["location"]
+    # The JWT must NOT appear in the URL at all — it's delivered via an httpOnly
+    # cookie, and the SPA reads its identity from GET /auth/me.
+    assert "token=" not in resp.headers["location"]
+    assert "access_token=" in resp.headers.get("set-cookie", "")
 
 
 def test_oidc_callback_auth_failure(api_client):

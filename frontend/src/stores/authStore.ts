@@ -1,43 +1,46 @@
 import { create } from 'zustand';
-import { login as apiLogin } from '@/api/auth';
-import { decodeToken, isTokenExpired } from '@/utils/jwt';
-import type { TokenData } from '@/types/auth';
+import { login as apiLogin, getMe, logout as apiLogout } from '@/api/auth';
+import type { UserInfo } from '@/types/auth';
 
 interface AuthState {
-  token: string | null;
-  user: TokenData | null;
+  user: UserInfo | null;
   isAuthenticated: boolean;
+  loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-  initFromStorage: () => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
   hasPermission: (perm: string) => boolean;
   isAdmin: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: null,
   user: null,
   isAuthenticated: false,
+  // Start in loading state: on first paint we don't yet know if the auth cookie
+  // is valid. checkAuth() resolves it; ProtectedRoute shows a spinner meanwhile.
+  loading: true,
 
   login: async (username, password) => {
-    const result = await apiLogin(username, password);
-    const decoded = decodeToken(result.access_token);
-    localStorage.setItem('token', result.access_token);
-    set({ token: result.access_token, user: decoded, isAuthenticated: true });
+    await apiLogin(username, password); // server sets the httpOnly auth cookie
+    const user = await getMe();
+    set({ user, isAuthenticated: true, loading: false });
   },
 
-  logout: () => {
-    localStorage.removeItem('token');
-    set({ token: null, user: null, isAuthenticated: false });
+  logout: async () => {
+    try {
+      await apiLogout();
+    } catch {
+      /* best-effort: clear local state regardless of the network result */
+    }
+    set({ user: null, isAuthenticated: false, loading: false });
   },
 
-  initFromStorage: () => {
-    const token = localStorage.getItem('token');
-    if (token && !isTokenExpired(token)) {
-      const decoded = decodeToken(token);
-      set({ token, user: decoded, isAuthenticated: true });
-    } else {
-      localStorage.removeItem('token');
+  checkAuth: async () => {
+    try {
+      const user = await getMe();
+      set({ user, isAuthenticated: true, loading: false });
+    } catch {
+      set({ user: null, isAuthenticated: false, loading: false });
     }
   },
 

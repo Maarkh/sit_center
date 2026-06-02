@@ -157,6 +157,12 @@ class Settings(BaseSettings):
         "http://localhost:8050,http://localhost:3000,http://localhost:8000",
     ) # type: ignore
 
+    # --- Auth cookies ---
+    # Secure flag for auth cookies. MUST stay True in production (cookies only
+    # over HTTPS). Set COOKIE_SECURE=false for local http dev, or the browser
+    # silently drops the cookie.
+    COOKIE_SECURE: bool = Field(True)  # type: ignore
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

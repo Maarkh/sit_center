@@ -42,13 +42,11 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install pip-audit bandit
-      # Reporting-only for now (continue-on-error): surfaces advisories in the
-      # run without blocking the pipeline. Flip to blocking once the backlog is clean.
+      # Blocking. CVE-2025-71176 is a pytest (dev/test-only) local /tmp DoS — not a
+      # runtime risk; ignored until the test stack can move to pytest >= 9.0.3.
       - name: Dependency vulnerability scan (pip-audit)
-        continue-on-error: true
-        run: pip-audit -r requirements.txt --desc
+        run: pip-audit -r requirements.txt --ignore-vuln CVE-2025-71176
       - name: Static security analysis (bandit)
-        continue-on-error: true
         run: bandit -r api core --severity-level medium --confidence-level medium -q
 
   test:

@@ -1,25 +1,26 @@
 type MessageHandler = (data: unknown) => void;
 
+function getCookie(name: string): string | null {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 export class AlertWebSocket {
   private ws: WebSocket | null = null;
-  private token: string;
   private handlers: MessageHandler[] = [];
   private reconnectDelay = 1000;
   private maxDelay = 30000;
   private shouldReconnect = true;
 
-  constructor(token: string) {
-    // Keep the JWT in memory only. It is exchanged for a short-lived, single-use
-    // ticket right before connecting, so the long-lived token never appears in
-    // the WebSocket URL (which lands in proxy/access logs and history).
-    this.token = token;
-  }
-
   private async fetchTicket(): Promise<string | null> {
+    // Exchange the httpOnly auth cookie for a short-lived, single-use ticket so
+    // no token ever appears in the WebSocket URL. POST → double-submit CSRF.
     try {
+      const csrf = getCookie('csrf_token');
       const resp = await fetch('/ws/ticket', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.token}` },
+        credentials: 'include',
+        headers: csrf ? { 'X-CSRF-Token': csrf } : {},
       });
       if (!resp.ok) return null;
       const data = await resp.json();

@@ -1,6 +1,9 @@
 # tests/conftest.py
 import os
 os.environ["TESTING"] = "1"
+# Auth cookies over http (TestClient) — the cookie jar won't replay Secure cookies
+# on http, which would break cookie-auth tests.
+os.environ.setdefault("COOKIE_SECURE", "false")
 
 import pytest
 import fakeredis

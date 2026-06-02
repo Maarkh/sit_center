@@ -464,7 +464,8 @@ class MetadataService:
         parts = [metric_name] + sorted([f"{k}={v}" for k, v in dimensions.items()])
         if rule_id:
             parts.append(str(rule_id))
-        return hashlib.md5(":".join(parts).encode()).hexdigest()
+        # Not security-sensitive: a stable dedup fingerprint, not a digest of secrets.
+        return hashlib.md5(":".join(parts).encode(), usedforsecurity=False).hexdigest()
 
 
 

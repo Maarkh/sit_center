@@ -23,12 +23,13 @@ const AdminPage = lazy(() => import('@/pages/Admin/AdminPage'));
 const PageLoader = <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 
 export default function App() {
-  const { initFromStorage } = useAuthStore();
+  const { checkAuth } = useAuthStore();
   const { darkMode } = useUIStore();
 
   useEffect(() => {
-    initFromStorage();
-  }, [initFromStorage]);
+    // Resolve auth state from the httpOnly cookie (GET /auth/me).
+    checkAuth();
+  }, [checkAuth]);
 
   return (
     <ConfigProvider theme={darkMode ? darkTheme : lightTheme}>

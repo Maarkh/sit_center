@@ -1,12 +1,38 @@
 # api/routes/auth.py
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 from datetime import timedelta
 from config import settings, logger
-from api.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from api.auth import (
+    create_access_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    get_current_user,
+    set_auth_cookies,
+    clear_auth_cookies,
+    TokenData,
+)
 from api.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+@router.get("/me", summary="Current authenticated user (for the SPA)")
+def auth_me(current_user: TokenData = Depends(get_current_user)):
+    """Return the current user's identity for the UI. With httpOnly-cookie auth the
+    SPA can't decode the JWT itself, so it rehydrates auth state from here."""
+    return {
+        "username": current_user.username,
+        "scopes": current_user.scopes,
+        "roles": current_user.roles,
+        "permissions": current_user.permissions,
+        "tenant_id": current_user.tenant_id,
+    }
+
+
+@router.post("/logout", summary="Clear the auth cookies")
+def auth_logout(response: Response):
+    clear_auth_cookies(response)
+    return {"status": "ok"}
 
 
 @router.get("/login/oidc")
@@ -119,9 +145,10 @@ async def callback_oidc(request: Request):
     except Exception as e:
         logger.warning("Failed to log OIDC audit: %s", e)
 
-    # Return the JWT in the URL FRAGMENT, not a query parameter. Fragments are
-    # never sent to the server, so the token stays out of access logs, proxy
-    # logs and the Referer header. The SPA reads it from window.location.hash
-    # and should clear the hash immediately after storing it.
+    # Set the JWT as an httpOnly cookie and redirect to the SPA without exposing
+    # the token in the URL at all (no query, no fragment). The SPA then reads its
+    # identity from GET /auth/me.
     base_url = getattr(settings, "OIDC_BASE_URL", str(request.base_url).rstrip("/"))
-    return RedirectResponse(f"{base_url}/#token={access_token}")
+    redirect = RedirectResponse(f"{base_url}/")
+    set_auth_cookies(redirect, access_token)
+    return redirect

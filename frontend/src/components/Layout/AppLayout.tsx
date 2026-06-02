@@ -16,15 +16,16 @@ let wsInstance: AlertWebSocket | null = null;
 
 export default function AppLayout() {
   const { sidebarCollapsed, darkMode, toggleSidebar } = useUIStore();
-  const { token } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const { addLiveAlert } = useAlertStore();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (!token) return;
+    if (!isAuthenticated) return;
 
-    wsInstance = new AlertWebSocket(token);
+    // Auth rides on the httpOnly cookie now; the socket fetches a ticket itself.
+    wsInstance = new AlertWebSocket();
     wsInstance.onMessage((data) => {
       const alert = data as AlertRead;
       addLiveAlert(alert);
@@ -41,7 +42,7 @@ export default function AppLayout() {
       wsInstance?.disconnect();
       wsInstance = null;
     };
-  }, [token, addLiveAlert, t]);
+  }, [isAuthenticated, addLiveAlert, t]);
 
   const sidebarContent = (
     <>

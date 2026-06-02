@@ -1,112 +1,97 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { TokenData } from '@/types/auth';
+import type { UserInfo } from '@/types/auth';
 
 vi.mock('@/api/auth', () => ({
   login: vi.fn(),
-}));
-
-vi.mock('@/utils/jwt', () => ({
-  decodeToken: vi.fn(),
-  isTokenExpired: vi.fn(),
+  getMe: vi.fn(),
+  logout: vi.fn(),
 }));
 
 import { useAuthStore } from '../authStore';
-import { login as apiLogin } from '@/api/auth';
-import { decodeToken, isTokenExpired } from '@/utils/jwt';
+import { login as apiLogin, getMe, logout as apiLogout } from '@/api/auth';
 
-const mockUser: TokenData = {
-  sub: 'testuser',
+const mockUser: UserInfo = {
+  username: 'testuser',
   scopes: ['user'],
   tenant_id: 'tenant-1',
   roles: ['operator'],
   permissions: ['read:alerts', 'write:alerts'],
-  exp: Math.floor(Date.now() / 1000) + 3600,
 };
 
-const mockAdminUser: TokenData = {
-  sub: 'admin',
+const mockAdminUser: UserInfo = {
+  username: 'admin',
   scopes: ['admin'],
   tenant_id: 'tenant-1',
   roles: ['admin'],
   permissions: [],
-  exp: Math.floor(Date.now() / 1000) + 3600,
 };
 
 describe('authStore', () => {
   beforeEach(() => {
-    localStorage.clear();
     vi.clearAllMocks();
-    useAuthStore.setState({
-      token: null,
-      user: null,
-      isAuthenticated: false,
-    });
+    useAuthStore.setState({ user: null, isAuthenticated: false, loading: true });
   });
 
   it('has correct initial state', () => {
     const state = useAuthStore.getState();
-    expect(state.token).toBeNull();
     expect(state.user).toBeNull();
     expect(state.isAuthenticated).toBe(false);
   });
 
-  it('login sets token, user, and isAuthenticated', async () => {
+  it('login sets the cookie (via apiLogin) then hydrates user from getMe', async () => {
     vi.mocked(apiLogin).mockResolvedValue({ access_token: 'tok123', token_type: 'bearer' });
-    vi.mocked(decodeToken).mockReturnValue(mockUser);
+    vi.mocked(getMe).mockResolvedValue(mockUser);
 
     await useAuthStore.getState().login('testuser', 'pass');
 
+    expect(apiLogin).toHaveBeenCalledWith('testuser', 'pass');
     const state = useAuthStore.getState();
-    expect(state.token).toBe('tok123');
     expect(state.user).toEqual(mockUser);
     expect(state.isAuthenticated).toBe(true);
-    expect(localStorage.getItem('token')).toBe('tok123');
+    expect(state.loading).toBe(false);
   });
 
-  it('logout clears state and localStorage', () => {
-    useAuthStore.setState({ token: 'tok', user: mockUser, isAuthenticated: true });
-    localStorage.setItem('token', 'tok');
+  it('logout calls the logout endpoint and clears state', async () => {
+    vi.mocked(apiLogout).mockResolvedValue(undefined);
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, loading: false });
 
-    useAuthStore.getState().logout();
+    await useAuthStore.getState().logout();
 
+    expect(apiLogout).toHaveBeenCalled();
     const state = useAuthStore.getState();
-    expect(state.token).toBeNull();
     expect(state.user).toBeNull();
     expect(state.isAuthenticated).toBe(false);
-    expect(localStorage.getItem('token')).toBeNull();
   });
 
-  it('initFromStorage restores from valid token', () => {
-    localStorage.setItem('token', 'valid-token');
-    vi.mocked(isTokenExpired).mockReturnValue(false);
-    vi.mocked(decodeToken).mockReturnValue(mockUser);
+  it('logout clears state even if the network call fails', async () => {
+    vi.mocked(apiLogout).mockRejectedValue(new Error('network'));
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, loading: false });
 
-    useAuthStore.getState().initFromStorage();
+    await useAuthStore.getState().logout();
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+  });
+
+  it('checkAuth authenticates when the cookie is valid', async () => {
+    vi.mocked(getMe).mockResolvedValue(mockUser);
+
+    await useAuthStore.getState().checkAuth();
 
     const state = useAuthStore.getState();
-    expect(state.token).toBe('valid-token');
     expect(state.user).toEqual(mockUser);
     expect(state.isAuthenticated).toBe(true);
+    expect(state.loading).toBe(false);
   });
 
-  it('initFromStorage clears expired token', () => {
-    localStorage.setItem('token', 'expired-token');
-    vi.mocked(isTokenExpired).mockReturnValue(true);
+  it('checkAuth clears auth when getMe rejects (no/invalid cookie)', async () => {
+    vi.mocked(getMe).mockRejectedValue(new Error('401'));
 
-    useAuthStore.getState().initFromStorage();
-
-    const state = useAuthStore.getState();
-    expect(state.token).toBeNull();
-    expect(state.isAuthenticated).toBe(false);
-    expect(localStorage.getItem('token')).toBeNull();
-  });
-
-  it('initFromStorage does nothing when no token in storage', () => {
-    useAuthStore.getState().initFromStorage();
+    await useAuthStore.getState().checkAuth();
 
     const state = useAuthStore.getState();
-    expect(state.token).toBeNull();
+    expect(state.user).toBeNull();
     expect(state.isAuthenticated).toBe(false);
+    expect(state.loading).toBe(false);
   });
 
   it('hasPermission returns false when not logged in', () => {
@@ -114,27 +99,27 @@ describe('authStore', () => {
   });
 
   it('hasPermission returns true for matching permission', () => {
-    useAuthStore.setState({ token: 'tok', user: mockUser, isAuthenticated: true });
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, loading: false });
     expect(useAuthStore.getState().hasPermission('read:alerts')).toBe(true);
   });
 
   it('hasPermission returns false for non-matching permission', () => {
-    useAuthStore.setState({ token: 'tok', user: mockUser, isAuthenticated: true });
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, loading: false });
     expect(useAuthStore.getState().hasPermission('delete:system')).toBe(false);
   });
 
   it('hasPermission returns true for admin regardless of specific permission', () => {
-    useAuthStore.setState({ token: 'tok', user: mockAdminUser, isAuthenticated: true });
+    useAuthStore.setState({ user: mockAdminUser, isAuthenticated: true, loading: false });
     expect(useAuthStore.getState().hasPermission('anything')).toBe(true);
   });
 
   it('isAdmin returns true when user has admin scope', () => {
-    useAuthStore.setState({ token: 'tok', user: mockAdminUser, isAuthenticated: true });
+    useAuthStore.setState({ user: mockAdminUser, isAuthenticated: true, loading: false });
     expect(useAuthStore.getState().isAdmin()).toBe(true);
   });
 
   it('isAdmin returns false when user lacks admin scope', () => {
-    useAuthStore.setState({ token: 'tok', user: mockUser, isAuthenticated: true });
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, loading: false });
     expect(useAuthStore.getState().isAdmin()).toBe(false);
   });
 

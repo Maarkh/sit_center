@@ -34,7 +34,8 @@ def get_engine_proxy():
     return get_engine()
 
 def generate_alert_hash(metric: str, region: str, value: float) -> str:
-    return hashlib.md5(f"{metric}_{region}_{value}".encode()).hexdigest()
+    # Not security-sensitive: just a stable dedup/fingerprint key, not a digest of secrets.
+    return hashlib.md5(f"{metric}_{region}_{value}".encode(), usedforsecurity=False).hexdigest()
 
 def is_alert_suppressed(alert_hash: str, tenant_id: str = "default") -> bool:
     """Проверяет, подавлен ли алерт."""

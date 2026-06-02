@@ -1,6 +1,8 @@
 # api/main.py
 import json
+import secrets
 from fastapi import FastAPI, Depends, Response, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
@@ -12,7 +14,7 @@ setup_logging()
 from api.routes import metrics, dimensions, rules, ml_configs, alerts, data, webhooks, admin, incidents, forecasts
 from api.routes import auth as auth_routes
 from api.routes import audit as audit_routes
-from api.auth import Token
+from api.auth import Token, set_auth_cookies
 from fastapi.security import OAuth2PasswordRequestForm
 from core.exceptions import (
     situational_center_error_handler,
@@ -109,8 +111,35 @@ app.add_middleware(
     allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-API-KEY", "Accept"],
+    allow_headers=["Authorization", "Content-Type", "X-API-KEY", "Accept", "X-CSRF-Token"],
 )
+
+
+# --- CSRF protection for cookie-authenticated browser requests ---
+# Double-submit token: an unsafe request that authenticates via the httpOnly
+# cookie (i.e. has the access_token cookie and NO Authorization header) must echo
+# the readable csrf_token cookie back in the X-CSRF-Token header. Programmatic
+# Bearer clients (and tests) send the Authorization header and are exempt, since
+# they aren't subject to CSRF (credentials aren't auto-attached by the browser).
+_CSRF_UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+# /token: login carries no auth cookie yet. /auth/logout: only clears cookies
+# (logout-CSRF is low risk) and must work even without a csrf cookie present.
+_CSRF_EXEMPT_PATHS = {"/token", "/auth/logout"}
+
+
+@app.middleware("http")
+async def csrf_protect(request: Request, call_next):
+    if (
+        request.method in _CSRF_UNSAFE_METHODS
+        and request.url.path not in _CSRF_EXEMPT_PATHS
+        and request.cookies.get("access_token")
+        and not request.headers.get("authorization")
+    ):
+        cookie_csrf = request.cookies.get("csrf_token")
+        header_csrf = request.headers.get("x-csrf-token")
+        if not cookie_csrf or not header_csrf or not secrets.compare_digest(cookie_csrf, header_csrf):
+            return JSONResponse(status_code=403, content={"detail": "CSRF token missing or invalid"})
+    return await call_next(request)
 
 
 
@@ -149,26 +178,32 @@ app.include_router(ws_router)
 
 @app.post("/token", response_model=Token, tags=["System"], summary="Authenticate and get JWT token")
 @limiter.limit("5/minute")
-def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+def login(request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends()):
     from core.auth_strategies import try_ldap_auth, try_db_auth, try_env_admin_auth
     from core.audit import log_audit
     ip = request.client.host if request.client else None
+
+    # The JWT is set as an httpOnly cookie (browser SPA) AND returned in the body
+    # (programmatic clients / OIDC / tests). The browser path ignores the body.
 
     # 1) LDAP
     token = try_ldap_auth(form_data.username, form_data.password)
     if token:
         log_audit(form_data.username, "default", "login", "session", ip_address=ip)
+        set_auth_cookies(response, token)
         return {"access_token": token, "token_type": "bearer"}
 
     # 2) DB user
     db_result = try_db_auth(form_data.username, form_data.password)
     if db_result:
         log_audit(db_result["username"], db_result["tenant_id"], "login", "session", ip_address=ip)
+        set_auth_cookies(response, db_result["token"])
         return {"access_token": db_result["token"], "token_type": "bearer"}
 
     # 3) Env-based admin fallback
     token = try_env_admin_auth(form_data.username, form_data.password)
     log_audit(form_data.username, "default", "login", "session", ip_address=ip)
+    set_auth_cookies(response, token)
     return {"access_token": token, "token_type": "bearer"}
 
 @app.post("/api/v1/frontend-errors")
@@ -253,5 +288,7 @@ def metric():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
+    # Dev-only entrypoint (reload=True). Production runs via the container CMD with
+    # the bind address controlled by the deployment, not this 0.0.0.0 default.
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)  # nosec B104
     

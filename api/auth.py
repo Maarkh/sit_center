@@ -1,8 +1,9 @@
 # api/auth.py
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel, Field
@@ -35,7 +36,32 @@ SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+ACCESS_COOKIE_NAME = "access_token"
+CSRF_COOKIE_NAME = "csrf_token"
+
+# auto_error=False: don't 401 when the Authorization header is absent — we fall
+# back to the httpOnly cookie (browser SPA) before deciding the request is anon.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+
+
+def set_auth_cookies(response: Response, token: str) -> None:
+    """Set the httpOnly auth cookie + a readable CSRF cookie (double-submit)."""
+    max_age = ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    secure = getattr(settings, "COOKIE_SECURE", True)
+    response.set_cookie(
+        ACCESS_COOKIE_NAME, token,
+        max_age=max_age, httponly=True, secure=secure, samesite="lax", path="/",
+    )
+    # Not httpOnly on purpose: the SPA reads it and echoes it as X-CSRF-Token.
+    response.set_cookie(
+        CSRF_COOKIE_NAME, secrets.token_urlsafe(32),
+        max_age=max_age, httponly=False, secure=secure, samesite="lax", path="/",
+    )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    response.delete_cookie(ACCESS_COOKIE_NAME, path="/")
+    response.delete_cookie(CSRF_COOKIE_NAME, path="/")
 
 
 class Token(BaseModel):
@@ -83,5 +109,15 @@ def verify_token(token: str) -> TokenData:
         )
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme)) -> TokenData:
+    # Prefer the Authorization header (programmatic clients / tests); fall back to
+    # the httpOnly cookie set for the browser SPA.
+    if not token:
+        token = request.cookies.get(ACCESS_COOKIE_NAME)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return verify_token(token)

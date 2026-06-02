@@ -17,7 +17,7 @@ export default function HeaderBar() {
   const userMenuItems = [
     {
       key: 'user',
-      label: `${user?.sub} (${user?.tenant_id})`,
+      label: `${user?.username} (${user?.tenant_id})`,
       icon: <UserOutlined />,
       disabled: true,
     },
@@ -58,7 +58,7 @@ export default function HeaderBar() {
         </Badge>
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
           <Typography.Text style={{ cursor: 'pointer' }}>
-            <UserOutlined /> {user?.sub}
+            <UserOutlined /> {user?.username}
           </Typography.Text>
         </Dropdown>
       </Space>
