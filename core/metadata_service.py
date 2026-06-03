@@ -20,6 +20,10 @@ class MetricDTO:
     default_threshold: Optional[float] = None
     default_critical_threshold: Optional[float] = None
     is_active: bool = True
+    # Populated from the row (the response model MetricRead requires them). Holds a
+    # datetime from the DB or an ISO string when rehydrated from the JSON cache.
+    created_at: Optional[Any] = None
+    updated_at: Optional[Any] = None
 
 @dataclass
 class DimensionDTO:
@@ -84,7 +88,17 @@ class MetadataService:
 
     # --- Общие утилиты ---
     def _serialize_json(self, data: Any) -> str:
-        return json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+        # NUMERIC columns come back as Decimal and timestamps as datetime — neither is
+        # JSON-serialisable by default, which silently broke metric caching (→ empty list).
+        def _default(o):
+            from decimal import Decimal
+            from datetime import datetime, date
+            if isinstance(o, Decimal):
+                return float(o)
+            if isinstance(o, (datetime, date)):
+                return o.isoformat()
+            raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
+        return json.dumps(data, ensure_ascii=False, separators=(',', ':'), default=_default)
 
     def _deserialize_json(self, raw: Optional[str]) -> Any:
         if raw is None:
@@ -123,7 +137,9 @@ class MetadataService:
                         updated_at = NOW()
                     RETURNING metric_name;
                 """)
-                params = asdict(dto)
+                # The route passes a Pydantic MetricCreate; tests/callers may pass a
+                # MetricDTO dataclass. Support both.
+                params = dto.model_dump() if hasattr(dto, "model_dump") else asdict(dto)
                 params["tenant_id"] = tenant_id
                 with engine.begin() as conn:
                     result = conn.execute(query, params)
