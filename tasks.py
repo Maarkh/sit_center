@@ -66,7 +66,8 @@ def run_alerts_check_task(self, time_filter: str = "1h"):
 @celery_app.task(bind=True, max_retries=3)
 def send_notification(self, message: str, priority: str, idempotency_key: str = None): # type: ignore
     if not idempotency_key:
-        idempotency_key = md5(f"{message}:{priority}".encode()).hexdigest()[:16]
+        # Non-security fingerprint for de-duplicating notifications.
+        idempotency_key = md5(f"{message}:{priority}".encode(), usedforsecurity=False).hexdigest()[:16]
 
     cache = get_redis()
     cache_key = f"notification_sent:{idempotency_key}"

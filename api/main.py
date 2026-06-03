@@ -149,6 +149,25 @@ async def csrf_protect(request: Request, call_next):
     return await call_next(request)
 
 
+# Security response headers. CSP is restrictive for the API (JSON) but skipped for the
+# interactive docs (Swagger/ReDoc need inline scripts/styles + their CDN).
+_CSP = "default-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+_DOCS_PREFIXES = ("/docs", "/redoc", "/openapi.json")
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    # HSTS is honoured only over HTTPS; harmless over plain HTTP.
+    response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    if not request.url.path.startswith(_DOCS_PREFIXES):
+        response.headers.setdefault("Content-Security-Policy", _CSP)
+    return response
+
 
 # API v1 — all business routes under /api/v1/ prefix
 API_V1_PREFIX = "/api/v1"

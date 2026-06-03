@@ -27,6 +27,11 @@ def make_celery(app_name=__name__):
         result_serializer='json',
         timezone='UTC',
         enable_utc=True,
+        # At-least-once delivery: a task is ack'd only after it finishes, and is
+        # requeued if the worker dies mid-task. DSS tasks are idempotent (unique
+        # indexes / upserts / dedup keys), so re-runs are safe.
+        task_acks_late=True,
+        task_reject_on_worker_lost=True,
         beat_schedule=get_beat_schedule(),
         task_routes={
             'core.ml_tasks.*': {'queue': 'ml'},
