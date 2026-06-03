@@ -2,7 +2,7 @@ import { Menu } from 'antd';
 import {
   DashboardOutlined, GlobalOutlined, LineChartOutlined,
   AlertOutlined, FileTextOutlined, SettingOutlined,
-  TeamOutlined,
+  TeamOutlined, RadarChartOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -20,6 +20,7 @@ export default function Sidebar() {
 
   const items = [
     { key: '/', icon: <DashboardOutlined />, label: t('sidebar.dashboard') },
+    { key: '/cockpit', icon: <RadarChartOutlined />, label: t('sidebar.cockpit') },
     { key: '/map', icon: <GlobalOutlined />, label: t('sidebar.map') },
     { key: '/metrics', icon: <LineChartOutlined />, label: t('sidebar.metrics') },
     { key: '/alerts', icon: <AlertOutlined />, label: t('sidebar.alerts') },

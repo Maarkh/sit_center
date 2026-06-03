@@ -19,6 +19,7 @@ const IncidentsPage = lazy(() => import('@/pages/Incidents/IncidentsPage'));
 const IncidentDetailPage = lazy(() => import('@/pages/Incidents/IncidentDetailPage'));
 const SettingsPage = lazy(() => import('@/pages/Settings/SettingsPage'));
 const AdminPage = lazy(() => import('@/pages/Admin/AdminPage'));
+const CockpitPage = lazy(() => import('@/pages/Cockpit/CockpitPage'));
 
 const PageLoader = <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route index element={<DashboardPage />} />
+                <Route path="cockpit" element={<CockpitPage />} />
                 <Route path="map" element={<MapPage />} />
                 <Route path="metrics" element={<MetricsExplorerPage />} />
                 <Route path="alerts" element={<AlertsPage />} />
