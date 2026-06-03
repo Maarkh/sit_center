@@ -38,6 +38,19 @@ cd frontend && npx vite --port 3010
 Открыть **http://localhost:3010**, войти `admin` / `admin`, перейти в **Кокпит**.
 Swagger всех эндпоинтов: **http://localhost:8000/docs**.
 
+### Живой мини-демо: мониторинг CPU/RAM этой машины
+
+`scripts/monitor_cpu.py` собирает реальную загрузку CPU/RAM в `canonical_metrics` и
+прогоняет цикл оценки (коридор → отклонение → хроника → авто-рекомендация →
+корреляция в ситуацию). Заведи показатели «Загрузка CPU» (коридор ≤ 60%) и
+«Использование RAM», запусти монитор и нагрузи процессор — увидишь весь контур вживую:
+
+```bash
+PYTHONPATH=. python scripts/monitor_cpu.py          # фоновый сборщик + оценка
+# в другом терминале — спровоцировать пробой:
+timeout 80 bash -c 'for i in $(seq $(nproc)); do yes >/dev/null & done; wait'
+```
+
 > Прод-запуск всего стека — `docker compose -f docker-compose.prod.yml up -d`
 > (см. [QUICKSTART.md](../QUICKSTART.md)).
 
