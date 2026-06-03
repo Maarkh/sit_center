@@ -748,3 +748,66 @@ class TestDecisionLearning:
             integration_client.delete(f"/api/v1/indicators/{ind_id}", headers=admin_headers)
             integration_client.delete(f"/api/v1/playbooks/{pb_id}", headers=admin_headers)
             integration_client.delete(f"/api/v1/processes/templates/{tmpl_id}", headers=admin_headers)
+
+
+# ======================================================================
+# M6 — Model & Scenario (what-if)
+# ======================================================================
+class TestScenarioWhatIf:
+    def test_scenario_projects_and_estimates_potential(self, integration_client, admin_headers, db_engine):
+        if not _tables_present(db_engine, "scenarios", "scenario_results", "indicators"):
+            pytest.skip("M6 tables not found — migration 017 not applied")
+
+        metric = f"itest_whatif_{uuid.uuid4().hex[:8]}"
+        ind_id = integration_client.post(
+            "/api/v1/indicators/",
+            json={"name": "whatif indicator", "target_low": 0.0, "target_high": 100.0,
+                  "direction": "above", "factors": [{"name": "f", "metrics": [metric]}]},
+            headers=admin_headers,
+        ).json()["id"]
+
+        # Current value 150 → breaches the corridor (above 100).
+        with db_engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO canonical_metrics "
+                     "(metric_name, value, timestamp, dimensions, tags, source, tenant_id) "
+                     "VALUES (:m, 150, NOW(), '{}'::jsonb, '{}'::jsonb, 'itest', 'default')"),
+                {"m": metric})
+
+        try:
+            # What-if: "what if we bring this indicator down to 50?"
+            sc = integration_client.post(
+                "/api/v1/scenarios/",
+                json={"name": "Снизить до 50",
+                      "assumptions": [{"indicator_id": ind_id, "mode": "target", "value": 50.0}]},
+                headers=admin_headers)
+            assert sc.status_code == 201, sc.text
+            scenario_id = sc.json()["id"]
+
+            run = integration_client.post(f"/api/v1/scenarios/{scenario_id}/run", json={}, headers=admin_headers)
+            assert run.status_code == 200, run.text
+            result = run.json()
+
+            assert result["breaches_avoided"] == 1
+            assert result["potential_value"] > 0
+            item = next(r for r in result["results"] if r["indicator_id"] == ind_id)
+            assert abs(item["baseline"] - 150.0) < 0.01    # live value wired in
+            assert item["projected"] == 50.0
+            assert item["baseline_breach"] == "above"
+            assert item["projected_breach"] is None
+            assert item["improved"] is True
+            assert item["indicator_name"] == "whatif indicator"
+
+            # The latest result is attached when fetching the scenario.
+            got = integration_client.get(f"/api/v1/scenarios/{scenario_id}", headers=admin_headers).json()
+            assert got["latest_result"]["breaches_avoided"] == 1
+            assert got["assumptions"][0]["mode"] == "target"
+
+            # List surfaces the headline potential.
+            lst = integration_client.get("/api/v1/scenarios/", headers=admin_headers).json()
+            mine = [s for s in lst if s["id"] == scenario_id]
+            assert mine and mine[0]["potential_value"] > 0
+        finally:
+            with db_engine.begin() as conn:
+                conn.execute(text("DELETE FROM canonical_metrics WHERE metric_name = :m"), {"m": metric})
+            integration_client.delete(f"/api/v1/indicators/{ind_id}", headers=admin_headers)

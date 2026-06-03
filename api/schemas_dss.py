@@ -633,3 +633,73 @@ class PlaybookStats(BaseModel):
     decided: int         # decisions with a recorded outcome
     resolved: int        # outcomes that resolved the situation
     win_rate: Optional[float] = None   # resolved / decided (null if no outcomes yet)
+
+
+# ======================================================================
+# M6 — Model & Scenario (what-if)
+# ======================================================================
+AssumptionMode = Literal["target", "delta", "delta_pct"]
+
+
+class Assumption(BaseModel):
+    indicator_id: UUID
+    mode: AssumptionMode = "target"
+    value: float
+
+
+class ScenarioCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+    situation_id: Optional[UUID] = None
+    assumptions: List[Assumption] = Field(..., min_length=1)
+
+
+class ScenarioUpdate(ScenarioCreate):
+    pass
+
+
+class ScenarioResultItem(BaseModel):
+    indicator_id: UUID
+    indicator_name: Optional[str] = None
+    baseline: Optional[float] = None
+    projected: Optional[float] = None
+    baseline_breach: Optional[str] = None
+    projected_breach: Optional[str] = None
+    improved: bool = False
+    worsened: bool = False
+
+
+class ScenarioResultRead(BaseModel):
+    id: UUID
+    scenario_id: UUID
+    results: List[ScenarioResultItem] = Field(default_factory=list)
+    potential_value: float
+    breaches_avoided: int
+    computed_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ScenarioRead(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    situation_id: Optional[UUID] = None
+    assumptions: List[Assumption] = Field(default_factory=list)
+    created_by: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    latest_result: Optional[ScenarioResultRead] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ScenarioListItem(BaseModel):
+    id: UUID
+    name: str
+    situation_id: Optional[UUID] = None
+    created_at: datetime
+    potential_value: Optional[float] = None
+    breaches_avoided: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)

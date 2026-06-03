@@ -663,3 +663,33 @@ class DecisionOutcome(Base):
     auto = Column(Boolean, nullable=False, default=False)
     evaluated_by = Column(String, nullable=True)
     evaluated_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
+
+
+# ============================================================================
+# DSS — M6: Model & Scenario Management (what-if)
+# ============================================================================
+
+class Scenario(Base):
+    __tablename__ = "scenarios"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    situation_id = Column(UUID(as_uuid=True), ForeignKey("situations.id", ondelete="SET NULL"), nullable=True)
+    assumptions = Column(JSONB, nullable=False, default=list)
+    created_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=func.now(), onupdate=func.now())
+
+
+class ScenarioResult(Base):
+    __tablename__ = "scenario_results"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    scenario_id = Column(UUID(as_uuid=True), ForeignKey("scenarios.id", ondelete="CASCADE"), nullable=False)
+    results = Column(JSONB, nullable=False, default=list)
+    potential_value = Column(Float, nullable=False, default=0.0)
+    breaches_avoided = Column(Integer, nullable=False, default=0)
+    computed_at = Column(DateTime(timezone=True), nullable=False, default=func.now())

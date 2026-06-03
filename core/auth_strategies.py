@@ -128,5 +128,6 @@ def try_env_admin_auth(username: str, password: str) -> str:
             "read:recommendations", "write:recommendations",
             "read:predictions", "write:predictions",
             "read:situations", "write:situations",
+            "read:scenarios", "write:scenarios",
         ],
     )
