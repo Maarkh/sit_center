@@ -79,6 +79,21 @@ def predict_indicators_task(horizon_hours: int = 24):
 
 
 @celery_app.task(time_limit=120)
+def evaluate_decision_outcomes_task():
+    """M10: auto-derive outcomes for accepted decisions whose process has finished."""
+    try:
+        from core.decision_engine import decision_engine
+        total = 0
+        for tenant_id in _active_tenant_ids():
+            total += decision_engine.auto_evaluate(tenant_id=tenant_id).get("evaluated", 0)
+        logger.info("Decision outcome evaluation: %d outcomes recorded", total)
+        return {"evaluated": total}
+    except Exception as e:
+        logger.exception("Decision outcome evaluation failed")
+        return {"error": str(e)}
+
+
+@celery_app.task(time_limit=120)
 def check_process_step_sla_task():
     """M8: escalate process step assignments that are past their due_at."""
     try:

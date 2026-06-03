@@ -639,3 +639,112 @@ class TestSituationCorrelation:
                     conn.execute(text("DELETE FROM situations WHERE id = :id"), {"id": sit_id})
             integration_client.delete(f"/api/v1/indicators/{up_id}", headers=admin_headers)
             integration_client.delete(f"/api/v1/indicators/{dn_id}", headers=admin_headers)
+
+
+# ======================================================================
+# M10 — Decision Log & Learning Loop (Learn)
+# ======================================================================
+class TestDecisionLearning:
+    def test_accept_complete_resolve_outcome_winrate(self, integration_client, admin_headers, db_engine):
+        if not _tables_present(db_engine, "decision_outcomes", "recommendations", "process_instances"):
+            pytest.skip("M10 tables not found — migration 016 not applied")
+
+        from core.deviation_engine import indicator_evaluator
+        from core.decision_engine import decision_engine
+
+        metric = f"itest_learn_{uuid.uuid4().hex[:8]}"
+        ind_id = integration_client.post(
+            "/api/v1/indicators/",
+            json={"name": "learn indicator", "target_high": 100.0, "direction": "above",
+                  "chronicle_threshold": 2,  # 2nd breaching cycle → critical (matches the playbook)
+                  "factors": [{"name": "f", "metrics": [metric]}]},
+            headers=admin_headers,
+        ).json()["id"]
+
+        # One-step process template + a targeted playbook that launches it.
+        tmpl_id = integration_client.post(
+            "/api/v1/processes/templates",
+            json={"name": "Учебный регламент", "steps": [{"name": "Шаг", "step_order": 0}]},
+            headers=admin_headers,
+        ).json()["id"]
+        pb_id = integration_client.post(
+            "/api/v1/playbooks",
+            json={"name": "Учебный playbook", "trigger_severity": "critical",
+                  "trigger_direction": "above", "effect_score": 2.0,
+                  "process_template_id": tmpl_id, "indicator_ids": [ind_id]},
+            headers=admin_headers,
+        ).json()["id"]
+
+        def seed(value):
+            with db_engine.begin() as conn:
+                conn.execute(
+                    text("INSERT INTO canonical_metrics "
+                         "(metric_name, value, timestamp, dimensions, tags, source, tenant_id) "
+                         "VALUES (:m, :v, NOW(), '{}'::jsonb, '{}'::jsonb, 'itest', 'default')"),
+                    {"m": metric, "v": value},
+                )
+
+        try:
+            # Breach → deviation (critical after 2 cycles).
+            seed(150.0)
+            indicator_evaluator.evaluate_tenant("default")
+            indicator_evaluator.evaluate_tenant("default")
+            dev_id = integration_client.get(
+                f"/api/v1/deviations/?indicator_id={ind_id}&active_only=true",
+                headers=admin_headers).json()[0]["id"]
+
+            # Generate → accept the targeted recommendation → process launches.
+            recos = integration_client.post(
+                "/api/v1/recommendations/generate", json={"deviation_id": dev_id},
+                headers=admin_headers).json()
+            top = next(r for r in recos if r["playbook_id"] == pb_id)
+            accepted = integration_client.post(
+                f"/api/v1/recommendations/{top['id']}/accept", json={}, headers=admin_headers).json()
+            inst_id = accepted["process_instance_id"]
+            assert inst_id
+
+            # Drive the process to completion.
+            inst = integration_client.get(f"/api/v1/processes/instances/{inst_id}", headers=admin_headers).json()
+            step_id = inst["assignments"][0]["id"]
+            integration_client.post(f"/api/v1/processes/assignments/{step_id}/complete",
+                                    json={"force": True}, headers=admin_headers)
+            inst = integration_client.get(f"/api/v1/processes/instances/{inst_id}", headers=admin_headers).json()
+            assert inst["status"] == "completed"
+
+            # Resolve the deviation (back inside the corridor).
+            with db_engine.begin() as conn:
+                conn.execute(text("DELETE FROM canonical_metrics WHERE metric_name = :m"), {"m": metric})
+            seed(50.0)
+            indicator_evaluator.evaluate_tenant("default")
+
+            # Auto-evaluate outcomes → completed process + resolved deviation = win.
+            res = decision_engine.auto_evaluate("default")
+            assert res["evaluated"] >= 1
+
+            # Decision log shows the decision with a positive outcome.
+            log = integration_client.get("/api/v1/recommendations/decisions", headers=admin_headers).json()
+            mine = [d for d in log if d["recommendation_id"] == top["id"]]
+            assert len(mine) == 1
+            assert mine[0]["resolved"] is True
+            assert mine[0]["outcome_auto"] is True
+
+            # Playbook win-rate reflects the win.
+            stats = integration_client.get(f"/api/v1/playbooks/{pb_id}/stats", headers=admin_headers).json()
+            assert stats["accepted"] == 1
+            assert stats["decided"] == 1
+            assert stats["resolved"] == 1
+            assert stats["win_rate"] == 1.0
+
+            # Operator can override the outcome via the API.
+            ov = integration_client.post(
+                f"/api/v1/recommendations/{top['id']}/outcome",
+                json={"resolved": False, "note": "ручная корректировка"}, headers=admin_headers)
+            assert ov.status_code == 200
+            assert ov.json()["resolved"] is False
+            assert ov.json()["auto"] is False
+        finally:
+            with db_engine.begin() as conn:
+                conn.execute(text("DELETE FROM canonical_metrics WHERE metric_name = :m"), {"m": metric})
+            integration_client.delete(f"/api/v1/indicators/{ind_id}", headers=admin_headers)
+            integration_client.delete(f"/api/v1/playbooks/{pb_id}", headers=admin_headers)
+            integration_client.delete(f"/api/v1/processes/templates/{tmpl_id}", headers=admin_headers)

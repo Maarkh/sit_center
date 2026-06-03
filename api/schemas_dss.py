@@ -584,3 +584,52 @@ class SituationStatusUpdate(BaseModel):
 
 class CorrelateRequest(BaseModel):
     window_minutes: int = Field(30, ge=1, le=1440)
+
+
+# ======================================================================
+# M10 — Decision Log & Learning Loop
+# ======================================================================
+class OutcomeCreate(BaseModel):
+    resolved: bool
+    effect_value: Optional[float] = None
+    note: Optional[str] = Field(None, max_length=1000)
+
+
+class OutcomeRead(BaseModel):
+    id: UUID
+    recommendation_id: UUID
+    resolved: bool
+    effect_value: Optional[float] = None
+    note: Optional[str] = None
+    auto: bool
+    evaluated_by: Optional[str] = None
+    evaluated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DecisionLogItem(BaseModel):
+    """A decision = an accepted recommendation, with its context and outcome."""
+    recommendation_id: UUID
+    playbook_id: Optional[UUID] = None
+    playbook_name: Optional[str] = None
+    deviation_id: Optional[UUID] = None
+    incident_id: Optional[int] = None
+    process_instance_id: Optional[UUID] = None
+    score: float
+    confidence: float
+    decided_by: Optional[str] = None
+    decided_at: Optional[datetime] = None
+    # Outcome (null until evaluated).
+    resolved: Optional[bool] = None
+    effect_value: Optional[float] = None
+    outcome_auto: Optional[bool] = None
+    evaluated_at: Optional[datetime] = None
+
+
+class PlaybookStats(BaseModel):
+    playbook_id: UUID
+    accepted: int        # accepted decisions
+    decided: int         # decisions with a recorded outcome
+    resolved: int        # outcomes that resolved the situation
+    win_rate: Optional[float] = None   # resolved / decided (null if no outcomes yet)

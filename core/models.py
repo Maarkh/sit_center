@@ -645,3 +645,21 @@ class SituationDeviation(Base):
     situation_id = Column(UUID(as_uuid=True), ForeignKey("situations.id", ondelete="CASCADE"), primary_key=True)
     deviation_id = Column(UUID(as_uuid=True), ForeignKey("deviations.id", ondelete="CASCADE"), primary_key=True)
     added_at = Column(DateTime(timezone=True), default=func.now())
+
+
+# ============================================================================
+# DSS — M10: Decision Log & Learning Loop
+# ============================================================================
+
+class DecisionOutcome(Base):
+    __tablename__ = "decision_outcomes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    recommendation_id = Column(UUID(as_uuid=True), ForeignKey("recommendations.id", ondelete="CASCADE"), nullable=False, unique=True)
+    resolved = Column(Boolean, nullable=False)
+    effect_value = Column(Float, nullable=True)
+    note = Column(Text, nullable=True)
+    auto = Column(Boolean, nullable=False, default=False)
+    evaluated_by = Column(String, nullable=True)
+    evaluated_at = Column(DateTime(timezone=True), nullable=False, default=func.now())

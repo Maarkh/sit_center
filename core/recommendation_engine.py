@@ -23,14 +23,17 @@ def score_playbook(
     periods: int,
     *,
     indicator_scoped: bool,
+    winrate_factor: float = 1.0,
 ) -> float:
     """Rank score. Higher effect, critical severity, longer-running (chronicle) and
-    indicator-specific playbooks rank above generic, low-effect ones."""
+    indicator-specific playbooks rank above generic, low-effect ones. `winrate_factor`
+    (default 1.0 = neutral) folds in the playbook's learned track record (M10)."""
     severity_factor = 1.5 if severity == "critical" else 1.0
     # Persistence: a breach that has lasted many cycles is more urgent to act on.
     persistence_factor = 1.0 + 0.1 * min(max(periods - 1, 0), 10)
     specificity_bonus = 0.5 if indicator_scoped else 0.0
-    return round(effect_score * severity_factor * persistence_factor + specificity_bonus, 4)
+    base = effect_score * severity_factor * persistence_factor + specificity_bonus
+    return round(base * winrate_factor, 4)
 
 
 def match_confidence(
@@ -62,6 +65,9 @@ class RecommendationEngine:
             raise ProcessError("deviation/incident not found")
 
         candidates = self._candidate_playbooks(tenant_id, ctx)
+        # Learned track record per playbook (M10 Learn → Decide feedback).
+        from core.decision_engine import decision_engine, winrate_factor
+        winrates = decision_engine.playbook_winrates(tenant_id)
         scored = []
         for pb in candidates:
             indicator_scoped = pb["_scoped"]
@@ -71,8 +77,10 @@ class RecommendationEngine:
                 and ctx["direction"] is not None
                 and pb["trigger_direction"] == ctx["direction"]
             )
+            wr = winrates.get(pb["id"])
+            wf = winrate_factor(wr["win_rate"], wr["decided"]) if wr else 1.0
             score = score_playbook(float(pb["effect_score"]), ctx["severity"], ctx["periods"],
-                                   indicator_scoped=indicator_scoped)
+                                   indicator_scoped=indicator_scoped, winrate_factor=wf)
             confidence = match_confidence(severity_match=severity_match,
                                           direction_match=direction_match,
                                           indicator_scoped=indicator_scoped)

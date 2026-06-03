@@ -46,4 +46,9 @@ beat_schedule = {
         'task': 'core.dss_tasks.correlate_situations_task',
         'schedule': crontab(minute='*/3')
     },
+    # DSS M10: auto-derive decision outcomes from finished processes (learning loop).
+    'evaluate-decision-outcomes-10min': {
+        'task': 'core.dss_tasks.evaluate_decision_outcomes_task',
+        'schedule': crontab(minute='*/10')
+    },
 }

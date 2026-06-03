@@ -195,8 +195,8 @@ jobs:
             "SELECT 1 FROM information_schema.columns WHERE table_name='canonical_metrics' AND column_name='tenant_id';" | grep -q 1
       - name: Verify DSS schema (M2 indicators + M3 deviations + M8 processes)
         run: |
-          # Each DSS module's anchor table must exist, else migrations 010-015 regressed.
-          for tbl in indicators deviations chronicles process_templates step_assignments playbooks recommendations predictive_alerts forecasts situations indicator_dependencies; do
+          # Each DSS module's anchor table must exist, else migrations 010-016 regressed.
+          for tbl in indicators deviations chronicles process_templates step_assignments playbooks recommendations predictive_alerts forecasts situations indicator_dependencies decision_outcomes; do
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc \
               "SELECT 1 FROM information_schema.tables WHERE table_name='$tbl';" | grep -q 1
           done

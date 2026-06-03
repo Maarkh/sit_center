@@ -15,6 +15,7 @@ from sqlalchemy import text
 
 from core.database import get_engine
 from core.recommendation_engine import recommendation_engine
+from core.decision_engine import decision_engine
 from core.process_engine import ProcessError
 from api.auth import TokenData
 from core.rbac import require_permission
@@ -24,6 +25,7 @@ from config import mask_secrets, logger
 from api.schemas_dss import (
     PlaybookCreate, PlaybookUpdate, PlaybookRead, PlaybookListItem, PlaybookActionRead,
     RecommendationGenerateRequest, RecommendationRead, RecommendationDecision,
+    OutcomeCreate, OutcomeRead, DecisionLogItem, PlaybookStats,
 )
 
 playbooks_router = APIRouter(prefix="/playbooks", tags=["DSS: Playbooks"])
@@ -211,6 +213,15 @@ def delete_playbook(
     return
 
 
+@playbooks_router.get("/{playbook_id}/stats", response_model=PlaybookStats,
+                      summary="Playbook track record (M10 win-rate)")
+def playbook_stats(
+    playbook_id: UUID,
+    current_user: TokenData = Depends(require_permission("read:recommendations")),
+):
+    return PlaybookStats(**decision_engine.playbook_stats(playbook_id, current_user.tenant_id))
+
+
 # ---------------------------------------------------------------------------
 # Recommendations
 # ---------------------------------------------------------------------------
@@ -337,3 +348,32 @@ def dismiss_recommendation(
     log_audit(current_user.username, current_user.tenant_id, "dismiss", "recommendation",
               resource_id=str(recommendation_id))
     return _reco_row(row)
+
+
+# ---------------------------------------------------------------------------
+# M10 — Decision Log & Outcomes
+# ---------------------------------------------------------------------------
+@recommendations_router.get("/decisions", response_model=List[DecisionLogItem],
+                            summary="Decision log (accepted recommendations + outcomes)")
+def decision_log(
+    limit: int = Query(100, ge=1, le=500),
+    current_user: TokenData = Depends(require_permission("read:recommendations")),
+):
+    return [DecisionLogItem(**d) for d in decision_engine.decision_log(current_user.tenant_id, limit=limit)]
+
+
+@recommendations_router.post("/{recommendation_id}/outcome", response_model=OutcomeRead,
+                             summary="Record the outcome of an accepted decision")
+@limiter.limit("60/minute")
+def record_outcome(
+    request: Request,
+    recommendation_id: UUID,
+    data: OutcomeCreate,
+    current_user: TokenData = Depends(require_permission("write:recommendations")),
+):
+    result = decision_engine.record_outcome(
+        recommendation_id, current_user.tenant_id, resolved=data.resolved,
+        effect_value=data.effect_value, note=data.note, user=current_user.username)
+    if result is None:
+        raise HTTPException(status_code=409, detail="Recommendation not found or not accepted")
+    return OutcomeRead(**result)
