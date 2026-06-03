@@ -2,6 +2,9 @@ import client from './client';
 import type {
   IndicatorTreeResponse, DeviationRead, SituationListItem, SituationRead,
   RecommendationRead, PredictiveAlertRead, SituationStatus, IndicatorLight,
+  ProcessInstanceListItem, ProcessInstanceRead, StepAssignmentRead, ChecklistItemState,
+  ForecastRead, DecisionLogItem, PlaybookStats, PlaybookListItem,
+  ScenarioListItem, ScenarioRead, ScenarioResultRead, Assumption,
 } from '@/types/dss';
 
 // --- M2: indicator tree ---
@@ -62,6 +65,84 @@ export async function acceptRecommendation(id: string): Promise<RecommendationRe
 export async function dismissRecommendation(id: string): Promise<RecommendationRead> {
   const { data } = await client.post<RecommendationRead>(`/api/v1/recommendations/${id}/dismiss`, {});
   return data;
+}
+
+// --- M5: forecast snapshot ---
+export async function getLatestForecast(indicatorId: string): Promise<ForecastRead> {
+  const { data } = await client.get<ForecastRead>(`/api/v1/predictions/forecasts/${indicatorId}/latest`);
+  return data;
+}
+
+// --- M8: process instances + step actions ---
+export async function listProcessInstances(params: { status?: string } = {}): Promise<ProcessInstanceListItem[]> {
+  const { data } = await client.get<ProcessInstanceListItem[]>('/api/v1/processes/instances', { params });
+  return data;
+}
+
+export async function getProcessInstance(id: string): Promise<ProcessInstanceRead> {
+  const { data } = await client.get<ProcessInstanceRead>(`/api/v1/processes/instances/${id}`);
+  return data;
+}
+
+export async function startStep(assignmentId: string, assignee?: string): Promise<StepAssignmentRead> {
+  const { data } = await client.post<StepAssignmentRead>(`/api/v1/processes/assignments/${assignmentId}/start`, { assignee });
+  return data;
+}
+
+export async function updateStepChecklist(assignmentId: string, checklist_state: ChecklistItemState[]): Promise<StepAssignmentRead> {
+  const { data } = await client.patch<StepAssignmentRead>(`/api/v1/processes/assignments/${assignmentId}/checklist`, { checklist_state });
+  return data;
+}
+
+export async function completeStep(assignmentId: string, report?: string, force = false): Promise<StepAssignmentRead> {
+  const { data } = await client.post<StepAssignmentRead>(`/api/v1/processes/assignments/${assignmentId}/complete`, { report, force });
+  return data;
+}
+
+// --- M10: decision log + playbook win-rate ---
+export async function listDecisions(): Promise<DecisionLogItem[]> {
+  const { data } = await client.get<DecisionLogItem[]>('/api/v1/recommendations/decisions');
+  return data;
+}
+
+export async function recordOutcome(recommendationId: string, resolved: boolean, effect_value?: number, note?: string) {
+  const { data } = await client.post(`/api/v1/recommendations/${recommendationId}/outcome`, { resolved, effect_value, note });
+  return data;
+}
+
+export async function listPlaybooks(): Promise<PlaybookListItem[]> {
+  const { data } = await client.get<PlaybookListItem[]>('/api/v1/playbooks');
+  return data;
+}
+
+export async function getPlaybookStats(id: string): Promise<PlaybookStats> {
+  const { data } = await client.get<PlaybookStats>(`/api/v1/playbooks/${id}/stats`);
+  return data;
+}
+
+// --- M6: scenarios (what-if) ---
+export async function listScenarios(): Promise<ScenarioListItem[]> {
+  const { data } = await client.get<ScenarioListItem[]>('/api/v1/scenarios/');
+  return data;
+}
+
+export async function getScenario(id: string): Promise<ScenarioRead> {
+  const { data } = await client.get<ScenarioRead>(`/api/v1/scenarios/${id}`);
+  return data;
+}
+
+export async function createScenario(payload: { name: string; description?: string; assumptions: Assumption[] }): Promise<ScenarioRead> {
+  const { data } = await client.post<ScenarioRead>('/api/v1/scenarios/', payload);
+  return data;
+}
+
+export async function runScenario(id: string): Promise<ScenarioResultRead> {
+  const { data } = await client.post<ScenarioResultRead>(`/api/v1/scenarios/${id}/run`, {});
+  return data;
+}
+
+export async function deleteScenario(id: string): Promise<void> {
+  await client.delete(`/api/v1/scenarios/${id}`);
 }
 
 /**

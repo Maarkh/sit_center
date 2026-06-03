@@ -178,10 +178,12 @@ class IndicatorEvaluator:
 
             summary["breaching"] += 1
             severity = breach_severity(value, low, high, breach_dir)
+            dev_id = None
 
             if existing:
                 periods = existing["periods"] + 1
                 newly_opened = False
+                dev_id = existing["id"]
                 conn.execute(
                     text(
                         "UPDATE deviations SET value = :v, direction = :dir, severity = :sev, "
@@ -194,16 +196,16 @@ class IndicatorEvaluator:
             else:
                 periods = 1
                 newly_opened = True
-                conn.execute(
+                dev_id = conn.execute(
                     text(
                         "INSERT INTO deviations (tenant_id, indicator_id, direction, value, "
                         "target_low, target_high, severity, status, periods, fingerprint) "
-                        "VALUES (:tid, :iid, :dir, :v, :low, :high, :sev, 'open', 1, :fp)"
+                        "VALUES (:tid, :iid, :dir, :v, :low, :high, :sev, 'open', 1, :fp) RETURNING id"
                     ),
                     {"tid": tenant_id, "iid": ind["id"], "dir": breach_dir, "v": value,
                      "low": low, "high": high,
                      "sev": "critical" if periods >= threshold else severity, "fp": fp},
-                )
+                ).scalar()
                 summary["opened"] += 1
 
             # Crossing the chronicle threshold this cycle = a persistent deviation.
@@ -229,6 +231,16 @@ class IndicatorEvaluator:
 
             if newly_opened or newly_chronic:
                 self._notify(conn, ind, tenant_id, value, breach_dir, periods, threshold)
+
+        # M3 → M7: once a deviation becomes persistent (chronic), auto-generate
+        # Next-Best-Action recommendations for it. Best-effort, after the txn commits.
+        if newly_chronic and dev_id is not None:
+            try:
+                from core.recommendation_engine import recommendation_engine
+                recommendation_engine.generate(tenant_id, deviation_id=dev_id)
+                summary["recommended"] = summary.get("recommended", 0) + 1
+            except Exception as e:
+                logger.error("auto-recommend on chronic failed: %s", mask_secrets(str(e)))
 
     def _notify(self, conn, ind, tenant_id, value, breach_dir, periods, threshold):
         subs = conn.execute(
