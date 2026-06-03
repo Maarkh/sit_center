@@ -274,3 +274,95 @@ export interface ScenarioListItem {
   potential_value: number | null;
   breaches_avoided: number | null;
 }
+
+// --- M2 management (Settings forms) ---
+export interface GoalRead {
+  id: string;
+  name: string;
+  description: string | null;
+  owner_role: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FactorCreate {
+  name: string;
+  weight: number;
+  metrics: string[];
+}
+
+export interface IndicatorRead {
+  id: string;
+  goal_id: string | null;
+  name: string;
+  description: string | null;
+  unit: string;
+  target_low: number | null;
+  target_high: number | null;
+  corridor_type: string;
+  baseline_model_ref: string | null;
+  direction: string;
+  chronicle_threshold: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  factors: FactorRead[];
+}
+
+export interface IndicatorCreate {
+  name: string;
+  description?: string;
+  unit?: string;
+  goal_id?: string | null;
+  target_low?: number | null;
+  target_high?: number | null;
+  corridor_type?: string;
+  direction?: string;
+  chronicle_threshold?: number;
+  is_active?: boolean;
+  factors?: FactorCreate[];
+}
+
+// --- M7 management (Settings forms) ---
+export interface PlaybookActionRead {
+  id: string;
+  action_order: number;
+  action: string;
+  checklist: string[];
+}
+
+export interface PlaybookRead {
+  id: string;
+  name: string;
+  description: string | null;
+  trigger_severity: string | null;
+  trigger_direction: string | null;
+  effect_score: number;
+  process_template_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  indicator_ids: string[];
+  actions: PlaybookActionRead[];
+}
+
+export interface PlaybookCreate {
+  name: string;
+  description?: string;
+  trigger_severity?: string | null;
+  trigger_direction?: string | null;
+  effect_score?: number;
+  process_template_id?: string | null;
+  indicator_ids?: string[];
+  actions?: { action: string; checklist: string[] }[];
+}
+
+export interface ProcessTemplateListItem {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  step_count: number;
+  created_at: string;
+}

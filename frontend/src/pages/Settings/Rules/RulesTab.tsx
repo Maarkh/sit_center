@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Switch, message, Space, Popconfirm } from 'antd';
+import { Table, Button, Modal, Form, Input, Switch, message, Popconfirm } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { listRules, createRule, deleteRule } from '@/api/rules';
 import StatusTag from '@/components/Common/StatusTag';

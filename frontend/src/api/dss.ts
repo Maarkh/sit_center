@@ -5,6 +5,7 @@ import type {
   ProcessInstanceListItem, ProcessInstanceRead, StepAssignmentRead, ChecklistItemState,
   ForecastRead, DecisionLogItem, PlaybookStats, PlaybookListItem,
   ScenarioListItem, ScenarioRead, ScenarioResultRead, Assumption,
+  GoalRead, IndicatorRead, IndicatorCreate, PlaybookRead, PlaybookCreate, ProcessTemplateListItem,
 } from '@/types/dss';
 
 // --- M2: indicator tree ---
@@ -64,6 +65,65 @@ export async function acceptRecommendation(id: string): Promise<RecommendationRe
 
 export async function dismissRecommendation(id: string): Promise<RecommendationRead> {
   const { data } = await client.post<RecommendationRead>(`/api/v1/recommendations/${id}/dismiss`, {});
+  return data;
+}
+
+// --- M2 management: goals + indicators (Settings) ---
+export async function listGoals(): Promise<GoalRead[]> {
+  const { data } = await client.get<GoalRead[]>('/api/v1/indicators/goals', { params: { active_only: false } });
+  return data;
+}
+
+export async function createGoal(payload: { name: string; owner_role?: string; description?: string }): Promise<GoalRead> {
+  const { data } = await client.post<GoalRead>('/api/v1/indicators/goals', payload);
+  return data;
+}
+
+export async function deleteGoal(id: string): Promise<void> {
+  await client.delete(`/api/v1/indicators/goals/${id}`);
+}
+
+export async function listIndicators(): Promise<IndicatorRead[]> {
+  const { data } = await client.get<IndicatorRead[]>('/api/v1/indicators/', { params: { active_only: false } });
+  return data;
+}
+
+export async function createIndicator(payload: IndicatorCreate): Promise<IndicatorRead> {
+  const { data } = await client.post<IndicatorRead>('/api/v1/indicators/', payload);
+  return data;
+}
+
+export async function updateIndicator(id: string, payload: IndicatorCreate): Promise<IndicatorRead> {
+  const { data } = await client.put<IndicatorRead>(`/api/v1/indicators/${id}`, payload);
+  return data;
+}
+
+export async function deleteIndicator(id: string): Promise<void> {
+  await client.delete(`/api/v1/indicators/${id}`);
+}
+
+// --- M7 management: playbooks (Settings) ---
+export async function getPlaybook(id: string): Promise<PlaybookRead> {
+  const { data } = await client.get<PlaybookRead>(`/api/v1/playbooks/${id}`);
+  return data;
+}
+
+export async function createPlaybook(payload: PlaybookCreate): Promise<PlaybookRead> {
+  const { data } = await client.post<PlaybookRead>('/api/v1/playbooks', payload);
+  return data;
+}
+
+export async function updatePlaybook(id: string, payload: PlaybookCreate): Promise<PlaybookRead> {
+  const { data } = await client.put<PlaybookRead>(`/api/v1/playbooks/${id}`, payload);
+  return data;
+}
+
+export async function deletePlaybook(id: string): Promise<void> {
+  await client.delete(`/api/v1/playbooks/${id}`);
+}
+
+export async function listProcessTemplates(): Promise<ProcessTemplateListItem[]> {
+  const { data } = await client.get<ProcessTemplateListItem[]>('/api/v1/processes/templates', { params: { active_only: false } });
   return data;
 }
 
