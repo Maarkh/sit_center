@@ -55,6 +55,28 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 API docs: http://localhost:8000/docs
 
+## 5b. Run the Cockpit (frontend)
+
+```bash
+cd frontend
+npm install            # first time only
+npx vite --port 3010   # 3000 may be taken; the vite proxy targets the API on :8000
+```
+
+Open **http://localhost:3010**, log in `admin` / `admin`, go to **Кокпит / Cockpit**.
+
+### Demo data (so the cockpit isn't empty)
+
+```bash
+# With the same env as the API exported, plus PYTHONPATH=.
+PYTHONPATH=. python scripts/seed_demo.py
+```
+
+Seeds a full DSS scenario: a goal with indicators + corridors, deviations → a
+situation, an auto-generated + accepted recommendation → a running process, a
+predictive alert with a forecast, and a what-if scenario. See
+**[docs/dss-guide.md](dss-guide.md)** for how the DSS works end-to-end.
+
 ## 6. Run Tests
 
 ```bash
@@ -88,13 +110,17 @@ This starts all 21 services. Requires ~8GB RAM.
 ## Architecture Overview
 
 ```
-Client -> FastAPI (port 8000) -> PostgreSQL/TimescaleDB
-                              -> Redis (cache + pubsub)
-                              -> Celery (background tasks)
-                              -> ML Worker (anomaly detection)
-                              -> Kafka (optional, streaming)
-                              -> ClickHouse (optional, OLAP)
+Cockpit (React, :3010) ─┐
+                        ├─> FastAPI (:8000) -> PostgreSQL/TimescaleDB (indicators,
+API clients ────────────┘                       deviations, situations, processes, …)
+                                            -> Redis (cache + pubsub)
+                                            -> Celery beat (DSS loop: evaluate corridor,
+                                               correlate, forecast, SLA, outcomes)
+                                            -> ML Worker / Kafka / ClickHouse (optional)
 ```
+
+The DSS modules (M2–M8, M10) add the decision loop on top of the base monitoring;
+the cockpit (M11) makes it operable. See **[docs/dss-guide.md](dss-guide.md)**.
 
 ## Troubleshooting
 

@@ -232,3 +232,34 @@ Key metrics to watch:
 - `GET /health` checks connectivity to PostgreSQL, Redis, and optionally Kafka and ClickHouse.
 - Returns HTTP 200 when all dependencies are healthy, HTTP 503 when any dependency is degraded.
 - Configure the load balancer to poll `/health` and remove instances that return 503.
+
+## 7. DSS Decision Loop (background tasks)
+
+The decision-support modules run a closed loop driven by Celery beat
+(`celeryconfig.py`; tasks in `core/dss_tasks.py`). All are tenant-aware and safe to
+run with no data (they no-op).
+
+| Task | Schedule | Purpose |
+|------|----------|---------|
+| `evaluate_indicators_task` | every 2 min | Evaluate each active indicator against its corridor → write deviations / chronicle (M3). On a chronic crossing it auto-generates recommendations (M3→M7). |
+| `correlate_situations_task` | every 3 min | Cluster active deviations into situations via the dependency graph + time window (M4). |
+| `predict_indicators_task` | every 15 min | Forecast single-metric indicators (Prophet) and raise predictive alerts when the forecast/band will leave the corridor (M5). |
+| `check_process_step_sla_task` | every 5 min | Escalate process step assignments past their `due_at` (M8). |
+| `evaluate_decision_outcomes_task` | every 10 min | Auto-derive decision outcomes (completed process + resolved deviation = win) feeding playbook win-rate back into recommendation scoring (M10). |
+
+Workers:
+
+```bash
+celery -A tasks.celery_app worker -l INFO     # general queue (DSS tasks)
+celery -A tasks.celery_app beat   -l INFO     # scheduler
+```
+
+Without beat, every step is also reachable via the API (the cockpit's "Correlate",
+"Generate recommendations", `POST /scenarios/{id}/run`, `POST /predictions/run`, etc.).
+
+**Notes**
+- Predictive forecasting needs `prophet` installed and ≥48 recent points; otherwise the
+  task logs and skips (no crash).
+- Indicator value = weighted average of its factors' metrics over the last ~5 minutes;
+  an indicator with no recent data is skipped.
+- See **[dss-guide.md](dss-guide.md)** for the full operator/developer walkthrough.

@@ -29,9 +29,20 @@
 
 ## 1. System Overview
 
-Situational Center (Sit Center) is an enterprise-grade monitoring and incident management platform.
+Situational Center (Sit Center) is an enterprise-grade **decision support system (DSS)**
+built on a monitoring & incident-management foundation. Beyond detecting problems, it
+drives the full decision loop — Observe → Orient → Project → Decide → Act → Learn —
+through indicators with target corridors, situation correlation, predictive alerts,
+Next-Best-Action recommendations, executable processes, and a learning feedback loop.
+
+> Decision-support layer: see **[DSS_TARGET_ARCHITECTURE.md](DSS_TARGET_ARCHITECTURE.md)**
+> (architecture, 12 modules) and **[docs/dss-guide.md](docs/dss-guide.md)** (how to work).
+> DSS schema = `db/migrations/010–017`; engines = `core/*_engine.py`; cockpit UI =
+> `frontend/src/pages/Cockpit/`.
 
 **Core capabilities:**
+- Decision loop: indicator/corridor model, deviation+chronicle, situation correlation,
+  predictive alerts, playbook recommendations (NBA), process engine, decision log + win-rate, what-if
 - Ingest metrics from multiple sources (REST API, webhooks, Kafka)
 - Time-series storage with TimescaleDB (hypertable with auto-chunking, compression, retention)
 - ML-based anomaly detection (Prophet, LSTM, Isolation Forest, Clustering, ARIMA)
