@@ -12,7 +12,6 @@ In production this loop is the Celery beat task `evaluate_indicators_task`; here
 runs inline with a short window so breaches show up in the cockpit within ~a minute.
 """
 import os
-import time
 import psutil
 from sqlalchemy import text
 
