@@ -312,3 +312,336 @@ class EscalationLevel(Base):
     notify_users = Column(JSONB, default=list)
     escalate_after_minutes = Column(Integer, nullable=False)
     chain = relationship("EscalationChain", back_populates="levels")
+
+
+# ============================================================================
+# DSS — M2: Indicator & Goal Model (иерархия Цель→Показатель→Фактор→Метрика)
+# ============================================================================
+
+class Goal(Base):
+    __tablename__ = "goals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    owner_role = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    indicators = relationship("Indicator", back_populates="goal")
+
+
+class Indicator(Base):
+    __tablename__ = "indicators"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    goal_id = Column(UUID(as_uuid=True), ForeignKey("goals.id", ondelete="SET NULL"), nullable=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    unit = Column(String, nullable=False, default="")
+    target_low = Column(Float, nullable=True)
+    target_high = Column(Float, nullable=True)
+    corridor_type = Column(String, nullable=False, default="static")   # static | baseline
+    baseline_model_ref = Column(String, nullable=True)
+    direction = Column(String, nullable=False, default="both")          # both | below | above
+    chronicle_threshold = Column(Integer, nullable=False, default=3)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+
+    goal = relationship("Goal", back_populates="indicators")
+    factors = relationship("Factor", back_populates="indicator", cascade="all, delete-orphan")
+    subscriptions = relationship("IndicatorSubscription", back_populates="indicator", cascade="all, delete-orphan")
+
+
+class Factor(Base):
+    __tablename__ = "factors"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)
+    weight = Column(Float, nullable=False, default=1.0)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+    indicator = relationship("Indicator", back_populates="factors")
+    metrics = relationship("FactorMetric", back_populates="factor", cascade="all, delete-orphan")
+
+
+class FactorMetric(Base):
+    __tablename__ = "factor_metrics"
+
+    factor_id = Column(UUID(as_uuid=True), ForeignKey("factors.id", ondelete="CASCADE"), primary_key=True)
+    metric_name = Column(String, primary_key=True)
+
+    factor = relationship("Factor", back_populates="metrics")
+
+
+class IndicatorSubscription(Base):
+    __tablename__ = "indicator_subscriptions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), nullable=False)
+    subscriber_role = Column(String, nullable=True)
+    subscriber_user = Column(String, nullable=True)
+    channel = Column(String, nullable=False, default="in_app")
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+    indicator = relationship("Indicator", back_populates="subscriptions")
+
+
+# ============================================================================
+# DSS — M3: Deviation & Chronicle
+# ============================================================================
+
+class Deviation(Base):
+    __tablename__ = "deviations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), nullable=False)
+    dimensions = Column(JSONB, nullable=False, default=dict)
+    direction = Column(String, nullable=False)         # below | above
+    value = Column(Float, nullable=True)
+    target_low = Column(Float, nullable=True)
+    target_high = Column(Float, nullable=True)
+    severity = Column(String, nullable=False, default="warning")
+    status = Column(String, nullable=False, default="open")   # open | acknowledged | resolved
+    periods = Column(Integer, nullable=False, default=1)
+    fingerprint = Column(String, nullable=False)
+    detected_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    last_seen = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    acknowledged_by = Column(String, nullable=True)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class Chronicle(Base):
+    __tablename__ = "chronicles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), nullable=False)
+    fingerprint = Column(String, nullable=False)
+    episodes = Column(Integer, nullable=False, default=0)
+    total_periods = Column(Integer, nullable=False, default=0)
+    max_periods = Column(Integer, nullable=False, default=0)
+    first_seen = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    last_seen = Column(DateTime(timezone=True), nullable=False, default=func.now())
+
+
+# ============================================================================
+# DSS — M8: Process / Workflow Engine
+# ============================================================================
+
+class ProcessTemplate(Base):
+    __tablename__ = "process_templates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    steps = relationship("ProcessStep", back_populates="template",
+                         cascade="all, delete-orphan", order_by="ProcessStep.step_order")
+
+
+class ProcessStep(Base):
+    __tablename__ = "process_steps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    template_id = Column(UUID(as_uuid=True), ForeignKey("process_templates.id", ondelete="CASCADE"), nullable=False)
+    step_order = Column(Integer, nullable=False)
+    name = Column(String, nullable=False)
+    step_type = Column(String, nullable=False, default="sequential")
+    assignee_role = Column(String, nullable=True)
+    checklist = Column(JSONB, nullable=False, default=list)
+    due_after_minutes = Column(Integer, nullable=True)
+    template = relationship("ProcessTemplate", back_populates="steps")
+
+
+class ProcessInstance(Base):
+    __tablename__ = "process_instances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    template_id = Column(UUID(as_uuid=True), ForeignKey("process_templates.id"), nullable=False)
+    incident_id = Column(Integer, ForeignKey("incidents.id", ondelete="SET NULL"), nullable=True)
+    deviation_id = Column(UUID(as_uuid=True), ForeignKey("deviations.id", ondelete="SET NULL"), nullable=True)
+    title = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="running")   # running | completed | cancelled
+    started_by = Column(String, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    assignments = relationship("StepAssignment", back_populates="instance",
+                               cascade="all, delete-orphan", order_by="StepAssignment.step_order")
+
+
+class StepAssignment(Base):
+    __tablename__ = "step_assignments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    instance_id = Column(UUID(as_uuid=True), ForeignKey("process_instances.id", ondelete="CASCADE"), nullable=False)
+    step_id = Column(UUID(as_uuid=True), ForeignKey("process_steps.id", ondelete="SET NULL"), nullable=True)
+    step_order = Column(Integer, nullable=False)
+    step_type = Column(String, nullable=False, default="sequential")
+    name = Column(String, nullable=False)
+    assignee_role = Column(String, nullable=True)
+    assignee = Column(String, nullable=True)
+    checklist_state = Column(JSONB, nullable=False, default=list)
+    status = Column(String, nullable=False, default="pending")   # pending|active|in_progress|done|skipped
+    report = Column(Text, nullable=True)
+    due_after_minutes = Column(Integer, nullable=True)
+    due_at = Column(DateTime(timezone=True), nullable=True)
+    escalated = Column(Boolean, nullable=False, default=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    instance = relationship("ProcessInstance", back_populates="assignments")
+
+
+# ============================================================================
+# DSS — M7: Knowledge Base & Recommendation
+# ============================================================================
+
+class Playbook(Base):
+    __tablename__ = "playbooks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    trigger_severity = Column(String, nullable=True)    # NULL | warning | critical
+    trigger_direction = Column(String, nullable=True)   # NULL | below | above
+    effect_score = Column(Float, nullable=False, default=1.0)
+    process_template_id = Column(UUID(as_uuid=True), ForeignKey("process_templates.id", ondelete="SET NULL"), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    actions = relationship("PlaybookAction", back_populates="playbook",
+                           cascade="all, delete-orphan", order_by="PlaybookAction.action_order")
+
+
+class PlaybookAction(Base):
+    __tablename__ = "playbook_actions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    playbook_id = Column(UUID(as_uuid=True), ForeignKey("playbooks.id", ondelete="CASCADE"), nullable=False)
+    action_order = Column(Integer, nullable=False)
+    action = Column(Text, nullable=False)
+    checklist = Column(JSONB, nullable=False, default=list)
+    playbook = relationship("Playbook", back_populates="actions")
+
+
+class PlaybookIndicator(Base):
+    __tablename__ = "playbook_indicators"
+
+    playbook_id = Column(UUID(as_uuid=True), ForeignKey("playbooks.id", ondelete="CASCADE"), primary_key=True)
+    indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), primary_key=True)
+
+
+class Recommendation(Base):
+    __tablename__ = "recommendations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    deviation_id = Column(UUID(as_uuid=True), ForeignKey("deviations.id", ondelete="CASCADE"), nullable=True)
+    incident_id = Column(Integer, ForeignKey("incidents.id", ondelete="CASCADE"), nullable=True)
+    playbook_id = Column(UUID(as_uuid=True), ForeignKey("playbooks.id", ondelete="SET NULL"), nullable=True)
+    rank = Column(Integer, nullable=False)
+    score = Column(Float, nullable=False)
+    confidence = Column(Float, nullable=False)
+    rationale = Column(Text, nullable=True)
+    status = Column(String, nullable=False, default="proposed")   # proposed | accepted | dismissed
+    process_instance_id = Column(UUID(as_uuid=True), ForeignKey("process_instances.id", ondelete="SET NULL"), nullable=True)
+    decided_by = Column(String, nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+
+# ============================================================================
+# DSS — M5: Forecasting & Predictive Alerts
+# ============================================================================
+
+class Forecast(Base):
+    __tablename__ = "forecasts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), nullable=False)
+    metric_name = Column(String, nullable=False)
+    horizon_hours = Column(Integer, nullable=False)
+    model_version = Column(String, nullable=True)
+    points = Column(JSONB, nullable=False, default=list)
+    generated_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
+
+
+class PredictiveAlert(Base):
+    __tablename__ = "predictive_alerts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), nullable=False)
+    direction = Column(String, nullable=False)         # below | above
+    projected_value = Column(Float, nullable=True)
+    target_low = Column(Float, nullable=True)
+    target_high = Column(Float, nullable=True)
+    breach_eta = Column(DateTime(timezone=True), nullable=True)
+    horizon_hours = Column(Integer, nullable=False)
+    confidence = Column(String, nullable=False, default="medium")   # medium | high
+    status = Column(String, nullable=False, default="open")          # open | acknowledged | resolved
+    fingerprint = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    last_seen = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    acknowledged_by = Column(String, nullable=True)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+
+
+# ============================================================================
+# DSS — M4: Situation & Correlation
+# ============================================================================
+
+class IndicatorDependency(Base):
+    __tablename__ = "indicator_dependencies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    src_indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), nullable=False)
+    dst_indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="CASCADE"), nullable=False)
+    weight = Column(Float, nullable=False, default=1.0)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+
+class Situation(Base):
+    __tablename__ = "situations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String, nullable=False, default="default")
+    title = Column(String, nullable=False)
+    root_cause_indicator_id = Column(UUID(as_uuid=True), ForeignKey("indicators.id", ondelete="SET NULL"), nullable=True)
+    root_cause_hypothesis = Column(Text, nullable=True)
+    impact_score = Column(Float, nullable=False, default=0.0)
+    status = Column(String, nullable=False, default="open")   # open | investigating | resolved | closed
+    deviation_count = Column(Integer, nullable=False, default=0)
+    opened_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=func.now(), onupdate=func.now())
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class SituationDeviation(Base):
+    __tablename__ = "situation_deviations"
+
+    situation_id = Column(UUID(as_uuid=True), ForeignKey("situations.id", ondelete="CASCADE"), primary_key=True)
+    deviation_id = Column(UUID(as_uuid=True), ForeignKey("deviations.id", ondelete="CASCADE"), primary_key=True)
+    added_at = Column(DateTime(timezone=True), default=func.now())

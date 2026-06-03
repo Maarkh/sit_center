@@ -41,6 +41,7 @@ def get_beat_schedule():
 celery_app = make_celery()
 
 import core.celery_metrics  # noqa: F401, E402 — register Celery signal handlers
+import core.dss_tasks  # noqa: F401, E402 — register DSS beat tasks (default queue)
 
 @worker_shutting_down.connect
 def worker_shutting_down_handler(sig, how, exitcode, **kwargs):

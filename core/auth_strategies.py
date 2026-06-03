@@ -121,5 +121,12 @@ def try_env_admin_auth(username: str, password: str) -> str:
             "read:metrics", "write:metrics", "read:rules", "write:rules",
             "read:alerts", "write:alerts", "read:ml", "write:ml",
             "admin:tenants", "admin:users", "read:audit",
+            # DSS modules
+            "read:indicators", "write:indicators",
+            "read:deviations", "write:deviations",
+            "read:processes", "write:processes",
+            "read:recommendations", "write:recommendations",
+            "read:predictions", "write:predictions",
+            "read:situations", "write:situations",
         ],
     )

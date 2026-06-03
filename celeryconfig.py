@@ -26,4 +26,24 @@ beat_schedule = {
         'task': 'tasks.check_auto_escalation_task',
         'schedule': crontab(minute='*/5')
     },
+    # DSS M3: evaluate indicators against their corridor + maintain chronicles.
+    'evaluate-indicators-2min': {
+        'task': 'core.dss_tasks.evaluate_indicators_task',
+        'schedule': crontab(minute='*/2')
+    },
+    # DSS M8: escalate process steps that are past their SLA deadline.
+    'check-process-step-sla-5min': {
+        'task': 'core.dss_tasks.check_process_step_sla_task',
+        'schedule': crontab(minute='*/5')
+    },
+    # DSS M5: forecast indicators and raise predictive (early-warning) alerts.
+    'predict-indicators-15min': {
+        'task': 'core.dss_tasks.predict_indicators_task',
+        'schedule': crontab(minute='*/15')
+    },
+    # DSS M4: correlate active deviations into situations (runs after deviation eval).
+    'correlate-situations-3min': {
+        'task': 'core.dss_tasks.correlate_situations_task',
+        'schedule': crontab(minute='*/3')
+    },
 }

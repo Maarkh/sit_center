@@ -14,6 +14,12 @@ setup_logging()
 from api.routes import metrics, dimensions, rules, ml_configs, alerts, data, webhooks, admin, incidents, forecasts
 from api.routes import auth as auth_routes
 from api.routes import audit as audit_routes
+from api.routes import indicators as indicators_routes
+from api.routes import deviations as deviations_routes
+from api.routes import processes as processes_routes
+from api.routes import recommendations as recommendations_routes
+from api.routes import predictions as predictions_routes
+from api.routes import situations as situations_routes
 from api.auth import Token, set_auth_cookies
 from fastapi.security import OAuth2PasswordRequestForm
 from core.exceptions import (
@@ -157,6 +163,14 @@ app.include_router(incidents.router, prefix=API_V1_PREFIX)
 app.include_router(forecasts.router, prefix=API_V1_PREFIX)
 app.include_router(auth_routes.router, prefix=API_V1_PREFIX)
 app.include_router(audit_routes.router, prefix=API_V1_PREFIX)
+# DSS modules (M2 Indicator&Goal, M3 Deviation, M8 Process)
+app.include_router(indicators_routes.router, prefix=API_V1_PREFIX)
+app.include_router(deviations_routes.router, prefix=API_V1_PREFIX)
+app.include_router(processes_routes.router, prefix=API_V1_PREFIX)
+app.include_router(recommendations_routes.playbooks_router, prefix=API_V1_PREFIX)
+app.include_router(recommendations_routes.recommendations_router, prefix=API_V1_PREFIX)
+app.include_router(predictions_routes.router, prefix=API_V1_PREFIX)
+app.include_router(situations_routes.router, prefix=API_V1_PREFIX)
 
 # Backward-compat: also mount without prefix for existing clients
 app.include_router(metrics.router)
