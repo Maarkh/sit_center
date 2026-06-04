@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Row, Col, Card, Statistic, Table, Spin, Tag } from 'antd';
 import { AlertOutlined, FileTextOutlined, WarningOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { listDeviations, getIndicatorTree } from '@/api/dss';
 import { listIncidents } from '@/api/incidents';
 import DeviationDetailDrawer from '@/components/Common/DeviationDetailDrawer';
+import { usePolling } from '@/hooks/usePolling';
 import StatusTag from '@/components/Common/StatusTag';
 import PriorityTag from '@/components/Common/PriorityTag';
 import { formatDateShort } from '@/utils/formatters';
@@ -24,26 +25,27 @@ export default function DashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [devs, i, tree] = await Promise.all([
-          listDeviations({ limit: 50 }),
-          listIncidents({ limit: 50 }),
-          getIndicatorTree(),
-        ]);
-        setDeviations(devs);
-        setIncidents(i.items || []);
-        const m = new Map<string, string>();
-        tree.goals.forEach((g) => g.indicators.forEach((ind) => m.set(ind.id, ind.name)));
-        tree.unassigned.forEach((ind) => m.set(ind.id, ind.name));
-        setNames(m);
-      } finally {
-        setLoading(false);
-      }
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const [devs, i, tree] = await Promise.all([
+        listDeviations({ limit: 50 }),
+        listIncidents({ limit: 50 }),
+        getIndicatorTree(),
+      ]);
+      setDeviations(devs);
+      setIncidents(i.items || []);
+      const m = new Map<string, string>();
+      tree.goals.forEach((g) => g.indicators.forEach((ind) => m.set(ind.id, ind.name)));
+      tree.unassigned.forEach((ind) => m.set(ind.id, ind.name));
+      setNames(m);
+    } finally {
+      if (!silent) setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+  usePolling(() => load(true)); // keep KPIs / lists live without a manual refresh
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 

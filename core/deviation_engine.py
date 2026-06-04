@@ -11,6 +11,7 @@ The corridor classification is pure (classify_breach / breach_severity) so it is
 unit-tested without a database. The evaluation loop is meant to run from a Celery
 beat task (see core/dss_tasks.py).
 """
+from datetime import datetime, timezone
 from typing import Optional, Dict
 from sqlalchemy import text
 
@@ -253,6 +254,7 @@ class IndicatorEvaluator:
         """Create a classic incident for a chronic deviation, deduped via
         deviations.incident_id. Returns True if a new incident was created."""
         engine = get_engine()
+        now = datetime.now(timezone.utc)
         with engine.begin() as conn:
             existing = conn.execute(
                 text("SELECT incident_id FROM deviations WHERE id = :id FOR UPDATE"),
@@ -265,15 +267,22 @@ class IndicatorEvaluator:
             inc_id = conn.execute(
                 text("INSERT INTO incidents (alert_message, metric, region, value, priority, "
                      "status, detected_at, description, tenant_id) "
-                     "VALUES (:msg, :metric, 'all', :val, 'critical', 'new', NOW(), :desc, :tid) "
+                     "VALUES (:msg, :metric, 'all', :val, 'critical', 'new', :now, :desc, :tid) "
                      "RETURNING id"),
-                {"msg": msg, "metric": ind["name"], "val": str(round(value, 2)),
+                {"msg": msg, "metric": ind["name"], "val": str(round(value, 2)), "now": now,
                  "desc": "Авто-инцидент из DSS (хроническое отклонение показателя)", "tid": tenant_id},
             ).scalar()
             conn.execute(
                 text("UPDATE deviations SET incident_id = :inc WHERE id = :id"),
                 {"inc": inc_id, "id": dev_id},
             )
+        # Apply the SLA policy (response/resolution deadlines) like create_incident does,
+        # outside the txn above — otherwise the incident shows "SLA: N/A".
+        try:
+            from core.sla_service import apply_sla_to_incident
+            apply_sla_to_incident(inc_id, tenant_id, "critical", now)
+        except Exception as e:
+            logger.error("apply SLA to auto-incident failed: %s", mask_secrets(str(e)))
         return True
 
     def _notify(self, conn, ind, tenant_id, value, breach_dir, periods, threshold):

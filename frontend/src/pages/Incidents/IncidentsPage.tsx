@@ -9,6 +9,7 @@ import { formatDate } from '@/utils/formatters';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { RU_CODE_TO_NAME } from '@/utils/ruRegions';
+import { usePolling } from '@/hooks/usePolling';
 import CreateIncidentModal from './CreateIncidentModal';
 import type { IncidentRead } from '@/types/incidents';
 
@@ -36,8 +37,8 @@ export default function IncidentsPage() {
     setPage(1);
   };
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await listIncidents({
         status: statusFilter,
@@ -50,11 +51,12 @@ export default function IncidentsPage() {
       setIncidents(data.items || []);
       setTotal(data.total || 0);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => { fetchData(); }, [statusFilter, priorityFilter, regionFilter, activeFilter, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  usePolling(() => fetchData(true)); // auto-refresh new/updated incidents
 
   const columns = [
     { title: t('incidents.id'), dataIndex: 'id', key: 'id', width: 70 },
@@ -96,7 +98,7 @@ export default function IncidentsPage() {
               {t('incidents.region')}: {RU_CODE_TO_NAME[regionFilter] ?? regionFilter}
             </Tag>
           )}
-          <Button icon={<ReloadOutlined />} onClick={fetchData}>{t('incidents.refresh')}</Button>
+          <Button icon={<ReloadOutlined />} onClick={() => fetchData()}>{t('incidents.refresh')}</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>{t('incidents.create')}</Button>
         </Space>
       </Card>

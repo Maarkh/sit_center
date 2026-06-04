@@ -6,6 +6,7 @@ import {
   listDeviations, getIndicatorTree, acknowledgeDeviation, resolveDeviation,
 } from '@/api/dss';
 import DeviationDetailDrawer from '@/components/Common/DeviationDetailDrawer';
+import { usePolling } from '@/hooks/usePolling';
 import { formatDate } from '@/utils/formatters';
 import { useTranslation } from 'react-i18next';
 import type { DeviationRead, IndicatorTreeResponse } from '@/types/dss';
@@ -30,8 +31,8 @@ export default function AlertsPage() {
   const [selected, setSelected] = useState<DeviationRead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [devs, tree] = await Promise.all([
         listDeviations({ status: statusFilter, limit: 200 }),
@@ -43,11 +44,12 @@ export default function AlertsPage() {
       tree.unassigned.forEach((i) => m.set(i.id, i.name));
       setNames(m);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => { fetchData(); }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  usePolling(() => fetchData(true)); // auto-refresh new deviations without a manual reload
 
   const act = async (id: string, action: 'ack' | 'resolve') => {
     if (action === 'ack') await acknowledgeDeviation(id);
@@ -102,7 +104,7 @@ export default function AlertsPage() {
             allowClear
             style={{ width: 200 }}
           />
-          <Button icon={<ReloadOutlined />} onClick={fetchData}>{t('alerts.refresh')}</Button>
+          <Button icon={<ReloadOutlined />} onClick={() => fetchData()}>{t('alerts.refresh')}</Button>
         </Space>
       </Card>
       <Table
