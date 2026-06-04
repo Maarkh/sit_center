@@ -6,6 +6,7 @@ import type {
   ForecastRead, DecisionLogItem, PlaybookStats, PlaybookListItem,
   ScenarioListItem, ScenarioRead, ScenarioResultRead, Assumption,
   GoalRead, IndicatorRead, IndicatorCreate, PlaybookRead, PlaybookCreate, ProcessTemplateListItem,
+  DependencyRead, DependencyCreate,
 } from '@/types/dss';
 
 // --- M2: indicator tree ---
@@ -49,6 +50,21 @@ export async function updateSituationStatus(id: string, status: SituationStatus)
 export async function correlateNow(window_minutes = 30): Promise<Record<string, number>> {
   const { data } = await client.post<Record<string, number>>('/api/v1/situations/correlate', { window_minutes });
   return data;
+}
+
+// --- M4: indicator dependency edges (feed correlation -> situations) ---
+export async function listDependencies(): Promise<DependencyRead[]> {
+  const { data } = await client.get<DependencyRead[]>('/api/v1/situations/dependencies');
+  return data;
+}
+
+export async function createDependency(payload: DependencyCreate): Promise<DependencyRead> {
+  const { data } = await client.post<DependencyRead>('/api/v1/situations/dependencies', payload);
+  return data;
+}
+
+export async function deleteDependency(id: string): Promise<void> {
+  await client.delete(`/api/v1/situations/dependencies/${id}`);
 }
 
 // --- M5: predictive alerts ---

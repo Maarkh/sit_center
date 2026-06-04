@@ -54,6 +54,19 @@ export interface DeviationRead {
 }
 
 // --- M4 Situation & Correlation ---
+export interface DependencyRead {
+  id: string;
+  src_indicator_id: string;
+  dst_indicator_id: string;
+  weight: number;
+}
+
+export interface DependencyCreate {
+  src_indicator_id: string;
+  dst_indicator_id: string;
+  weight: number;
+}
+
 export interface SituationListItem {
   id: string;
   title: string;

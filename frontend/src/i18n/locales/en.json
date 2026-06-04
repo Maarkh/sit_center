@@ -41,6 +41,7 @@
     "opened": "Opened",
     "correlate": "Correlate",
     "correlateHint": "Group related deviations into situations",
+    "situationsEmptyHint": "Situations form by correlating linked indicators. Define dependencies in Settings → Dependencies so simultaneous deviations group into a situation.",
     "correlated": "Correlation: {{created}} created, {{resolved}} resolved",
     "linkedDeviations": "Linked deviations",
     "recommendations": "Recommendations",
@@ -277,6 +278,21 @@
     "saved": "Saved",
     "saveFailed": "Could not save (duplicate level?)",
     "deleted": "Chain deleted"
+  },
+  "settingsDep": {
+    "tab": "Dependencies",
+    "title": "Indicator dependencies",
+    "hint": "Links between indicators feed correlation: when linked indicators deviate at the same time the engine groups them into a single \"Situation\" (one root cause instead of scattered alerts). Without dependencies the cockpit \"Situations\" block stays empty.",
+    "source": "Source",
+    "target": "Affects",
+    "weight": "Weight",
+    "add": "Add",
+    "added": "Dependency added",
+    "addFailed": "Could not add (duplicate?)",
+    "deleted": "Dependency deleted",
+    "deleteConfirm": "Delete dependency?",
+    "pickBoth": "Pick both indicators",
+    "noSelf": "An indicator cannot depend on itself"
   },
   "settings": {
     "alert_rules": "Alert Rules",

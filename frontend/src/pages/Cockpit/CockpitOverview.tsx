@@ -177,6 +177,12 @@ export default function CockpitOverview() {
               columns={sitColumns}
               pagination={false}
               onRow={(r) => ({ onClick: () => setSelected(r.id), style: { cursor: 'pointer' } })}
+              locale={{ emptyText: (
+                <Text type="secondary" style={{ display: 'inline-block', padding: '8px 16px' }}>
+                  {t('cockpit.situationsEmptyHint',
+                    'Ситуации формируются корреляцией связанных показателей. Задайте зависимости в Настройках → Зависимости, чтобы одновременные отклонения объединялись в ситуацию.')}
+                </Text>
+              ) }}
             />
           </Card>
         </Col>
