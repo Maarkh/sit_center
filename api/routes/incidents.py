@@ -67,6 +67,8 @@ def list_incidents(
     priority: Optional[str] = Query(None),
     assigned_to: Optional[str] = Query(None),
     metric: Optional[str] = Query(None),
+    region: Optional[str] = Query(None),
+    active: Optional[bool] = Query(None),
     breached: Optional[bool] = Query(None),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -87,6 +89,12 @@ def list_incidents(
     if metric:
         where.append("metric = :metric")
         params["metric"] = metric
+    if region:
+        where.append("region = :region")
+        params["region"] = region
+    if active is True:
+        # "open" on the dashboard = anything not yet resolved/closed (multi-status)
+        where.append("status NOT IN ('resolved', 'closed')")
     if breached is True:
         where.append("(response_breached = true OR resolution_breached = true)")
 

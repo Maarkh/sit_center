@@ -6,7 +6,7 @@ import { getMetricNames } from '@/api/metrics';
 import { getLatestMetricByRegion } from '@/api/data';
 import type { RegionMetricValue } from '@/api/data';
 import { listIncidents } from '@/api/incidents';
-import { resolveRegionName } from '@/utils/ruRegions';
+import { resolveRegionName, codeForName } from '@/utils/ruRegions';
 import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 
@@ -158,7 +158,11 @@ export default function MapPage() {
         tooltip = `${name}: ${r.active} ${t('map.active', 'активных')} / ${r.total} ${t('map.total', 'всего')}`;
         if (globalInc.total > 0) tooltip += ` (${t('map.incl_global', 'вкл. общерегиональные')}: ${globalInc.active})`;
       }
-      (layer as L.Path).on('click', () => navigate('/incidents'));
+      // clicking a region filters the incident list to that region (by ISO code)
+      (layer as L.Path).on('click', () => {
+        const code = codeForName(name);
+        navigate(code ? `/incidents?region=${encodeURIComponent(code)}` : '/incidents');
+      });
     }
     layer.bindTooltip(tooltip, { sticky: true });
   }, [mode, regionValues, effectiveIncidents, globalInc, t, navigate]);

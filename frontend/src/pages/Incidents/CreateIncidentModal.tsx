@@ -24,7 +24,7 @@ export default function CreateIncidentModal({ open, onClose, onCreated }: Props)
   };
 
   return (
-    <Modal title={t('incidents.create_title')} open={open} onOk={handleOk} onCancel={onClose} destroyOnClose>
+    <Modal title={t('incidents.create_title')} open={open} onOk={handleOk} onCancel={onClose} destroyOnHidden>
       <Form form={form} layout="vertical">
         <Form.Item name="alert_message" label={t('incidents.alert_message')} rules={[{ required: true }]}>
           <Input.TextArea rows={2} />

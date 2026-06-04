@@ -61,9 +61,9 @@ export default function DashboardPage() {
     { title: t('dashboard.acknowledged'), value: ackCount, icon: <WarningOutlined />,
       color: '#faad14', to: '/alerts?status=acknowledged' },
     { title: t('dashboard.open_incidents'), value: openIncidents, icon: <FileTextOutlined />,
-      to: '/incidents' },
+      to: '/incidents?active=true' },
     { title: t('dashboard.critical'), value: criticalIncidents, icon: <WarningOutlined />,
-      color: criticalIncidents > 0 ? '#ff4d4f' : '#52c41a', to: '/incidents' },
+      color: criticalIncidents > 0 ? '#ff4d4f' : '#52c41a', to: '/incidents?priority=critical&active=true' },
   ];
 
   const devColumns = [

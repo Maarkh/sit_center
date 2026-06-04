@@ -203,6 +203,7 @@
     "priority": "Priority",
     "refresh": "Refresh",
     "create": "Create",
+    "active_only": "Active only",
     "id": "ID",
     "message": "Message",
     "metric": "Metric",

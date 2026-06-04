@@ -97,3 +97,13 @@ export function resolveRegionName(region: string | null | undefined): string | n
   if (Object.values(RU_CODE_TO_NAME).includes(region)) return region;
   return null;
 }
+
+const RU_NAME_TO_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(RU_CODE_TO_NAME).map(([code, name]) => [name, code]),
+);
+
+// Reverse of resolveRegionName: geojson `name` → ISO code, for filtering incidents
+// (which store the code) when a region is clicked on the map.
+export function codeForName(name: string): string | null {
+  return RU_NAME_TO_CODE[name] ?? null;
+}

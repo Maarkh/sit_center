@@ -10,6 +10,8 @@ export interface IncidentFilters {
   priority?: string;
   assigned_to?: string;
   metric?: string;
+  region?: string;
+  active?: boolean;
   breached?: boolean;
   limit?: number;
   offset?: number;
