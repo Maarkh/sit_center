@@ -7,7 +7,6 @@ from core.smart_alerts import check_growth_alert
 from core.alert_settings import load_alert_settings_cached
 from config import logger, get_redis
 from core.notifications import notify
-from telegram_bot import send_alert_sync
 from celery.signals import task_failure
 from datetime import datetime, timezone
 from hashlib import md5
@@ -64,10 +63,11 @@ def run_alerts_check_task(self, time_filter: str = "1h"):
 
 
 @celery_app.task(bind=True, max_retries=3)
-def send_notification(self, message: str, priority: str, idempotency_key: str = None): # type: ignore
+def send_notification(self, message: str, priority: str, idempotency_key: str = None,
+                      event_type: str = "system", tenant_id: str = "default"): # type: ignore
     if not idempotency_key:
         # Non-security fingerprint for de-duplicating notifications.
-        idempotency_key = md5(f"{message}:{priority}".encode(), usedforsecurity=False).hexdigest()[:16]
+        idempotency_key = md5(f"{message}:{priority}:{event_type}".encode(), usedforsecurity=False).hexdigest()[:16]
 
     cache = get_redis()
     cache_key = f"notification_sent:{idempotency_key}"
@@ -76,10 +76,16 @@ def send_notification(self, message: str, priority: str, idempotency_key: str = 
         return True
 
     try:
-        success = send_alert_sync(message, priority)
-        if success:
+        from core.notification_channels import dispatch
+        result = dispatch(message, priority, event_type, tenant_id)
+        # Delivered if a channel sent it, or nothing was subscribed (intentional
+        # silence — don't retry forever). Retry only when matched channels all failed.
+        delivered = result.get("sent", 0) > 0 or result.get("silent", False)
+        if not delivered:
+            raise RuntimeError(f"all channels failed: {result}")
+        if result.get("sent", 0) > 0:
             cache.setex(cache_key, 3600, "1")  # 1 час дедупликации
-        return success
+        return True
     except Exception as e:
         raise self.retry(exc=e, countdown=60 * (self.request.retries + 1))
 

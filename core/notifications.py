@@ -10,10 +10,11 @@ class NotificationError(Exception):
 
 # безопасно отправляем задачу без top-level импорта tasks
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-def notify(message: str, priority: str = "info") -> None:
+def notify(message: str, priority: str = "info", event_type: str = "system") -> None:
     try:
-        celery_app.send_task("tasks.send_notification", args=[message, priority], kwargs={})
-        logger.debug(f"📨 Уведомление отправлено в Celery: [{priority}] {message[:80]}...")
+        celery_app.send_task("tasks.send_notification", args=[message, priority],
+                             kwargs={"event_type": event_type})
+        logger.debug(f"📨 Уведомление отправлено в Celery: [{priority}/{event_type}] {message[:80]}...")
         try:
             from api.main import ALERTS_SENT
             ALERTS_SENT.labels(priority=priority).inc()

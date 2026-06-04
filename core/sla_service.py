@@ -153,6 +153,7 @@ def check_auto_escalation():
                     f"Эскалация L{next_level['level']} → {target}: инцидент #{row['id']} "
                     f"{row['metric']}/{row['region']} ({row['priority']})",
                     "critical" if next_level["level"] >= 3 else "warning",
+                    event_type="escalation",
                 )
             except Exception as e:
                 logger.error(f"Failed to send escalation notification: {e}")

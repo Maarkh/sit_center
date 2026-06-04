@@ -316,7 +316,7 @@ class IndicatorEvaluator:
         )
         try:
             from core.notifications import notify
-            notify(msg, priority)
+            notify(msg, priority, event_type="alert")
         except Exception as e:
             logger.error("deviation notify failed: %s", mask_secrets(str(e)))
 

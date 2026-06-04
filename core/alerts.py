@@ -238,7 +238,7 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
     escalation = check_escalation_alert(col, region, val, is_suppressed, tenant_id=tenant_id)
     if escalation:
         msg, prio = escalation
-        notify(msg, prio)
+        notify(msg, prio, event_type="alert")
         create_incident_buffered(msg, col, region, val, prio, tenant_id=tenant_id)
         track_escalation_data(col, region, val, tenant_id=tenant_id)
         return True, region
@@ -337,7 +337,7 @@ def check_for_alerts(df: pd.DataFrame, col: str, selected: str, last_alert_regio
         # Отправка (queued + idempotent). A failure here must not orphan or
         # roll back the already-committed alert row.
         try:
-            notify(msg, prio)
+            notify(msg, prio, event_type="alert")
         except Exception as e:
             logger.warning(f"Notification enqueue failed (alert {alert_id} already recorded): {e}")
 

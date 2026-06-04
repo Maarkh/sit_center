@@ -200,7 +200,7 @@ class PredictiveEngine:
                f"уверенность {projection['confidence']}. Действуйте заранее. Подписчики: {watchers}")
         try:
             from core.notifications import notify
-            notify(msg, priority)
+            notify(msg, priority, event_type="predictive")
         except Exception as e:
             logger.error("predictive notify failed: %s", mask_secrets(str(e)))
 

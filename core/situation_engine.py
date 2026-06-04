@@ -227,7 +227,7 @@ class SituationEngine:
         priority = "critical" if impact >= 4.0 else "warning"
         try:
             from core.notifications import notify
-            notify(f"{title} — impact {impact}. {hypothesis}", priority)
+            notify(f"{title} — impact {impact}. {hypothesis}", priority, event_type="situation")
         except Exception as e:
             logger.error("situation notify failed: %s", mask_secrets(str(e)))
 
