@@ -32,5 +32,7 @@ export async function createRole(payload: RoleCreate): Promise<RoleRead> {
 }
 
 export async function assignRole(userId: string, roleId: string): Promise<void> {
-  await client.post(`/api/v1/admin/users/${userId}/roles/${roleId}`);
+  // Backend route is POST /admin/user-roles with a JSON body {user_id, role_id};
+  // the path-param form (/users/{id}/roles/{id}) does not exist → 404.
+  await client.post('/api/v1/admin/user-roles', { user_id: userId, role_id: roleId });
 }

@@ -33,12 +33,14 @@ export async function createIncident(payload: IncidentCreate): Promise<IncidentR
 }
 
 export async function updateIncidentStatus(id: number, payload: IncidentStatusUpdate): Promise<IncidentRead> {
-  const { data } = await client.put<IncidentRead>(`/api/v1/incidents/${id}/status`, payload);
+  // Backend route is PATCH /{id}/status — PUT/POST return 405 Method Not Allowed.
+  const { data } = await client.patch<IncidentRead>(`/api/v1/incidents/${id}/status`, payload);
   return data;
 }
 
 export async function assignIncident(id: number, assigned_to: string, comment?: string): Promise<IncidentRead> {
-  const { data } = await client.post<IncidentRead>(`/api/v1/incidents/${id}/assign`, { assigned_to, comment });
+  // Backend route is PATCH /{id}/assign — POST returns 405.
+  const { data } = await client.patch<IncidentRead>(`/api/v1/incidents/${id}/assign`, { assigned_to, comment });
   return data;
 }
 
@@ -53,11 +55,12 @@ export async function addComment(id: number, content: string): Promise<IncidentC
 }
 
 export async function listSlaPolicies(): Promise<SlaPolicyRead[]> {
-  const { data } = await client.get<SlaPolicyRead[]>('/api/v1/incidents/sla-policies');
+  // Backend route is /sla/policies (not /sla-policies) — wrong path returns 404.
+  const { data } = await client.get<SlaPolicyRead[]>('/api/v1/incidents/sla/policies');
   return data;
 }
 
 export async function createSlaPolicy(payload: SlaPolicyCreate): Promise<SlaPolicyRead> {
-  const { data } = await client.post<SlaPolicyRead>('/api/v1/incidents/sla-policies', payload);
+  const { data } = await client.post<SlaPolicyRead>('/api/v1/incidents/sla/policies', payload);
   return data;
 }
