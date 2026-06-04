@@ -1,32 +1,24 @@
 #!/usr/bin/env python
-"""Real local monitor: sample this machine's CPU & RAM into the DSS time-series and
-drive the evaluation loop. A live, hands-on demo of the decision loop.
+"""Local metric collector: sample this machine's CPU & RAM into the DSS time-series
+(canonical_metrics). Acts like a host agent — the data source for the decision loop.
+
+All DSS processing (evaluate deviations, correlate situations, predict, escalate,
+SLA breaches) runs in the Celery beat + worker, exactly as in production — start them
+with scripts/run_celery.sh. This collector only produces metrics.
 
 Prereqs: project env exported (DATABASE_URL, REDIS_*, …) and `PYTHONPATH=.`.
-Run the setup (goal + indicators + playbook) first, then:
 
     PYTHONPATH=. python scripts/monitor_cpu.py
 
-Env knobs: SAMPLE_SECONDS (5), EVAL_EVERY_SECONDS (30), EVAL_WINDOW_MIN (1).
-In production this loop is the Celery beat task `evaluate_indicators_task`; here it
-runs inline with a short window so breaches show up in the cockpit within ~a minute.
+Env knobs: SAMPLE_SECONDS (5).
 """
 import os
 import psutil
 from sqlalchemy import text
 
 from core.database import get_engine
-from core.deviation_engine import indicator_evaluator
-from core.situation_engine import situation_engine
-from core.sla_service import check_auto_escalation, check_sla_breaches
-from core.predictive_engine import predictive_engine
 
 SAMPLE = int(os.environ.get("SAMPLE_SECONDS", "5"))
-EVAL_EVERY = int(os.environ.get("EVAL_EVERY_SECONDS", "30"))
-EVAL_WINDOW_MIN = int(os.environ.get("EVAL_WINDOW_MIN", "1"))
-# Predictive (Prophet) is heavier, so it runs on its own slower cadence.
-PREDICT_EVERY = int(os.environ.get("PREDICT_EVERY_SECONDS", "300"))
-PREDICT_HORIZON = int(os.environ.get("PREDICT_HORIZON_HOURS", "6"))
 TENANT = "default"
 
 _INSERT = text(
@@ -37,38 +29,16 @@ _INSERT = text(
 
 def main():
     eng = get_engine()
-    print(f"📈 monitoring CPU/RAM → canonical_metrics every {SAMPLE}s; "
-          f"evaluating every {EVAL_EVERY}s (window {EVAL_WINDOW_MIN}m). Ctrl-C to stop.")
+    print(f"📈 collecting CPU/RAM → canonical_metrics every {SAMPLE}s. "
+          f"DSS processing runs in Celery beat/worker. Ctrl-C to stop.")
     psutil.cpu_percent(interval=None)  # prime
-    elapsed = 0
-    pred_elapsed = PREDICT_EVERY  # run predictive on the first eval cycle
     while True:
         cpu = psutil.cpu_percent(interval=SAMPLE)   # blocks ~SAMPLE seconds
         mem = psutil.virtual_memory().percent
         with eng.begin() as c:
             c.execute(_INSERT, {"m": "cpu_usage", "v": cpu, "t": TENANT})
             c.execute(_INSERT, {"m": "mem_usage", "v": mem, "t": TENANT})
-        elapsed += SAMPLE
-        pred_elapsed += SAMPLE
-        if elapsed >= EVAL_EVERY:
-            elapsed = 0
-            s = indicator_evaluator.evaluate_tenant(TENANT, window_minutes=EVAL_WINDOW_MIN)
-            sit = situation_engine.correlate_tenant(TENANT, window_minutes=30)
-            # In production these are separate Celery beat tasks; here the monitor is
-            # the scheduler, so SLA breach flags + escalation run every eval cycle.
-            check_sla_breaches()
-            check_auto_escalation()
-            extra = ""
-            if pred_elapsed >= PREDICT_EVERY:
-                pred_elapsed = 0
-                try:
-                    p = predictive_engine.evaluate_tenant(TENANT, horizon_hours=PREDICT_HORIZON)
-                    extra = f" | predict: raised={p['raised']} resolved={p['resolved']} (eval {p['evaluated']})"
-                except Exception as e:
-                    extra = f" | predict ERR: {e}"
-            print(f"cpu={cpu:5.1f}% mem={mem:5.1f}% | eval: breaching={s['breaching']} "
-                  f"opened={s['opened']} chronic={s['chronic']} resolved={s['resolved']} "
-                  f"recs={s.get('recommended', 0)} | situations: +{sit['created']}{extra}")
+        print(f"cpu={cpu:5.1f}% mem={mem:5.1f}%")
 
 
 if __name__ == "__main__":
