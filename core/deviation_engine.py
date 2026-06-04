@@ -276,6 +276,18 @@ class IndicatorEvaluator:
                 text("UPDATE deviations SET incident_id = :inc WHERE id = :id"),
                 {"inc": inc_id, "id": dev_id},
             )
+            # Attach the tenant's default escalation chain so auto-escalation
+            # (check_auto_escalation skips incidents with no chain) can act on it.
+            chain = conn.execute(
+                text("SELECT id FROM escalation_chains WHERE tenant_id = :tid "
+                     "AND is_active = true ORDER BY created_at LIMIT 1"),
+                {"tid": tenant_id},
+            ).scalar()
+            if chain:
+                conn.execute(
+                    text("UPDATE incidents SET escalation_chain_id = :cid WHERE id = :id"),
+                    {"cid": chain, "id": inc_id},
+                )
         # Apply the SLA policy (response/resolution deadlines) like create_incident does,
         # outside the txn above — otherwise the incident shows "SLA: N/A".
         try:
