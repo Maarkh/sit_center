@@ -16,7 +16,9 @@ export interface IncidentFilters {
 }
 
 export async function listIncidents(params: IncidentFilters = {}): Promise<IncidentListResponse> {
-  const { data } = await client.get<IncidentListResponse>('/api/v1/incidents', { params });
+  // Trailing slash matters: '/api/v1/incidents' 307-redirects to '/api/v1/incidents/'
+  // with an absolute backend URL, which the browser then follows cross-origin → CORS error.
+  const { data } = await client.get<IncidentListResponse>('/api/v1/incidents/', { params });
   return data;
 }
 
@@ -26,7 +28,7 @@ export async function getIncident(id: number): Promise<IncidentRead> {
 }
 
 export async function createIncident(payload: IncidentCreate): Promise<IncidentRead> {
-  const { data } = await client.post<IncidentRead>('/api/v1/incidents', payload);
+  const { data } = await client.post<IncidentRead>('/api/v1/incidents/', payload);
   return data;
 }
 

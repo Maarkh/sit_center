@@ -2,7 +2,8 @@ import client from './client';
 import type { MetricRead } from '@/types/metrics';
 
 export async function listMetrics(): Promise<MetricRead[]> {
-  const { data } = await client.get<MetricRead[]>('/api/v1/metrics');
+  // Trailing slash avoids a 307 → absolute cross-origin redirect → CORS error.
+  const { data } = await client.get<MetricRead[]>('/api/v1/metrics/');
   return data;
 }
 

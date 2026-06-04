@@ -50,6 +50,7 @@ export interface DeviationRead {
   resolved_at: string | null;
   acknowledged_by: string | null;
   acknowledged_at: string | null;
+  incident_id: number | null;
 }
 
 // --- M4 Situation & Correlation ---

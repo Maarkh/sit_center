@@ -1,45 +1,84 @@
-import { useEffect, useState } from 'react';
-import { Table, Select, Space, Card, Button } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
-import { listAlerts } from '@/api/alerts';
-import { useAlertStore } from '@/stores/alertStore';
-import StatusTag from '@/components/Common/StatusTag';
+import { useEffect, useState, useMemo } from 'react';
+import { Table, Select, Space, Card, Button, Tag, App, Typography } from 'antd';
+import { ReloadOutlined, CheckOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import {
+  listDeviations, getIndicatorTree, acknowledgeDeviation, resolveDeviation,
+} from '@/api/dss';
 import { formatDate } from '@/utils/formatters';
 import { useTranslation } from 'react-i18next';
-import type { AlertRead } from '@/types/alerts';
+import type { DeviationRead, IndicatorTreeResponse } from '@/types/dss';
 
+const { Text } = Typography;
+
+const SEVERITY_COLOR: Record<string, string> = { critical: 'red', warning: 'orange' };
+const STATUS_COLOR: Record<string, string> = { open: 'warning', acknowledged: 'processing', resolved: 'default' };
+
+// Alerts are now DSS deviations (single detection pipeline). Each row is an indicator
+// that left its corridor; chronic ones auto-open an incident (linked here).
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<AlertRead[]>([]);
+  const { t } = useTranslation();
+  const { message } = App.useApp();
+  const navigate = useNavigate();
+  const [deviations, setDeviations] = useState<DeviationRead[]>([]);
+  const [names, setNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const { liveAlerts } = useAlertStore();
-  const { t } = useTranslation();
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await listAlerts({ status: statusFilter, limit: 100 });
-      setAlerts(data);
+      const [devs, tree] = await Promise.all([
+        listDeviations({ status: statusFilter, limit: 200 }),
+        getIndicatorTree() as Promise<IndicatorTreeResponse>,
+      ]);
+      setDeviations(devs);
+      const m = new Map<string, string>();
+      tree.goals.forEach((g) => g.indicators.forEach((i) => m.set(i.id, i.name)));
+      tree.unassigned.forEach((i) => m.set(i.id, i.name));
+      setNames(m);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, [statusFilter]);
+  useEffect(() => { fetchData(); }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const allAlerts = [...liveAlerts.filter((la) => !alerts.find((a) => a.id === la.id)), ...alerts];
+  const act = async (id: string, action: 'ack' | 'resolve') => {
+    if (action === 'ack') await acknowledgeDeviation(id);
+    else await resolveDeviation(id);
+    message.success(t('cockpit.statusUpdated'));
+    fetchData();
+  };
 
-  const columns = [
-    { title: t('alerts.status'), dataIndex: 'status', key: 'status', width: 130, render: (s: string) => <StatusTag status={s} /> },
-    { title: t('alerts.metric'), dataIndex: 'metric_name', key: 'metric_name' },
+  const columns = useMemo(() => [
+    { title: t('cockpit.severity'), dataIndex: 'severity', key: 'severity', width: 110,
+      render: (s: string) => <Tag color={SEVERITY_COLOR[s] ?? 'default'}>{s}</Tag> },
+    { title: t('cockpit.indicator'), key: 'indicator', ellipsis: true,
+      render: (_: unknown, r: DeviationRead) => names.get(r.indicator_id) ?? r.indicator_id.slice(0, 8) },
+    { title: t('cockpit.direction'), dataIndex: 'direction', key: 'direction', width: 90 },
+    { title: t('cockpit.value'), dataIndex: 'value', key: 'value', width: 90,
+      render: (v: number | null) => (v == null ? '-' : v.toFixed(2)) },
+    { title: t('cockpit.periods'), dataIndex: 'periods', key: 'periods', width: 80 },
+    { title: t('alerts.status'), dataIndex: 'status', key: 'status', width: 120,
+      render: (s: string) => <Tag color={STATUS_COLOR[s] ?? 'default'}>{s}</Tag> },
+    { title: t('cockpit.detected'), dataIndex: 'detected_at', key: 'detected_at', render: formatDate },
+    { title: t('cockpit.incident'), dataIndex: 'incident_id', key: 'incident_id', width: 110,
+      render: (id: number | null) => id
+        ? <a onClick={(e) => { e.stopPropagation(); navigate(`/incidents/${id}`); }}>#{id}</a>
+        : <Text type="secondary">—</Text> },
     {
-      title: t('alerts.dimensions'), dataIndex: 'dimensions', key: 'dimensions',
-      render: (d: Record<string, string>) => Object.entries(d || {}).map(([k, v]) => `${k}=${v}`).join(', '),
+      title: t('common.actions'), key: 'actions', width: 130,
+      render: (_: unknown, r: DeviationRead) => r.status !== 'resolved' ? (
+        <Space>
+          {r.status === 'open' && (
+            <Button size="small" icon={<CheckOutlined />} onClick={() => act(r.id, 'ack')} />
+          )}
+          <Button size="small" onClick={() => act(r.id, 'resolve')}>{t('cockpit.resolve')}</Button>
+        </Space>
+      ) : null,
     },
-    { title: t('alerts.value'), dataIndex: 'value', key: 'value', render: (v: number) => v?.toFixed(2) },
-    { title: t('alerts.detected'), dataIndex: 'detected_at', key: 'detected_at', render: formatDate },
-    { title: t('alerts.fingerprint'), dataIndex: 'fingerprint', key: 'fingerprint', ellipsis: true },
-  ];
+  ], [names, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -48,8 +87,7 @@ export default function AlertsPage() {
           <Select
             placeholder={t('alerts.filter_status')}
             options={[
-              { label: t('alerts.all'), value: '' },
-              { label: t('alerts.firing'), value: 'firing' },
+              { label: t('cockpit.lightBreach'), value: 'open' },
               { label: t('alerts.acknowledged'), value: 'acknowledged' },
               { label: t('alerts.resolved'), value: 'resolved' },
             ]}
@@ -62,7 +100,7 @@ export default function AlertsPage() {
         </Space>
       </Card>
       <Table
-        dataSource={allAlerts}
+        dataSource={deviations}
         columns={columns}
         rowKey="id"
         loading={loading}

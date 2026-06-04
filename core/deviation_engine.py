@@ -232,15 +232,49 @@ class IndicatorEvaluator:
             if newly_opened or newly_chronic:
                 self._notify(conn, ind, tenant_id, value, breach_dir, periods, threshold)
 
-        # M3 → M7: once a deviation becomes persistent (chronic), auto-generate
-        # Next-Best-Action recommendations for it. Best-effort, after the txn commits.
+        # On a chronic (persistent) deviation, best-effort after the txn commits:
         if newly_chronic and dev_id is not None:
+            # Consolidation: open a classic Incident (the single ITSM ticket tail) —
+            # one per deviation, deduped via deviations.incident_id.
+            try:
+                summary["incidents"] = summary.get("incidents", 0) + (
+                    1 if self._ensure_incident(dev_id, ind, tenant_id, value, breach_dir, periods) else 0)
+            except Exception as e:
+                logger.error("auto-incident on chronic failed: %s", mask_secrets(str(e)))
+            # M3 → M7: auto-generate Next-Best-Action recommendations.
             try:
                 from core.recommendation_engine import recommendation_engine
                 recommendation_engine.generate(tenant_id, deviation_id=dev_id)
                 summary["recommended"] = summary.get("recommended", 0) + 1
             except Exception as e:
                 logger.error("auto-recommend on chronic failed: %s", mask_secrets(str(e)))
+
+    def _ensure_incident(self, dev_id, ind, tenant_id, value, breach_dir, periods) -> bool:
+        """Create a classic incident for a chronic deviation, deduped via
+        deviations.incident_id. Returns True if a new incident was created."""
+        engine = get_engine()
+        with engine.begin() as conn:
+            existing = conn.execute(
+                text("SELECT incident_id FROM deviations WHERE id = :id FOR UPDATE"),
+                {"id": dev_id},
+            ).scalar()
+            if existing:
+                return False
+            msg = (f"Показатель '{ind['name']}': значение {value:.2f} вне коридора "
+                   f"({breach_dir}), хроника {periods} периодов")
+            inc_id = conn.execute(
+                text("INSERT INTO incidents (alert_message, metric, region, value, priority, "
+                     "status, detected_at, description, tenant_id) "
+                     "VALUES (:msg, :metric, 'all', :val, 'critical', 'new', NOW(), :desc, :tid) "
+                     "RETURNING id"),
+                {"msg": msg, "metric": ind["name"], "val": str(round(value, 2)),
+                 "desc": "Авто-инцидент из DSS (хроническое отклонение показателя)", "tid": tenant_id},
+            ).scalar()
+            conn.execute(
+                text("UPDATE deviations SET incident_id = :inc WHERE id = :id"),
+                {"inc": inc_id, "id": dev_id},
+            )
+        return True
 
     def _notify(self, conn, ind, tenant_id, value, breach_dir, periods, threshold):
         subs = conn.execute(

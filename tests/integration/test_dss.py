@@ -177,6 +177,55 @@ class TestDeviationEvaluation:
             clear_metric()
             integration_client.delete(f"/api/v1/indicators/{ind_id}", headers=admin_headers)
 
+    def test_chronic_deviation_opens_incident(self, integration_client, admin_headers, db_engine):
+        """Consolidation: a chronic deviation auto-creates a classic incident (deduped)."""
+        if not _tables_present(db_engine, "indicators", "deviations", "incidents", "canonical_metrics"):
+            pytest.skip("tables not found")
+        # incident link column from migration 018
+        try:
+            with db_engine.connect() as conn:
+                conn.execute(text("SELECT incident_id FROM deviations LIMIT 1"))
+        except Exception:
+            pytest.skip("deviations.incident_id not present — migration 018 not applied")
+
+        from core.deviation_engine import indicator_evaluator
+        metric = f"itest_inc_{uuid.uuid4().hex[:8]}"
+        ind_id = integration_client.post(
+            "/api/v1/indicators/",
+            json={"name": "incident bridge ind", "target_high": 100.0, "direction": "above",
+                  "chronicle_threshold": 2, "factors": [{"name": "f", "metrics": [metric]}]},
+            headers=admin_headers,
+        ).json()["id"]
+        try:
+            with db_engine.begin() as conn:
+                conn.execute(
+                    text("INSERT INTO canonical_metrics "
+                         "(metric_name, value, timestamp, dimensions, tags, source, tenant_id) "
+                         "VALUES (:m, 150, NOW(), '{}'::jsonb, '{}'::jsonb, 'itest', 'default')"),
+                    {"m": metric})
+            indicator_evaluator.evaluate_tenant("default")   # opens (periods 1)
+            s2 = indicator_evaluator.evaluate_tenant("default")  # chronic (periods 2) → incident
+            assert s2.get("incidents", 0) >= 1
+
+            dev = integration_client.get(
+                f"/api/v1/deviations/?indicator_id={ind_id}&active_only=true",
+                headers=admin_headers).json()[0]
+            assert dev["incident_id"] is not None
+            inc_id = dev["incident_id"]
+
+            # The incident exists and points at our indicator.
+            inc = integration_client.get(f"/api/v1/incidents/{inc_id}", headers=admin_headers).json()
+            assert inc["metric"] == "incident bridge ind"
+            assert inc["priority"] == "critical"
+
+            # Idempotent: a third evaluation does NOT open a second incident.
+            s3 = indicator_evaluator.evaluate_tenant("default")
+            assert s3.get("incidents", 0) == 0
+        finally:
+            with db_engine.begin() as conn:
+                conn.execute(text("DELETE FROM canonical_metrics WHERE metric_name = :m"), {"m": metric})
+            integration_client.delete(f"/api/v1/indicators/{ind_id}", headers=admin_headers)
+
     def test_acknowledge_and_resolve_via_api(self, integration_client, admin_headers, db_engine):
         if not _tables_present(db_engine, "indicators", "deviations", "canonical_metrics"):
             pytest.skip("M2/M3 tables not found")

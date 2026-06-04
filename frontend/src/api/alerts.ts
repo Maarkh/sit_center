@@ -9,7 +9,7 @@ export interface AlertFilters {
 }
 
 export async function listAlerts(params: AlertFilters = {}): Promise<AlertRead[]> {
-  const { data } = await client.get<AlertRead[]>('/api/v1/alerts', { params });
+  const { data } = await client.get<AlertRead[]>('/api/v1/alerts/', { params });
   return data;
 }
 

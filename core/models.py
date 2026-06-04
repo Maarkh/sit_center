@@ -417,6 +417,8 @@ class Deviation(Base):
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     acknowledged_by = Column(String, nullable=True)
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    # Classic incident auto-created when this deviation became chronic (consolidation).
+    incident_id = Column(Integer, ForeignKey("incidents.id", ondelete="SET NULL"), nullable=True)
 
 
 class Chronicle(Base):

@@ -2,7 +2,7 @@ import client from './client';
 import type { RuleRead, RuleCreate } from '@/types/rules';
 
 export async function listRules(): Promise<RuleRead[]> {
-  const { data } = await client.get<RuleRead[]>('/api/v1/rules');
+  const { data } = await client.get<RuleRead[]>('/api/v1/rules/');
   return data;
 }
 
@@ -12,7 +12,7 @@ export async function getRule(id: string): Promise<RuleRead> {
 }
 
 export async function createRule(payload: RuleCreate): Promise<RuleRead> {
-  const { data } = await client.post<RuleRead>('/api/v1/rules', payload);
+  const { data } = await client.post<RuleRead>('/api/v1/rules/', payload);
   return data;
 }
 

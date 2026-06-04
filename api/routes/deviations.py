@@ -22,7 +22,7 @@ router = APIRouter(prefix="/deviations", tags=["DSS: Deviations"])
 _DEV_COLS = """
     id, indicator_id, dimensions, direction, value, target_low, target_high,
     severity, status, periods, fingerprint, detected_at, last_seen, resolved_at,
-    acknowledged_by, acknowledged_at
+    acknowledged_by, acknowledged_at, incident_id
 """
 
 
@@ -44,6 +44,7 @@ def _row_to_deviation(row) -> DeviationRead:
         resolved_at=row["resolved_at"],
         acknowledged_by=row["acknowledged_by"],
         acknowledged_at=row["acknowledged_at"],
+        incident_id=row["incident_id"],
     )
 
 

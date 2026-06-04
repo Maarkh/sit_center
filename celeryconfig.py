@@ -14,10 +14,9 @@ beat_schedule = {
         'task': 'tasks.update_mv_data',
         'schedule': crontab(minute='*/10')
     },
-    'evaluate-rules-1min': {
-        'task': 'core.ml_tasks.evaluate_rules_task',
-        'schedule': crontab(minute='*/1')
-    },
+    # Retired: classic rule detection (rule_engine → alert_events) is superseded by the
+    # DSS indicator/corridor → deviation pipeline (evaluate-indicators-2min). The
+    # rule_engine code stays for reference; it's simply no longer scheduled.
     'check-sla-breaches-5min': {
         'task': 'tasks.check_sla_breaches_task',
         'schedule': crontab(minute='*/5')

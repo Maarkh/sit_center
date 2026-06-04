@@ -15,8 +15,18 @@ export async function getIndicatorTree(): Promise<IndicatorTreeResponse> {
 }
 
 // --- M3: deviations ---
-export async function listDeviations(params: { active_only?: boolean; indicator_id?: string } = {}): Promise<DeviationRead[]> {
+export async function listDeviations(params: { active_only?: boolean; indicator_id?: string; status?: string; limit?: number } = {}): Promise<DeviationRead[]> {
   const { data } = await client.get<DeviationRead[]>('/api/v1/deviations/', { params });
+  return data;
+}
+
+export async function acknowledgeDeviation(id: string): Promise<DeviationRead> {
+  const { data } = await client.post<DeviationRead>(`/api/v1/deviations/${id}/acknowledge`, {});
+  return data;
+}
+
+export async function resolveDeviation(id: string): Promise<DeviationRead> {
+  const { data } = await client.post<DeviationRead>(`/api/v1/deviations/${id}/resolve`, {});
   return data;
 }
 

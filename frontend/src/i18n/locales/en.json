@@ -63,6 +63,7 @@
     "value": "Value",
     "periods": "Periods",
     "detected": "Detected",
+    "incident": "Incident",
     "tabOverview": "Overview",
     "tabPredictive": "Predictive",
     "tabProcesses": "Processes",

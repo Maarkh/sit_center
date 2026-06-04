@@ -203,6 +203,7 @@ class DeviationRead(BaseModel):
     resolved_at: Optional[datetime] = None
     acknowledged_by: Optional[str] = None
     acknowledged_at: Optional[datetime] = None
+    incident_id: Optional[int] = None   # classic incident auto-opened on chronic
 
     model_config = ConfigDict(from_attributes=True)
 
