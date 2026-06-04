@@ -154,6 +154,8 @@
     "newIndicator": "New indicator",
     "editIndicator": "Edit indicator",
     "newGoal": "New goal",
+    "editGoal": "Edit goal",
+    "goals": "Goals",
     "goalCreated": "Goal created",
     "factorName": "Factor",
     "weight": "Weight",

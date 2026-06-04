@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Select, InputNumber, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { listSlaPolicies, createSlaPolicy } from '@/api/incidents';
+import { Table, Button, Modal, Form, Input, Select, InputNumber, message, Popconfirm, Space } from 'antd';
+import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { listSlaPolicies, createSlaPolicy, updateSlaPolicy, deleteSlaPolicy } from '@/api/incidents';
 import { formatDuration } from '@/utils/formatters';
 import type { SlaPolicyRead } from '@/types/sla';
 
@@ -9,6 +9,7 @@ export default function SlaTab() {
   const [policies, setPolicies] = useState<SlaPolicyRead[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form] = Form.useForm();
 
   const fetchData = async () => {
@@ -18,15 +19,39 @@ export default function SlaTab() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleCreate = async () => {
+  const openCreate = () => {
+    setEditingId(null);
+    form.resetFields();
+    setModalOpen(true);
+  };
+
+  const openEdit = (p: SlaPolicyRead) => {
+    setEditingId(p.id);
+    form.setFieldsValue({
+      name: p.name,
+      priority: p.priority,
+      response_time_minutes: p.response_time_minutes,
+      resolution_time_minutes: p.resolution_time_minutes,
+      escalation_after_minutes: p.escalation_after_minutes,
+    });
+    setModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      await createSlaPolicy(values);
-      message.success('SLA policy created');
-      form.resetFields();
+      if (editingId) await updateSlaPolicy(editingId, values);
+      else await createSlaPolicy(values);
+      message.success(editingId ? 'SLA policy updated' : 'SLA policy created');
       setModalOpen(false);
       fetchData();
     } catch { /* validation */ }
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteSlaPolicy(id);
+    message.success('SLA policy deleted');
+    fetchData();
   };
 
   const columns = [
@@ -35,15 +60,26 @@ export default function SlaTab() {
     { title: 'Response Time', dataIndex: 'response_time_minutes', key: 'response', render: formatDuration },
     { title: 'Resolution Time', dataIndex: 'resolution_time_minutes', key: 'resolution', render: formatDuration },
     { title: 'Escalation After', dataIndex: 'escalation_after_minutes', key: 'escalation', render: formatDuration },
+    {
+      title: 'Actions', key: 'actions', width: 110,
+      render: (_: unknown, p: SlaPolicyRead) => (
+        <Space>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(p)} />
+          <Popconfirm title="Delete this SLA policy?" onConfirm={() => handleDelete(p.id)}>
+            <Button danger size="small" icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
   ];
 
   return (
     <>
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)} style={{ marginBottom: 16 }}>
+      <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ marginBottom: 16 }}>
         Create SLA Policy
       </Button>
       <Table dataSource={policies} columns={columns} rowKey="id" loading={loading} />
-      <Modal title="Create SLA Policy" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} destroyOnClose>
+      <Modal title={editingId ? 'Edit SLA Policy' : 'Create SLA Policy'} open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)} forceRender>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="priority" label="Priority" rules={[{ required: true }]}>

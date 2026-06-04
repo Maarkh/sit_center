@@ -89,6 +89,11 @@ export async function createGoal(payload: { name: string; owner_role?: string; d
   return data;
 }
 
+export async function updateGoal(id: string, payload: { name: string; owner_role?: string; description?: string }): Promise<GoalRead> {
+  const { data } = await client.put<GoalRead>(`/api/v1/indicators/goals/${id}`, payload);
+  return data;
+}
+
 export async function deleteGoal(id: string): Promise<void> {
   await client.delete(`/api/v1/indicators/goals/${id}`);
 }

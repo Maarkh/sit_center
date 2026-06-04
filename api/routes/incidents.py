@@ -1,6 +1,7 @@
 # api/routes/incidents.py
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import List, Optional
+from uuid import UUID
 from datetime import datetime, timezone
 from sqlalchemy import text
 from core.database import get_engine
@@ -572,3 +573,57 @@ def create_sla_policy(
     except Exception as e:
         logger.error("create_sla_policy failed: %s", mask_secrets(str(e)))
         raise HTTPException(400, "Failed to create SLA policy (invalid data or duplicate)")
+
+
+@router.put("/sla/policies/{policy_id}", response_model=SlaPolicyRead)
+def update_sla_policy(
+    policy_id: UUID,
+    data: SlaPolicyCreate,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("""
+                    UPDATE sla_policies SET
+                        name = :name, priority = :priority,
+                        response_time_minutes = :resp, resolution_time_minutes = :res,
+                        escalation_after_minutes = :esc
+                    WHERE id = :id AND tenant_id = :tid
+                    RETURNING id, tenant_id, name, priority, response_time_minutes,
+                              resolution_time_minutes, escalation_after_minutes, is_active, created_at
+                """),
+                {"id": policy_id, "tid": current_user.tenant_id, "name": data.name,
+                 "priority": data.priority, "resp": data.response_time_minutes,
+                 "res": data.resolution_time_minutes, "esc": data.escalation_after_minutes},
+            ).mappings().first()
+    except Exception as e:
+        logger.error("update_sla_policy failed: %s", mask_secrets(str(e)))
+        raise HTTPException(400, "Failed to update SLA policy (invalid data or duplicate priority)")
+    if not row:
+        raise HTTPException(404, "SLA policy not found")
+    log_audit(current_user.username, current_user.tenant_id, "update", "sla_policy", resource_id=str(policy_id))
+    return SlaPolicyRead(**row)
+
+
+@router.delete("/sla/policies/{policy_id}", status_code=204)
+def delete_sla_policy(
+    policy_id: UUID,
+    current_user: TokenData = Depends(require_permission("write:alerts")),
+):
+    engine = get_engine()
+    with engine.begin() as conn:
+        # Incidents store their deadlines directly, so dropping a policy only needs to
+        # clear the FK reference — existing incidents keep their computed SLA.
+        conn.execute(
+            text("UPDATE incidents SET sla_policy_id = NULL WHERE sla_policy_id = :id AND tenant_id = :tid"),
+            {"id": policy_id, "tid": current_user.tenant_id},
+        )
+        res = conn.execute(
+            text("DELETE FROM sla_policies WHERE id = :id AND tenant_id = :tid"),
+            {"id": policy_id, "tid": current_user.tenant_id},
+        )
+    if res.rowcount == 0:
+        raise HTTPException(404, "SLA policy not found")
+    log_audit(current_user.username, current_user.tenant_id, "delete", "sla_policy", resource_id=str(policy_id))

@@ -154,6 +154,8 @@
     "newIndicator": "Новый показатель",
     "editIndicator": "Редактировать показатель",
     "newGoal": "Новая цель",
+    "editGoal": "Редактировать цель",
+    "goals": "Цели",
     "goalCreated": "Цель создана",
     "factorName": "Фактор",
     "weight": "Вес",

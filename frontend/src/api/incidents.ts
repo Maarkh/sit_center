@@ -66,3 +66,12 @@ export async function createSlaPolicy(payload: SlaPolicyCreate): Promise<SlaPoli
   const { data } = await client.post<SlaPolicyRead>('/api/v1/incidents/sla/policies', payload);
   return data;
 }
+
+export async function updateSlaPolicy(id: string, payload: SlaPolicyCreate): Promise<SlaPolicyRead> {
+  const { data } = await client.put<SlaPolicyRead>(`/api/v1/incidents/sla/policies/${id}`, payload);
+  return data;
+}
+
+export async function deleteSlaPolicy(id: string): Promise<void> {
+  await client.delete(`/api/v1/incidents/sla/policies/${id}`);
+}

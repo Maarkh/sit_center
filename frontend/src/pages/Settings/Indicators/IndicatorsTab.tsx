@@ -6,7 +6,7 @@ import { PlusOutlined, DeleteOutlined, EditOutlined, MinusCircleOutlined, Appsto
 import { useTranslation } from 'react-i18next';
 import {
   listIndicators, createIndicator, updateIndicator, deleteIndicator,
-  listGoals, createGoal, deleteGoal,
+  listGoals, createGoal, updateGoal, deleteGoal,
 } from '@/api/dss';
 import type { IndicatorRead, GoalRead, IndicatorCreate } from '@/types/dss';
 
@@ -22,6 +22,7 @@ export default function IndicatorsTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<IndicatorRead | null>(null);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<GoalRead | null>(null);
   const [form] = Form.useForm();
   const [goalForm] = Form.useForm();
 
@@ -91,13 +92,33 @@ export default function IndicatorsTab() {
     fetchData();
   };
 
-  const handleCreateGoal = async () => {
+  const openGoalCreate = () => {
+    setEditingGoal(null);
+    goalForm.resetFields();
+    setGoalModalOpen(true);
+  };
+
+  const openGoalEdit = (g: GoalRead) => {
+    setEditingGoal(g);
+    goalForm.setFieldsValue({ name: g.name, owner_role: g.owner_role, description: g.description });
+    setGoalModalOpen(true);
+  };
+
+  const handleSaveGoal = async () => {
     let values;
     try { values = await goalForm.validateFields(); } catch { return; }
-    await createGoal(values);
-    message.success(t('settingsDss.goalCreated'));
+    if (editingGoal) await updateGoal(editingGoal.id, values);
+    else await createGoal(values);
+    message.success(t('settingsDss.saved'));
     goalForm.resetFields();
+    setEditingGoal(null);
     setGoalModalOpen(false);
+    fetchData();
+  };
+
+  const removeGoal = async (g: GoalRead) => {
+    await deleteGoal(g.id);
+    if (editingGoal?.id === g.id) { setEditingGoal(null); goalForm.resetFields(); }
     fetchData();
   };
 
@@ -130,7 +151,7 @@ export default function IndicatorsTab() {
     <>
       <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('settingsDss.newIndicator')}</Button>
-        <Button icon={<AppstoreAddOutlined />} onClick={() => setGoalModalOpen(true)}>{t('settingsDss.newGoal')}</Button>
+        <Button icon={<AppstoreAddOutlined />} onClick={openGoalCreate}>{t('settingsDss.newGoal')}</Button>
       </Space>
       <Table dataSource={indicators} columns={columns} rowKey="id" loading={loading} size="small" />
 
@@ -186,8 +207,8 @@ export default function IndicatorsTab() {
         </Form>
       </Modal>
 
-      <Modal title={t('settingsDss.newGoal')} open={goalModalOpen} onOk={handleCreateGoal}
-        onCancel={() => setGoalModalOpen(false)} forceRender>
+      <Modal title={editingGoal ? t('settingsDss.editGoal', 'Редактировать цель') : t('settingsDss.newGoal')}
+        open={goalModalOpen} onOk={handleSaveGoal} onCancel={() => setGoalModalOpen(false)} forceRender>
         <Form form={goalForm} layout="vertical">
           <Form.Item name="name" label={t('settingsDss.name')} rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="owner_role" label={t('settingsDss.ownerRole')}><Input /></Form.Item>
@@ -195,13 +216,20 @@ export default function IndicatorsTab() {
         </Form>
         {goals.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <Space wrap>
+            <div style={{ fontWeight: 500, marginBottom: 6 }}>{t('settingsDss.goals', 'Цели')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {goals.map((g) => (
-                <Popconfirm key={g.id} title={t('settingsDss.deleteConfirm')} onConfirm={async () => { await deleteGoal(g.id); fetchData(); }}>
-                  <Tag closable>{g.name}</Tag>
-                </Popconfirm>
+                <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{g.name}{g.owner_role ? ` · ${g.owner_role}` : ''}</span>
+                  <Space>
+                    <Button size="small" icon={<EditOutlined />} onClick={() => openGoalEdit(g)} />
+                    <Popconfirm title={t('settingsDss.deleteConfirm')} onConfirm={() => removeGoal(g)}>
+                      <Button size="small" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  </Space>
+                </div>
               ))}
-            </Space>
+            </div>
           </div>
         )}
       </Modal>
