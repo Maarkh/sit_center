@@ -60,10 +60,10 @@ def _load_chains(conn, tenant_id: str, chain_id: UUID | None = None) -> List[Esc
         out.append(EscalationChainRead(
             id=c["id"], name=c["name"], is_active=c["is_active"],
             levels=[EscalationLevelRead(
-                id=l["id"], level=l["level"], notify_role=l["notify_role"],
-                notify_users=l["notify_users"] or [],
-                escalate_after_minutes=l["escalate_after_minutes"],
-            ) for l in levels],
+                id=lv["id"], level=lv["level"], notify_role=lv["notify_role"],
+                notify_users=lv["notify_users"] or [],
+                escalate_after_minutes=lv["escalate_after_minutes"],
+            ) for lv in levels],
         ))
     return out
 
