@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Table, Select, Space, Card, Button, Tag, App, Typography } from 'antd';
 import { ReloadOutlined, CheckOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   listDeviations, getIndicatorTree, acknowledgeDeviation, resolveDeviation,
 } from '@/api/dss';
+import DeviationDetailDrawer from '@/components/Common/DeviationDetailDrawer';
 import { formatDate } from '@/utils/formatters';
 import { useTranslation } from 'react-i18next';
 import type { DeviationRead, IndicatorTreeResponse } from '@/types/dss';
@@ -20,10 +21,14 @@ export default function AlertsPage() {
   const { t } = useTranslation();
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [deviations, setDeviations] = useState<DeviationRead[]>([]);
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  // Honour a ?status= deep-link from the Dashboard KPI cards.
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(searchParams.get('status') || undefined);
+  const [selected, setSelected] = useState<DeviationRead | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -70,7 +75,8 @@ export default function AlertsPage() {
     {
       title: t('common.actions'), key: 'actions', width: 130,
       render: (_: unknown, r: DeviationRead) => r.status !== 'resolved' ? (
-        <Space>
+        // stop row-click (which opens the detail drawer) from firing on the buttons
+        <Space onClick={(e) => e.stopPropagation()}>
           {r.status === 'open' && (
             <Button size="small" icon={<CheckOutlined />} onClick={() => act(r.id, 'ack')} />
           )}
@@ -106,6 +112,16 @@ export default function AlertsPage() {
         loading={loading}
         style={{ marginTop: 16 }}
         pagination={{ pageSize: 20, showSizeChanger: true }}
+        onRow={(r) => ({
+          onClick: () => { setSelected(r); setDrawerOpen(true); },
+          style: { cursor: 'pointer' },
+        })}
+      />
+      <DeviationDetailDrawer
+        deviation={selected}
+        indicatorName={selected ? names.get(selected.indicator_id) : undefined}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
       />
     </>
   );

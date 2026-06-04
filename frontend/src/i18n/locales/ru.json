@@ -237,7 +237,28 @@
     "empty": "Выберите метрику и нажмите Прогноз"
   },
   "map": {
-    "select_metric": "Выберите метрику"
+    "select_metric": "Выберите метрику",
+    "incidents": "Инциденты",
+    "metric": "Метрика",
+    "active": "активных",
+    "total": "всего",
+    "off_map": "Регионы вне карты",
+    "all_regions": "На все регионы",
+    "incl_global": "вкл. общерегиональные",
+    "only_resolved": "только закрытые",
+    "none": "нет",
+    "incidents_error": "Не удалось загрузить инциденты"
+  },
+  "deviation": {
+    "title": "Детали отклонения",
+    "corridor": "Целевой коридор",
+    "lastSeen": "Последний раз",
+    "resolvedAt": "Закрыто",
+    "acknowledgedBy": "Подтвердил",
+    "dimensions": "Измерения",
+    "fingerprint": "Отпечаток",
+    "goToIncident": "Перейти к инциденту",
+    "noIncident": "Инцидент не заведён"
   },
   "settings": {
     "alert_rules": "Правила алертов",

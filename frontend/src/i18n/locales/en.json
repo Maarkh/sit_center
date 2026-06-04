@@ -237,7 +237,28 @@
     "empty": "Select a metric and click Forecast to see predictions"
   },
   "map": {
-    "select_metric": "Select metric"
+    "select_metric": "Select metric",
+    "incidents": "Incidents",
+    "metric": "Metric",
+    "active": "active",
+    "total": "total",
+    "off_map": "Off-map regions",
+    "all_regions": "All regions",
+    "incl_global": "incl. global",
+    "only_resolved": "resolved only",
+    "none": "none",
+    "incidents_error": "Failed to load incidents"
+  },
+  "deviation": {
+    "title": "Deviation details",
+    "corridor": "Target corridor",
+    "lastSeen": "Last seen",
+    "resolvedAt": "Resolved at",
+    "acknowledgedBy": "Acknowledged by",
+    "dimensions": "Dimensions",
+    "fingerprint": "Fingerprint",
+    "goToIncident": "Go to incident",
+    "noIncident": "No incident"
   },
   "settings": {
     "alert_rules": "Alert Rules",

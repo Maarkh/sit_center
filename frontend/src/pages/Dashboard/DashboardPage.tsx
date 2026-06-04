@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Row, Col, Card, Statistic, Table, Spin, Tag } from 'antd';
 import { AlertOutlined, FileTextOutlined, WarningOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { listDeviations, getIndicatorTree } from '@/api/dss';
 import { listIncidents } from '@/api/incidents';
+import DeviationDetailDrawer from '@/components/Common/DeviationDetailDrawer';
 import StatusTag from '@/components/Common/StatusTag';
 import PriorityTag from '@/components/Common/PriorityTag';
 import { formatDateShort } from '@/utils/formatters';
@@ -17,7 +19,10 @@ export default function DashboardPage() {
   const [incidents, setIncidents] = useState<IncidentRead[]>([]);
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<DeviationRead | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function load() {
@@ -47,6 +52,20 @@ export default function DashboardPage() {
   const openIncidents = incidents.filter((i) => !['resolved', 'closed'].includes(i.status)).length;
   const criticalIncidents = incidents.filter((i) => i.priority === 'critical' && !['resolved', 'closed'].includes(i.status)).length;
 
+  const openDeviation = (d: DeviationRead) => { setSelected(d); setDrawerOpen(true); };
+
+  // Each KPI card deep-links to the list it summarises.
+  const cards = [
+    { title: t('dashboard.firing_alerts'), value: openCount, icon: <AlertOutlined />,
+      color: openCount > 0 ? '#ff4d4f' : '#52c41a', to: '/alerts?status=open' },
+    { title: t('dashboard.acknowledged'), value: ackCount, icon: <WarningOutlined />,
+      color: '#faad14', to: '/alerts?status=acknowledged' },
+    { title: t('dashboard.open_incidents'), value: openIncidents, icon: <FileTextOutlined />,
+      to: '/incidents' },
+    { title: t('dashboard.critical'), value: criticalIncidents, icon: <WarningOutlined />,
+      color: criticalIncidents > 0 ? '#ff4d4f' : '#52c41a', to: '/incidents' },
+  ];
+
   const devColumns = [
     { title: t('cockpit.severity'), dataIndex: 'severity', key: 'severity',
       render: (s: string) => <Tag color={SEVERITY_COLOR[s] ?? 'default'}>{s}</Tag> },
@@ -59,35 +78,21 @@ export default function DashboardPage() {
   return (
     <>
       <Row gutter={[16, 16]}>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic title={t('dashboard.firing_alerts')} value={openCount} prefix={<AlertOutlined />}
-              styles={{ content: { color: openCount > 0 ? '#ff4d4f' : '#52c41a' } }} />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic title={t('dashboard.acknowledged')} value={ackCount} prefix={<WarningOutlined />}
-              styles={{ content: { color: '#faad14' } }} />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic title={t('dashboard.open_incidents')} value={openIncidents} prefix={<FileTextOutlined />} />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic title={t('dashboard.critical')} value={criticalIncidents} prefix={<WarningOutlined />}
-              styles={{ content: { color: criticalIncidents > 0 ? '#ff4d4f' : '#52c41a' } }} />
-          </Card>
-        </Col>
+        {cards.map((c) => (
+          <Col xs={12} sm={6} key={c.title}>
+            <Card hoverable onClick={() => navigate(c.to)} style={{ cursor: 'pointer' }}>
+              <Statistic title={c.title} value={c.value} prefix={c.icon}
+                styles={c.color ? { content: { color: c.color } } : undefined} />
+            </Card>
+          </Col>
+        ))}
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
           <Card title={t('dashboard.recent_alerts')} size="small">
-            <Table dataSource={deviations.slice(0, 10)} columns={devColumns} rowKey="id" pagination={false} size="small" />
+            <Table dataSource={deviations.slice(0, 10)} columns={devColumns} rowKey="id" pagination={false} size="small"
+              onRow={(r) => ({ onClick: () => openDeviation(r), style: { cursor: 'pointer' } })} />
           </Card>
         </Col>
         <Col xs={24} lg={12}>
@@ -103,10 +108,18 @@ export default function DashboardPage() {
               rowKey="id"
               pagination={false}
               size="small"
+              onRow={(r) => ({ onClick: () => navigate(`/incidents/${r.id}`), style: { cursor: 'pointer' } })}
             />
           </Card>
         </Col>
       </Row>
+
+      <DeviationDetailDrawer
+        deviation={selected}
+        indicatorName={selected ? names.get(selected.indicator_id) : undefined}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </>
   );
 }
