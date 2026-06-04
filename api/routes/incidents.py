@@ -411,7 +411,7 @@ def escalate_incident(
             chain_id = chain["id"]
 
         level_info = conn.execute(
-            text("SELECT level, notify_role FROM escalation_levels WHERE chain_id = :cid AND level = :lvl"),
+            text("SELECT level, notify_role, notify_users FROM escalation_levels WHERE chain_id = :cid AND level = :lvl"),
             {"cid": chain_id, "lvl": next_level_num},
         ).mappings().first()
 
@@ -453,6 +453,20 @@ def escalate_incident(
             text(f"SELECT {INCIDENT_COLUMNS} FROM incidents WHERE id = :id AND tenant_id = :tid"),
             {"id": incident_id, "tid": current_user.tenant_id},
         ).mappings().first()
+
+    # Notify the level's target (role + named users), same channel the auto-escalation uses.
+    try:
+        from core.notifications import notify
+        users = level_info["notify_users"] or []
+        target = level_info["notify_role"] + (f" ({', '.join(users)})" if users else "")
+        notify(
+            f"Эскалация L{next_level_num} → {target}: инцидент #{incident_id} "
+            f"({row['metric']}/{row['region']})",
+            "critical" if next_level_num >= 3 else "warning",
+        )
+    except Exception as e:
+        logger.warning(f"Escalation notification failed: {e}")
+
     return _row_to_incident(row)
 
 

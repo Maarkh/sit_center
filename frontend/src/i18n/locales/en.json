@@ -263,6 +263,21 @@
     "goToIncident": "Go to incident",
     "noIncident": "No incident"
   },
+  "settingsEsc": {
+    "tab": "Escalation",
+    "newChain": "New chain",
+    "editChain": "Edit chain",
+    "name": "Name",
+    "levels": "Levels",
+    "role": "role",
+    "usersCsv": "users, comma-separated",
+    "min": "m",
+    "addLevel": "Add level",
+    "deleteConfirm": "Delete this chain?",
+    "saved": "Saved",
+    "saveFailed": "Could not save (duplicate level?)",
+    "deleted": "Chain deleted"
+  },
   "settings": {
     "alert_rules": "Alert Rules",
     "ml_configs": "ML Configs",

@@ -116,7 +116,7 @@ def check_auto_escalation():
         with engine.connect() as conn:
             next_level = conn.execute(
                 text("""
-                    SELECT level, notify_role, escalate_after_minutes
+                    SELECT level, notify_role, notify_users, escalate_after_minutes
                     FROM escalation_levels
                     WHERE chain_id = :chain_id AND level = :next_level
                 """),
@@ -147,8 +147,10 @@ def check_auto_escalation():
 
             try:
                 from core.notifications import notify
+                users = next_level["notify_users"] or []
+                target = next_level["notify_role"] + (f" ({', '.join(users)})" if users else "")
                 notify(
-                    f"Escalation L{next_level['level']}: incident #{row['id']} "
+                    f"Эскалация L{next_level['level']} → {target}: инцидент #{row['id']} "
                     f"{row['metric']}/{row['region']} ({row['priority']})",
                     "critical" if next_level["level"] >= 3 else "warning",
                 )

@@ -2,6 +2,7 @@ import { Tabs } from 'antd';
 import RulesTab from './Rules/RulesTab';
 import MLConfigsTab from './MLConfigs/MLConfigsTab';
 import SlaTab from './Sla/SlaTab';
+import EscalationTab from './Escalation/EscalationTab';
 import IndicatorsTab from './Indicators/IndicatorsTab';
 import PlaybooksTab from './Playbooks/PlaybooksTab';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +18,7 @@ export default function SettingsPage() {
         { key: 'rules', label: t('settings.alert_rules'), children: <RulesTab /> },
         { key: 'ml', label: t('settings.ml_configs'), children: <MLConfigsTab /> },
         { key: 'sla', label: t('settings.sla_policies'), children: <SlaTab /> },
+        { key: 'escalation', label: t('settingsEsc.tab', 'Эскалация'), children: <EscalationTab /> },
       ]}
     />
   );
