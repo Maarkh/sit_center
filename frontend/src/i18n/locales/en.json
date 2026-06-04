@@ -294,6 +294,35 @@
     "pickBoth": "Pick both indicators",
     "noSelf": "An indicator cannot depend on itself"
   },
+  "notif": {
+    "tab": "Notifications",
+    "newChannel": "New channel",
+    "editChannel": "Edit channel",
+    "name": "Name",
+    "type": "Type",
+    "events": "Events",
+    "eventsHint": "Which events to send. 'all' = every event.",
+    "minPriority": "Min priority",
+    "enabled": "On",
+    "test": "Test",
+    "saved": "Channel saved",
+    "saveFailed": "Could not save",
+    "deleted": "Channel deleted",
+    "deleteConfirm": "Delete this channel?",
+    "testOk": "Test notification sent",
+    "testFail": "Send failed",
+    "headersInvalid": "Headers is not valid JSON",
+    "secretHint": "Leave '***' to keep unchanged",
+    "event": {
+      "all": "all",
+      "alert": "alerts",
+      "incident": "incidents",
+      "escalation": "escalation",
+      "predictive": "predictive",
+      "situation": "situations",
+      "system": "system"
+    }
+  },
   "settings": {
     "alert_rules": "Alert Rules",
     "ml_configs": "ML Configs",
