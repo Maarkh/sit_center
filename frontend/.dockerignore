@@ -1,0 +1,24 @@
+# Frontend build context (docker-compose builds with context: ./frontend, so the
+# root .dockerignore does NOT apply here). Without this, `COPY . .` in
+# Dockerfile.dev pulls ~430MB of node_modules + build artifacts into the context.
+
+# Dependencies & build output — reinstalled/rebuilt inside the image
+node_modules/
+dist/
+.vite/
+
+# Secrets — never bake frontend env into an image layer
+.env
+.env.*
+
+# Test & coverage artifacts
+coverage/
+playwright-report/
+test-results/
+
+# VCS / editor / OS
+.git/
+.vscode/
+.idea/
+.DS_Store
+*.log
