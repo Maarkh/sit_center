@@ -11,22 +11,25 @@ from core.metadata_service import metadata_service
 CACHE_TTL = settings.cache_ttl
 
 def create_mv():
+    # Both refresh_continuous_aggregate() and REFRESH MATERIALIZED VIEW CONCURRENTLY
+    # cannot run inside a transaction block — engine.begin() wraps the call in
+    # BEGIN/COMMIT and Postgres/TimescaleDB rejects it (ActiveSqlTransaction). Use an
+    # AUTOCOMMIT connection so SQLAlchemy issues the statement without a surrounding txn.
+    engine = get_engine()
     try:
-        engine = get_engine()
-        with engine.begin() as conn:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
             conn.execute(text(
                 "CALL refresh_continuous_aggregate('cagg_hourly_metrics', NULL, NULL);"
             ))
-            logger.info("cagg_hourly_metrics refreshed via TimescaleDB")
-            return True
+        logger.info("cagg_hourly_metrics refreshed via TimescaleDB")
+        return True
     except Exception as e:
         logger.warning(f"TimescaleDB cagg refresh failed, trying legacy MV: {e}")
         try:
-            engine = get_engine()
-            with engine.begin() as conn:
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
                 conn.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY cagg_hourly_metrics;"))
-                logger.info("cagg_hourly_metrics refreshed (CONCURRENTLY fallback)")
-                return True
+            logger.info("cagg_hourly_metrics refreshed (CONCURRENTLY fallback)")
+            return True
         except Exception as e2:
             logger.error(f"MV refresh failed: {e2}")
             return False
