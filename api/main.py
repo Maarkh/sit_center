@@ -23,6 +23,7 @@ from api.routes import situations as situations_routes
 from api.routes import scenarios as scenarios_routes
 from api.routes import escalation as escalation_routes
 from api.routes import notifications as notifications_routes
+from api.routes import data_sources as data_sources_routes
 from api.auth import Token, set_auth_cookies
 from fastapi.security import OAuth2PasswordRequestForm
 from core.exceptions import (
@@ -196,6 +197,7 @@ app.include_router(situations_routes.router, prefix=API_V1_PREFIX)
 app.include_router(scenarios_routes.router, prefix=API_V1_PREFIX)
 app.include_router(escalation_routes.router, prefix=API_V1_PREFIX)
 app.include_router(notifications_routes.router, prefix=API_V1_PREFIX)
+app.include_router(data_sources_routes.router, prefix=API_V1_PREFIX)
 
 # Backward-compat: also mount without prefix for existing clients
 app.include_router(metrics.router)
