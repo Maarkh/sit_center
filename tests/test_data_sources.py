@@ -1,7 +1,9 @@
 """Data-source registry helpers (M1) — pure logic, no DB/network."""
 import pytest
 
-from core.data_sources import _dig, collect_host_agent, probe, HOST_METRICS
+from core.data_sources import (
+    _dig, collect_host_agent, probe, HOST_METRICS, kafka_topics_from_sources,
+)
 from api.routes.data_sources import _mask, _merge_secrets, MASK, SourceCreate
 
 
@@ -86,3 +88,23 @@ def test_source_create_accepts_known_types():
     for t in ("host_agent", "http_pull", "kafka"):
         s = SourceCreate(name="x", type=t, config={})
         assert s.type == t
+
+
+# ── kafka topic resolution ──────────────────────────────────────────────────
+def test_kafka_topics_union_with_default():
+    sources = [{"config": {"topic": "a"}}, {"config": {"topic": "b"}}]
+    assert kafka_topics_from_sources(sources, "sit_center.metrics") == ["a", "b", "sit_center.metrics"]
+
+
+def test_kafka_topics_dedup_preserves_order():
+    sources = [{"config": {"topic": "a"}}, {"config": {"topic": "a"}}]
+    assert kafka_topics_from_sources(sources, "a") == ["a"]
+
+
+def test_kafka_topics_skips_blank():
+    sources = [{"config": {}}, {"config": {"topic": ""}}, {"config": {"topic": "x"}}]
+    assert kafka_topics_from_sources(sources, None) == ["x"]
+
+
+def test_kafka_topics_default_only():
+    assert kafka_topics_from_sources([], "default.topic") == ["default.topic"]

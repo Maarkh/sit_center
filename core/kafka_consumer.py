@@ -5,6 +5,7 @@ from kafka import KafkaConsumer
 from sqlalchemy import text
 from config import logger, mask_secrets
 from core.database import get_engine
+from core.data_sources import resolve_kafka_topics
 
 TOPIC = "sit_center.metrics"
 BATCH_SIZE = 100
@@ -12,9 +13,14 @@ POLL_TIMEOUT_MS = 1000
 
 
 class MetricKafkaConsumer:
-    def __init__(self, bootstrap_servers: str, group_id: str = "sit-center-ingest"):
+    def __init__(self, bootstrap_servers: str, group_id: str = "sit-center-ingest",
+                 tenant_id: str = "default"):
+        # Topics come from the data-source registry (enabled kafka sources) plus the
+        # default env topic for back-compat — so adding a kafka source in the admin UI
+        # subscribes the consumer to its topic on the next restart.
+        self.topics = resolve_kafka_topics(TOPIC, tenant_id) or [TOPIC]
         self.consumer = KafkaConsumer(
-            TOPIC,
+            *self.topics,
             bootstrap_servers=bootstrap_servers,
             group_id=group_id,
             value_deserializer=lambda m: json.loads(m.decode("utf-8")),
@@ -25,7 +31,7 @@ class MetricKafkaConsumer:
             max_poll_records=BATCH_SIZE,
         )
         self.engine = get_engine()
-        logger.info("Kafka consumer initialized for topic: %s", TOPIC)
+        logger.info("Kafka consumer initialized for topics: %s", self.topics)
 
     def run(self):
         logger.info("Kafka consumer started")

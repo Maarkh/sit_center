@@ -152,3 +152,30 @@ def active_sources(stype: str, tenant_id: str = "default") -> List[Dict[str, Any
         ).mappings().all()
     return [{"id": str(r["id"]), "name": r["name"], "type": r["type"], "config": r["config"] or {}}
             for r in rows]
+
+
+# ── kafka topic resolution (used by core/kafka_consumer.py) ──────────────────
+def kafka_topics_from_sources(sources: List[Dict[str, Any]], default_topic: str = None) -> List[str]:
+    """Distinct topics declared by kafka sources, plus the default env topic for
+    back-compat. Order-preserving, deduplicated."""
+    topics = [(s.get("config") or {}).get("topic") for s in sources]
+    if default_topic:
+        topics.append(default_topic)
+    seen, out = set(), []
+    for t in topics:
+        if t and t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
+
+
+def resolve_kafka_topics(default_topic: str = None, tenant_id: str = "default") -> List[str]:
+    """Topics the consumer should subscribe to: the enabled kafka sources' topics
+    unioned with the default env topic. Falls back to just the default if the
+    registry can't be read (old deploy / DB down at startup)."""
+    try:
+        sources = active_sources("kafka", tenant_id)
+    except Exception as e:
+        logger.warning("kafka source registry unavailable, using default topic: %s", e)
+        sources = []
+    return kafka_topics_from_sources(sources, default_topic)
