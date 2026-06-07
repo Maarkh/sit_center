@@ -22,41 +22,42 @@ class Metric:
             self.priority = int(self.priority)
 
 
-def get_config_service():
-    """Ленивая загрузка config_service"""
-    from core import config_service
-    return config_service
-
-def load_metrics_from_db(force_refresh: bool = False) -> List[Metric]:
+def load_metrics_from_db(force_refresh: bool = False, tenant_id: str = "default") -> List[Metric]:
+    """Load active metrics from the canonical catalog (`metadata_metrics`) — the table
+    the admin Metric-catalog UI (M1) manages. Previously this read a legacy `metrics`
+    table via ConfigService, but that table is not in the schema, so alerts/ML saw
+    nothing and metrics created in the UI were invisible to the engines. Maps
+    metric_name→column, default_threshold→threshold; priority/weight are unused by any
+    consumer and default to 1.
     """
-    Загружает активные метрики из БД через универсальный ConfigService.
-    Использует кэширование Redis.
-    """
+    from sqlalchemy import text
+    from core.database import get_engine
 
     try:
-        # Получаем сырые данные из универсального сервиса
-        raw_metrics = get_config_service().get("metrics") # type: ignore
+        with get_engine().connect() as conn:
+            rows = conn.execute(
+                text("SELECT metric_name, display_name, default_threshold "
+                     "FROM metadata_metrics WHERE is_active = true AND tenant_id = :tid "
+                     "ORDER BY metric_name"),
+                {"tid": tenant_id},
+            ).mappings().all()
 
-        # Фильтруем только активные и конвертируем в объекты Metric
-        metrics = []
-        for row in raw_metrics:
-            if not row.get("is_active", True):
-                continue
-            metric = Metric(
-                column=row["column_name"],
-                display_name=row["display_name"],
-                threshold=row["threshold"],
-                priority=row["priority"],
-                weight=row.get("weight", 1.0),
-                is_active=True
+        metrics = [
+            Metric(
+                column=r["metric_name"],
+                display_name=r["display_name"],
+                threshold=int(r["default_threshold"]) if r["default_threshold"] is not None else 0,
+                priority=1,
+                weight=1.0,
+                is_active=True,
             )
-            metrics.append(metric)
-
-        logger.info(f"✅ Загружено {len(metrics)} активных метрик через ConfigService")
+            for r in rows
+        ]
+        logger.info(f"✅ Загружено {len(metrics)} активных метрик из metadata_metrics")
         return metrics
 
     except Exception as e:
-        logger.error(f"❌ Ошибка загрузки метрик через ConfigService: {mask_secrets(str(e))}")
+        logger.error(f"❌ Ошибка загрузки метрик из metadata_metrics: {mask_secrets(str(e))}")
         # Fallback — минимальный набор
         return [
             Metric(
