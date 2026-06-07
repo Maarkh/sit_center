@@ -11,6 +11,7 @@ The corridor classification is pure (classify_breach / breach_severity) so it is
 unit-tested without a database. The evaluation loop is meant to run from a Celery
 beat task (see core/dss_tasks.py).
 """
+import os
 from datetime import datetime, timezone
 from typing import Optional, Dict
 from sqlalchemy import text
@@ -18,8 +19,10 @@ from sqlalchemy import text
 from core.database import get_engine
 from config import logger, mask_secrets
 
-# Window over which an indicator's current value is averaged (minutes).
-WINDOW_MINUTES = 5
+# Window over which an indicator's current value is averaged (minutes). Configurable
+# via EVAL_WINDOW_MIN — a shorter window reacts to brief spikes faster (the demo uses
+# 1); the default 5 smooths noise for production.
+WINDOW_MINUTES = int(os.environ.get("EVAL_WINDOW_MIN", "5"))
 
 
 def classify_breach(

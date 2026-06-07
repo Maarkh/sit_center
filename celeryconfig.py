@@ -1,5 +1,10 @@
 # 📄 celeryconfig.py (новый файл)
+import os
 from celery.schedules import crontab
+
+# Indicator evaluation cadence (seconds). Default 120s for production; the demo sets
+# EVAL_EVERY_SECONDS=20 so brief spikes are caught quickly (paired with EVAL_WINDOW_MIN).
+_EVAL_EVERY_SECONDS = float(os.environ.get("EVAL_EVERY_SECONDS", "120"))
 
 beat_schedule = {
     'ml-anomaly-10min': {
@@ -28,7 +33,7 @@ beat_schedule = {
     # DSS M3: evaluate indicators against their corridor + maintain chronicles.
     'evaluate-indicators-2min': {
         'task': 'core.dss_tasks.evaluate_indicators_task',
-        'schedule': crontab(minute='*/2')
+        'schedule': _EVAL_EVERY_SECONDS
     },
     # DSS M8: escalate process steps that are past their SLA deadline.
     'check-process-step-sla-5min': {
