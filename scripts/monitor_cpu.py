@@ -20,7 +20,12 @@ Prereqs: project env exported (DATABASE_URL, REDIS_*, …) and `PYTHONPATH=.`.
 
     PYTHONPATH=. python scripts/monitor_cpu.py
 
-Env knobs: SAMPLE_SECONDS (5) — base tick / default host_agent interval.
+By default it serves EVERY active tenant (SELECT id FROM tenants WHERE is_active),
+reading each tenant's enabled sources and writing rows under that tenant_id. Set
+COLLECTOR_TENANT to pin it to a single tenant.
+
+Env knobs: SAMPLE_SECONDS (5) — base tick / default host_agent interval;
+           COLLECTOR_TENANT (unset) — collect only this tenant instead of all.
 """
 import os
 import time
@@ -28,10 +33,17 @@ import time
 from sqlalchemy import text
 
 from core.database import get_engine
-from core.data_sources import active_sources, collect_host_agent, collect_http_pull
+from core.data_sources import (
+    active_sources, active_tenant_ids, collect_host_agent, collect_http_pull,
+)
 
 SAMPLE = int(os.environ.get("SAMPLE_SECONDS", "5"))
-TENANT = os.environ.get("COLLECTOR_TENANT", "default")
+# Single-tenant override; when unset the collector serves every active tenant.
+TENANT_OVERRIDE = os.environ.get("COLLECTOR_TENANT")
+
+
+def _tenants():
+    return [TENANT_OVERRIDE] if TENANT_OVERRIDE else active_tenant_ids()
 
 _INSERT = text(
     "INSERT INTO canonical_metrics (metric_name, value, timestamp, dimensions, tags, source, tenant_id) "
@@ -39,17 +51,22 @@ _INSERT = text(
 )
 
 
-def _gather(http_last):
-    """Collect one round from the registry. Returns (rows, base_tick) where rows is
-    a list of (metric_name, value, source_name)."""
+def _gather(http_last, tenant):
+    """Collect one round from the registry for a single tenant. Returns
+    (rows, base_tick) where rows is a list of (metric_name, value, source_name).
+    http_last is keyed by (tenant, source_id) so each tenant's http_pull cadence
+    is tracked independently."""
     rows = []
-    host_sources = active_sources("host_agent", TENANT)
+    host_sources = active_sources("host_agent", tenant)
     if host_sources:
         for s in host_sources:
             for m, v in collect_host_agent(s["config"]):
                 rows.append((m, v, s["name"]))
         ticks = [int(s["config"].get("sample_seconds", SAMPLE)) for s in host_sources]
         base_tick = max(1, min(ticks)) if ticks else SAMPLE
+    elif not TENANT_OVERRIDE and tenant != "default":
+        # extra tenants with no host_agent source contribute nothing on their own
+        base_tick = SAMPLE
     else:
         # no source configured → keep the lights on with the classic host metrics
         for m, v in collect_host_agent({"metrics": ["cpu_usage", "mem_usage"]}):
@@ -57,15 +74,16 @@ def _gather(http_last):
         base_tick = SAMPLE
 
     now = time.monotonic()
-    for s in active_sources("http_pull", TENANT):
+    for s in active_sources("http_pull", tenant):
         interval = int(s["config"].get("interval_seconds", 30))
-        if now - http_last.get(s["id"], 0.0) >= interval:
-            http_last[s["id"]] = now
+        key = (tenant, s["id"])
+        if now - http_last.get(key, 0.0) >= interval:
+            http_last[key] = now
             try:
                 for m, v in collect_http_pull(s["config"]):
                     rows.append((m, v, s["name"]))
             except Exception as e:
-                print(f"⚠️  http_pull '{s['name']}' failed: {e}")
+                print(f"⚠️  http_pull '{s['name']}' (tenant={tenant}) failed: {e}")
     return rows, base_tick
 
 
@@ -73,21 +91,24 @@ def main():
     import psutil
     eng = get_engine()
     psutil.cpu_percent(interval=None)  # prime non-blocking cpu sampling
-    print(f"📈 collector reading data_sources (tenant={TENANT}) → canonical_metrics. "
+    scope = TENANT_OVERRIDE or "all active tenants"
+    print(f"📈 collector reading data_sources ({scope}) → canonical_metrics. "
           f"DSS processing runs in Celery beat/worker. Ctrl-C to stop.")
     http_last: dict = {}
     while True:
-        base_tick = SAMPLE
+        ticks = []
         try:
-            rows, base_tick = _gather(http_last)
-            if rows:
-                with eng.begin() as c:
-                    for m, v, src in rows:
-                        c.execute(_INSERT, {"m": m, "v": float(v), "s": src, "t": TENANT})
-                print(", ".join(f"{m}={v:.1f}@{src}" for m, v, src in rows))
+            for tenant in _tenants():
+                rows, base_tick = _gather(http_last, tenant)
+                ticks.append(base_tick)
+                if rows:
+                    with eng.begin() as c:
+                        for m, v, src in rows:
+                            c.execute(_INSERT, {"m": m, "v": float(v), "s": src, "t": tenant})
+                    print(f"[{tenant}] " + ", ".join(f"{m}={v:.1f}@{src}" for m, v, src in rows))
         except Exception as e:
             print(f"⚠️  collect round failed: {e}")
-        time.sleep(base_tick)
+        time.sleep(min(ticks) if ticks else SAMPLE)
 
 
 if __name__ == "__main__":

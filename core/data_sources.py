@@ -154,6 +154,18 @@ def active_sources(stype: str, tenant_id: str = "default") -> List[Dict[str, Any
             for r in rows]
 
 
+def active_tenant_ids() -> List[str]:
+    """Active tenant ids, falling back to ['default'] if the tenants table is absent
+    or unreadable. Mirrors the Celery tasks' tenant loop (core/ml_tasks.py,
+    core/dss_tasks.py) without importing Celery — so the collector can reuse it."""
+    try:
+        with get_engine().connect() as conn:
+            rows = conn.execute(text("SELECT id FROM tenants WHERE is_active = true")).scalars().all()
+        return list(rows) or ["default"]
+    except Exception:
+        return ["default"]
+
+
 # ── kafka topic resolution (used by core/kafka_consumer.py) ──────────────────
 def kafka_topics_from_sources(sources: List[Dict[str, Any]], default_topic: str = None) -> List[str]:
     """Distinct topics declared by kafka sources, plus the default env topic for
