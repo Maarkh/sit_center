@@ -10,7 +10,10 @@ from sqlalchemy import text
 from core.database import get_engine
 from config import logger
 
-SOURCE_TYPES = ["host_agent", "http_pull", "kafka"]
+SOURCE_TYPES = ["host_agent", "http_pull", "kafka", "http_push"]
+
+# external agents POST to this path with the source's api_key in the X-API-KEY header
+INGEST_PATH = "/api/v1/ingest/metrics"
 
 # config keys whose values are masked on read and preserved-on-"***" on update
 SECRET_KEYS = {"token", "password", "api_key", "secret", "auth_token", "sasl_password"}
@@ -134,6 +137,10 @@ def probe(stype: str, config: Dict[str, Any]) -> Dict[str, Any]:
             # We don't open a broker connection here (it may be disabled in this env);
             # the consumer picks the topic up from the registry when KAFKA_ENABLED.
             return {"ok": True, "sample": {"topic": topic}}
+        if stype == "http_push":
+            # inbound source — nothing to call; just report readiness
+            return {"ok": True, "sample": {"api_key_set": bool(config.get("api_key")),
+                                           "endpoint": INGEST_PATH}}
         return {"ok": False, "error": f"unknown type {stype}"}
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -191,3 +198,64 @@ def resolve_kafka_topics(default_topic: str = None, tenant_id: str = "default") 
         logger.warning("kafka source registry unavailable, using default topic: %s", e)
         sources = []
     return kafka_topics_from_sources(sources, default_topic)
+
+
+# ── http_push ingestion (used by api/routes/ingestion.py) ────────────────────
+def find_source_by_api_key(api_key: str):
+    """Locate the enabled http_push source whose config.api_key matches. The key
+    identifies both the tenant and the source. Returns {id, tenant_id, name} or None."""
+    if not api_key:
+        return None
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT id, tenant_id, name FROM data_sources "
+                 "WHERE type = 'http_push' AND enabled = true AND config->>'api_key' = :k LIMIT 1"),
+            {"k": api_key},
+        ).mappings().first()
+    if not row:
+        return None
+    return {"id": str(row["id"]), "tenant_id": row["tenant_id"], "name": row["name"]}
+
+
+# Use CAST(... AS ...) not the ':: ' operator — SQLAlchemy text() mis-parses a bind
+# param immediately followed by '::', leaving it unconverted (psycopg2 syntax error).
+_METRIC_INSERT = text(
+    "INSERT INTO canonical_metrics (metric_name, value, timestamp, dimensions, tags, source, tenant_id) "
+    "VALUES (:metric_name, :value, COALESCE(CAST(:timestamp AS timestamptz), NOW()), "
+    "CAST(:dimensions AS jsonb), CAST(:tags AS jsonb), :source, :tenant_id)"
+)
+
+
+def build_metric_rows(points, source_name: str, tenant_id: str) -> List[Dict[str, Any]]:
+    """Shape ingested points into canonical_metrics insert params. Accepts dicts or
+    objects exposing metric_name/value/timestamp/dimensions/tags."""
+    import json
+
+    def field(p, k):
+        return p.get(k) if isinstance(p, dict) else getattr(p, k, None)
+
+    rows = []
+    for p in points:
+        rows.append({
+            "metric_name": field(p, "metric_name"),
+            "value": float(field(p, "value")),
+            "timestamp": field(p, "timestamp"),
+            "dimensions": json.dumps(field(p, "dimensions") or {}),
+            "tags": json.dumps(field(p, "tags") or {}),
+            "source": source_name,
+            "tenant_id": tenant_id,
+        })
+    return rows
+
+
+def insert_metrics(points, source_name: str, tenant_id: str) -> int:
+    """Bulk-insert ingested points into canonical_metrics under the given source name
+    and tenant. Returns the number of rows written."""
+    rows = build_metric_rows(points, source_name, tenant_id)
+    if not rows:
+        return 0
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.execute(_METRIC_INSERT, rows)
+    return len(rows)

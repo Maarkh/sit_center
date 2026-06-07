@@ -3,6 +3,7 @@
 # fields (tokens/passwords) are masked on read and preserved on update when the
 # client sends them back as "***" — same contract as notification channels.
 import json
+import secrets
 from uuid import UUID
 from typing import List, Dict, Any
 
@@ -79,6 +80,13 @@ def list_sources(current_user: TokenData = Depends(require_permission("read:metr
 
 @router.post("", response_model=SourceRead, status_code=201)
 def create_source(data: SourceCreate, current_user: TokenData = Depends(require_permission("write:metrics"))):
+    config = dict(data.config or {})
+    # http_push sources authenticate inbound pushes by api_key; generate a strong one
+    # when the admin didn't supply it, and reveal it ONCE in this response.
+    revealed_key = None
+    if data.type == "http_push" and not config.get("api_key"):
+        revealed_key = secrets.token_urlsafe(32)
+        config["api_key"] = revealed_key
     engine = get_engine()
     try:
         with engine.begin() as conn:
@@ -87,14 +95,18 @@ def create_source(data: SourceCreate, current_user: TokenData = Depends(require_
                         VALUES (:tid, :name, :type, :config, :enabled)
                         RETURNING id, name, type, config, enabled"""),
                 {"tid": current_user.tenant_id, "name": data.name, "type": data.type,
-                 "config": json.dumps(data.config), "enabled": data.enabled},
+                 "config": json.dumps(config), "enabled": data.enabled},
             ).mappings().first()
     except Exception as e:
         # most likely the UNIQUE(tenant_id, name) constraint
         logger.warning("create_source failed: %s", mask_secrets(str(e)))
         raise HTTPException(400, "Could not create source (duplicate name?)")
     log_audit(current_user.username, current_user.tenant_id, "create", "data_source", resource_id=str(row["id"]))
-    return _row(row)
+    result = _row(row)
+    if revealed_key:
+        # one-time reveal of the auto-generated key; every later read masks it
+        result.config = {**result.config, "api_key": revealed_key}
+    return result
 
 
 @router.put("/{source_id}", response_model=SourceRead)

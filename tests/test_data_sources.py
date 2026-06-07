@@ -3,6 +3,7 @@ import pytest
 
 from core.data_sources import (
     _dig, collect_host_agent, probe, HOST_METRICS, kafka_topics_from_sources,
+    build_metric_rows, find_source_by_api_key, SOURCE_TYPES,
 )
 from api.routes.data_sources import _mask, _merge_secrets, MASK, SourceCreate
 
@@ -85,9 +86,42 @@ def test_source_create_rejects_bad_type():
 
 
 def test_source_create_accepts_known_types():
-    for t in ("host_agent", "http_pull", "kafka"):
+    for t in ("host_agent", "http_pull", "kafka", "http_push"):
         s = SourceCreate(name="x", type=t, config={})
         assert s.type == t
+
+
+# ── http_push ───────────────────────────────────────────────────────────────
+def test_http_push_in_source_types():
+    assert "http_push" in SOURCE_TYPES
+
+
+def test_probe_http_push_reports_readiness():
+    res = probe("http_push", {"api_key": "k"})
+    assert res["ok"] is True
+    assert res["sample"]["api_key_set"] is True
+    assert res["sample"]["endpoint"].endswith("/ingest/metrics")
+    assert probe("http_push", {})["sample"]["api_key_set"] is False
+
+
+def test_find_source_by_api_key_empty_returns_none():
+    assert find_source_by_api_key("") is None
+    assert find_source_by_api_key(None) is None
+
+
+def test_mask_hides_api_key():
+    assert _mask({"api_key": "secret", "url": "u"})["api_key"] == MASK
+
+
+def test_build_metric_rows_shapes_points():
+    pts = [{"metric_name": "m1", "value": 1, "dimensions": {"r": "x"}},
+           {"metric_name": "m2", "value": 2.5}]
+    rows = build_metric_rows(pts, "Ext", "default")
+    assert len(rows) == 2
+    assert rows[0]["metric_name"] == "m1" and rows[0]["value"] == 1.0
+    assert rows[0]["source"] == "Ext" and rows[0]["tenant_id"] == "default"
+    assert rows[0]["dimensions"] == '{"r": "x"}'   # json-encoded
+    assert rows[1]["tags"] == "{}"                   # default empty
 
 
 # ── kafka topic resolution ──────────────────────────────────────────────────

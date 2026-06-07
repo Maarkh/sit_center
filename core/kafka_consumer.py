@@ -91,11 +91,13 @@ class MetricKafkaConsumer:
     def _bulk_insert(self, batch: List[Dict[str, Any]]):
         if not batch:
             return
+        # CAST(... AS ...) not '::' — SQLAlchemy text() mis-parses a bind param
+        # immediately followed by '::', producing a psycopg2 syntax error.
         insert_sql = text("""
             INSERT INTO canonical_metrics (metric_name, value, timestamp, dimensions, tags, source)
             VALUES (:metric_name, :value,
-                    COALESCE(:timestamp::timestamptz, NOW()),
-                    :dimensions::jsonb, :tags::jsonb, :source)
+                    COALESCE(CAST(:timestamp AS timestamptz), NOW()),
+                    CAST(:dimensions AS jsonb), CAST(:tags AS jsonb), :source)
         """)
         # Let exceptions propagate: the caller relies on a raised error to skip
         # the offset commit. Swallowing here would commit offsets for data that

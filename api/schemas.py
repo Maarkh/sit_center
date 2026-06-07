@@ -25,6 +25,18 @@ class MetricRead(MetricCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+# --- Push ingestion (http_push data source) ---
+class MetricPointIn(BaseModel):
+    metric_name: str = Field(..., min_length=1, pattern=r"^[a-zA-Z0-9_\-\.]+$")
+    value: float
+    timestamp: Optional[datetime] = None  # defaults to NOW() on insert
+    dimensions: Dict[str, str] = Field(default_factory=dict)
+    tags: Dict[str, str] = Field(default_factory=dict)
+
+class MetricBatchIn(BaseModel):
+    metrics: List[MetricPointIn] = Field(..., min_length=1, max_length=1000)
+
+
 # --- Dimensions ---
 class DimensionCreate(BaseModel):
     dimension_key: str = Field(..., min_length=1, pattern=r"^[a-zA-Z0-9_\-]+$")
