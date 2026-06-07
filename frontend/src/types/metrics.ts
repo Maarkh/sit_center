@@ -10,6 +10,16 @@ export interface MetricRead {
   updated_at: string;
 }
 
+export interface MetricCreate {
+  metric_name: string;
+  display_name: string;
+  description?: string | null;
+  unit: string;
+  default_threshold: number | null;
+  default_critical_threshold: number | null;
+  is_active: boolean;
+}
+
 export interface DataPoint {
   timestamp: string;
   value: number;

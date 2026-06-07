@@ -7,6 +7,8 @@ import NotificationsTab from './Notifications/NotificationsTab';
 import DependenciesTab from './Dependencies/DependenciesTab';
 import IndicatorsTab from './Indicators/IndicatorsTab';
 import PlaybooksTab from './Playbooks/PlaybooksTab';
+import MetricsTab from './Metrics/MetricsTab';
+import DataSourcesTab from './DataSources/DataSourcesTab';
 import { useTranslation } from 'react-i18next';
 
 export default function SettingsPage() {
@@ -15,6 +17,8 @@ export default function SettingsPage() {
   return (
     <Tabs
       items={[
+        { key: 'sources', label: t('dataSrc.tab', 'Источники'), children: <DataSourcesTab /> },
+        { key: 'metrics', label: t('metricCat.tab', 'Каталог метрик'), children: <MetricsTab /> },
         { key: 'indicators', label: t('settingsDss.indicators'), children: <IndicatorsTab /> },
         { key: 'playbooks', label: t('settingsDss.playbooks'), children: <PlaybooksTab /> },
         { key: 'rules', label: t('settings.alert_rules'), children: <RulesTab /> },
