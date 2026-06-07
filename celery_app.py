@@ -8,7 +8,17 @@ from celery.signals import worker_shutting_down
 def make_celery(app_name=__name__):
     from config import settings
 
-    if settings.REDIS_URL:
+    sentinel_opts = {}
+    if settings.REDIS_SENTINELS:
+        # HA broker/backend via Redis Sentinel: sentinel://...;sentinel://... with the
+        # master name carried in transport options (Celery discovers the master).
+        pwd = quote_plus(settings.REDIS_PASSWORD) if settings.REDIS_PASSWORD else ""
+        nodes = [h.strip() for h in settings.REDIS_SENTINELS.split(",") if h.strip()]
+        redis_url = ";".join(f"sentinel://:{pwd}@{n}" for n in nodes)
+        sentinel_opts = {"master_name": settings.REDIS_MASTER_NAME}
+        if settings.REDIS_SENTINEL_PASSWORD:
+            sentinel_opts["sentinel_kwargs"] = {"password": settings.REDIS_SENTINEL_PASSWORD}
+    elif settings.REDIS_URL:
         redis_url = settings.REDIS_URL
     else:
         pwd = quote_plus(settings.REDIS_PASSWORD) if settings.REDIS_PASSWORD else ""
@@ -37,6 +47,9 @@ def make_celery(app_name=__name__):
             'core.ml_tasks.*': {'queue': 'ml'},
         },
     )
+    if sentinel_opts:
+        celery.conf.broker_transport_options = sentinel_opts
+        celery.conf.result_backend_transport_options = sentinel_opts
     return celery
 
 def get_beat_schedule():

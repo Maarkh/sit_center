@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     REDIS_DB: int = Field(0) # type: ignore
     REDIS_PASSWORD: Optional[str] = Field(None) # type: ignore
     REDIS_URL: Optional[str] = Field(None) # type: ignore
+    # --- Redis Sentinel (HA). When REDIS_SENTINELS is set, clients discover the
+    # current master via Sentinel instead of connecting to REDIS_HOST directly.
+    # Format: "host1:26379,host2:26379,host3:26379".
+    REDIS_SENTINELS: Optional[str] = Field(None)  # type: ignore
+    REDIS_MASTER_NAME: str = Field("mymaster")  # type: ignore
+    REDIS_SENTINEL_PASSWORD: Optional[str] = Field(None)  # type: ignore
 
     # --- Пути ---
     data_regions_path: Path = PROJECT_ROOT / "data" / "regions.csv"
@@ -208,7 +214,30 @@ def get_redis():
             return _redis_client
             
         try:
-            if settings.REDIS_URL:
+            if settings.REDIS_SENTINELS:
+                # HA: discover the current master through Sentinel.
+                from redis.sentinel import Sentinel
+                nodes = [(h.split(":")[0], int(h.split(":")[1]))
+                         for h in settings.REDIS_SENTINELS.split(",") if h.strip()]
+                sentinel = Sentinel(
+                    nodes,
+                    socket_timeout=5,
+                    sentinel_kwargs=({"password": settings.REDIS_SENTINEL_PASSWORD}
+                                     if settings.REDIS_SENTINEL_PASSWORD else None),
+                    password=settings.REDIS_PASSWORD,
+                    decode_responses=True,
+                )
+                _redis_client = sentinel.master_for(
+                    settings.REDIS_MASTER_NAME,
+                    db=settings.REDIS_DB,
+                    password=settings.REDIS_PASSWORD,
+                    decode_responses=True,
+                    socket_connect_timeout=5,
+                    socket_timeout=5,
+                    retry_on_timeout=True,
+                    health_check_interval=30,
+                )
+            elif settings.REDIS_URL:
                 _redis_client = redis.from_url(
                     settings.REDIS_URL,
                     decode_responses=True,
