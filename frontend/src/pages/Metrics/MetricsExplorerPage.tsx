@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Select, DatePicker, Button, Space, Card, Empty } from 'antd';
 import { getMetricNames } from '@/api/metrics';
 import { predict } from '@/api/forecasts';
-import TimeSeriesChart from '@/components/Charts/TimeSeriesChart';
 import ForecastChart from '@/components/Charts/ForecastChart';
 import { useTranslation } from 'react-i18next';
 import type { ForecastResponse } from '@/types/forecasts';

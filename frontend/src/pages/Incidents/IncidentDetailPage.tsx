@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Button, Space, Input, message, Timeline, Spin, Tag, Divider } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
@@ -20,7 +20,7 @@ export default function IncidentDetailPage() {
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     try {
       const [inc, cmts] = await Promise.all([
@@ -32,9 +32,9 @@ export default function IncidentDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [load]);
 
   const handleStatusChange = async (newStatus: IncidentStatus) => {
     if (!incident) return;

@@ -12,6 +12,34 @@ const HOST_METRICS = ['cpu_usage', 'mem_usage', 'disk_usage', 'swap_usage', 'loa
 const TYPE_COLOR: Record<string, string> = { host_agent: 'blue', http_pull: 'purple', kafka: 'gold', http_push: 'magenta' };
 const INGEST_PATH = '/api/v1/ingest/metrics';
 
+// ready-made http_pull examples for public, key-less JSON APIs (quick-fill templates)
+const HTTP_PULL_PRESETS: { label: string; name: string; config: Record<string, unknown> }[] = [
+  {
+    label: 'Open-Meteo (погода)',
+    name: 'Open-Meteo Москва',
+    config: {
+      url: 'https://api.open-meteo.com/v1/forecast?latitude=55.75&longitude=37.62&current=temperature_2m,relative_humidity_2m',
+      method: 'GET', interval_seconds: 300,
+      metric_map: [
+        { json_path: 'current.temperature_2m', metric_name: 'weather_temp' },
+        { json_path: 'current.relative_humidity_2m', metric_name: 'weather_humidity' },
+      ],
+    },
+  },
+  {
+    label: 'Курсы ЦБ РФ',
+    name: 'ЦБ РФ курсы',
+    config: {
+      url: 'https://www.cbr-xml-daily.ru/daily_json.js',
+      method: 'GET', interval_seconds: 3600,
+      metric_map: [
+        { json_path: 'Valute.USD.Value', metric_name: 'fx_usd_rub' },
+        { json_path: 'Valute.EUR.Value', metric_name: 'fx_eur_rub' },
+      ],
+    },
+  },
+];
+
 export default function DataSourcesTab() {
   const { t } = useTranslation();
   const { message } = App.useApp();
@@ -47,6 +75,11 @@ export default function DataSourcesTab() {
     }
     form.setFieldsValue({ name: s.name, type: s.type, enabled: s.enabled, config: cfg });
     setModalOpen(true);
+  };
+
+  const applyPreset = (p: typeof HTTP_PULL_PRESETS[number]) => {
+    const cur = form.getFieldValue('name');
+    form.setFieldsValue({ name: cur || p.name, type: 'http_pull', config: p.config });
   };
 
   const handleSubmit = async () => {
@@ -176,6 +209,12 @@ export default function DataSourcesTab() {
 
           {type === 'http_pull' && (
             <>
+              <Space wrap style={{ marginBottom: 8 }}>
+                <span style={{ color: 'var(--ant-color-text-secondary, #888)' }}>{t('dataSrc.presets', 'Пресеты:')}</span>
+                {HTTP_PULL_PRESETS.map((p) => (
+                  <Button key={p.label} size="small" onClick={() => applyPreset(p)}>{p.label}</Button>
+                ))}
+              </Space>
               <Form.Item name={['config', 'url']} label="URL" rules={[{ required: true }]}>
                 <Input placeholder="https://host/metrics.json" />
               </Form.Item>

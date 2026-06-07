@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Table, Select, Input, Space, Card } from 'antd';
 import { listAuditLogs } from '@/api/audit';
 import { formatDate } from '@/utils/formatters';
@@ -13,12 +13,12 @@ export default function AuditTab() {
   const [username, setUsername] = useState<string | undefined>();
   const { t } = useTranslation();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try { setLogs(await listAuditLogs({ action, resource_type: resourceType, username, limit: 100 })); } finally { setLoading(false); }
-  };
+  }, [action, resourceType, username]);
 
-  useEffect(() => { fetchData(); }, [action, resourceType, username]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const columns = [
     { title: t('audit.time'), dataIndex: 'timestamp', key: 'timestamp', render: formatDate, width: 180 },

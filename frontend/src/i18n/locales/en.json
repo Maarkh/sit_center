@@ -368,7 +368,8 @@
     "apiKey": "API key",
     "keyAutogen": "Leave empty — a key is generated and shown once",
     "keyOnce": "API key created — copy it now (it won't be shown again)",
-    "pushHint": "Agents POST to {{path}} with an X-API-KEY header."
+    "pushHint": "Agents POST to {{path}} with an X-API-KEY header.",
+    "presets": "Presets:"
   },
   "settings": {
     "alert_rules": "Alert Rules",
