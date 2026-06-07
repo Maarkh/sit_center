@@ -5,7 +5,7 @@ from kafka import KafkaConsumer
 from sqlalchemy import text
 from config import logger, mask_secrets
 from core.database import get_engine
-from core.data_sources import resolve_kafka_topics
+from core.data_sources import resolve_kafka_topics, resolve_kafka_bootstrap
 
 TOPIC = "sit_center.metrics"
 BATCH_SIZE = 100
@@ -15,13 +15,14 @@ POLL_TIMEOUT_MS = 1000
 class MetricKafkaConsumer:
     def __init__(self, bootstrap_servers: str, group_id: str = "sit-center-ingest",
                  tenant_id: str = "default"):
-        # Topics come from the data-source registry (enabled kafka sources) plus the
-        # default env topic for back-compat — so adding a kafka source in the admin UI
-        # subscribes the consumer to its topic on the next restart.
+        # Topics + bootstrap come from the data-source registry (enabled kafka sources)
+        # with the env values as fallback — so adding a kafka source in the admin UI
+        # subscribes the consumer to its topic/cluster on the next restart.
         self.topics = resolve_kafka_topics(TOPIC, tenant_id) or [TOPIC]
+        bootstrap = resolve_kafka_bootstrap(bootstrap_servers, tenant_id) or bootstrap_servers
         self.consumer = KafkaConsumer(
             *self.topics,
-            bootstrap_servers=bootstrap_servers,
+            bootstrap_servers=bootstrap,
             group_id=group_id,
             value_deserializer=lambda m: json.loads(m.decode("utf-8")),
             # earliest: on a fresh group, replay the backlog rather than silently

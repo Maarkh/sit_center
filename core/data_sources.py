@@ -200,6 +200,30 @@ def resolve_kafka_topics(default_topic: str = None, tenant_id: str = "default") 
     return kafka_topics_from_sources(sources, default_topic)
 
 
+def kafka_bootstrap_from_sources(sources: List[Dict[str, Any]], default_servers: str = None) -> str:
+    """First non-empty bootstrap_servers declared by a kafka source, else the default.
+    A single consumer connects to ONE cluster, so if sources disagree the first wins
+    (logged)."""
+    declared = [(s.get("config") or {}).get("bootstrap_servers") for s in sources]
+    declared = [d for d in declared if d]
+    if not declared:
+        return default_servers
+    uniq = list(dict.fromkeys(declared))
+    if len(uniq) > 1:
+        logger.warning("multiple kafka bootstrap_servers declared %s; using %s", uniq, uniq[0])
+    return uniq[0]
+
+
+def resolve_kafka_bootstrap(default_servers: str = None, tenant_id: str = "default") -> str:
+    """Prefer a registry kafka source's bootstrap_servers over the env default."""
+    try:
+        sources = active_sources("kafka", tenant_id)
+    except Exception as e:
+        logger.warning("kafka source registry unavailable, using default bootstrap: %s", e)
+        sources = []
+    return kafka_bootstrap_from_sources(sources, default_servers)
+
+
 # ── http_push ingestion (used by api/routes/ingestion.py) ────────────────────
 def find_source_by_api_key(api_key: str):
     """Locate the enabled http_push source whose config.api_key matches. The key

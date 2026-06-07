@@ -1,21 +1,8 @@
 # core/ml_tasks.py
 from celery_app import celery_app
 from config import logger
-
-
-def _active_tenant_ids():
-    """Return active tenant ids, falling back to ['default'] if the table is absent."""
-    try:
-        from sqlalchemy import text
-        from core.database import get_engine
-        with get_engine().connect() as conn:
-            rows = conn.execute(
-                text("SELECT id FROM tenants WHERE is_active = true")
-            ).scalars().all()
-        return list(rows) or ["default"]
-    except Exception:
-        # No tenants table (dev DB) or DB error → evaluate the default tenant only.
-        return ["default"]
+# single source of truth for the active-tenant loop (was duplicated here)
+from core.data_sources import active_tenant_ids as _active_tenant_ids
 
 
 @celery_app.task(time_limit=60)

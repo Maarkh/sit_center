@@ -3,7 +3,7 @@ import pytest
 
 from core.data_sources import (
     _dig, collect_host_agent, probe, HOST_METRICS, kafka_topics_from_sources,
-    build_metric_rows, find_source_by_api_key, SOURCE_TYPES,
+    kafka_bootstrap_from_sources, build_metric_rows, find_source_by_api_key, SOURCE_TYPES,
 )
 from api.routes.data_sources import _mask, _merge_secrets, MASK, SourceCreate
 
@@ -142,3 +142,13 @@ def test_kafka_topics_skips_blank():
 
 def test_kafka_topics_default_only():
     assert kafka_topics_from_sources([], "default.topic") == ["default.topic"]
+
+
+def test_kafka_bootstrap_prefers_source():
+    sources = [{"config": {"bootstrap_servers": "broker:9092"}}]
+    assert kafka_bootstrap_from_sources(sources, "env:9092") == "broker:9092"
+
+
+def test_kafka_bootstrap_falls_back_to_default():
+    assert kafka_bootstrap_from_sources([], "env:9092") == "env:9092"
+    assert kafka_bootstrap_from_sources([{"config": {}}], "env:9092") == "env:9092"
