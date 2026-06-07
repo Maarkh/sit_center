@@ -1,4 +1,4 @@
-export type SourceType = 'host_agent' | 'http_pull' | 'kafka';
+export type SourceType = 'host_agent' | 'http_pull' | 'kafka' | 'http_push';
 
 export interface DataSource {
   id: string;

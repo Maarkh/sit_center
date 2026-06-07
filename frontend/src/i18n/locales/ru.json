@@ -364,7 +364,11 @@
     "addMapping": "Добавить соответствие",
     "topic": "Topic",
     "bootstrap": "Bootstrap servers",
-    "saslPassword": "SASL пароль"
+    "saslPassword": "SASL пароль",
+    "apiKey": "API-ключ",
+    "keyAutogen": "Оставьте пустым — ключ сгенерируется и покажется один раз",
+    "keyOnce": "API-ключ создан — скопируйте сейчас (больше не показывается)",
+    "pushHint": "Агенты шлют POST на {{path}} с заголовком X-API-KEY."
   },
   "settings": {
     "alert_rules": "Правила алертов",

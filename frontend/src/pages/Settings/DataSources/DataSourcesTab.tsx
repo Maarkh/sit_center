@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Popconfirm, Tag, App,
+  Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Popconfirm, Tag, Typography, App,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, SendOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { listSources, createSource, updateSource, deleteSource, testSource } from '@/api/sources';
 import type { DataSource, SourceCreate, SourceType } from '@/types/sources';
 
-const SOURCE_TYPES: SourceType[] = ['host_agent', 'http_pull', 'kafka'];
+const SOURCE_TYPES: SourceType[] = ['host_agent', 'http_pull', 'kafka', 'http_push'];
 const HOST_METRICS = ['cpu_usage', 'mem_usage', 'disk_usage', 'swap_usage', 'load1'];
-const TYPE_COLOR: Record<string, string> = { host_agent: 'blue', http_pull: 'purple', kafka: 'gold' };
+const TYPE_COLOR: Record<string, string> = { host_agent: 'blue', http_pull: 'purple', kafka: 'gold', http_push: 'magenta' };
+const INGEST_PATH = '/api/v1/ingest/metrics';
 
 export default function DataSourcesTab() {
   const { t } = useTranslation();
@@ -67,8 +68,26 @@ export default function DataSourcesTab() {
       name: values.name, type: values.type, config, enabled: values.enabled ?? true,
     };
     try {
-      if (editingId) await updateSource(editingId, payload);
-      else await createSource(payload);
+      if (editingId) {
+        await updateSource(editingId, payload);
+      } else {
+        const created = await createSource(payload);
+        const key = (created.config as Record<string, unknown>)?.api_key as string | undefined;
+        if (created.type === 'http_push' && key && key !== '***') {
+          Modal.success({
+            title: t('dataSrc.keyOnce', 'API-ключ создан — скопируйте сейчас (больше не показывается)'),
+            width: 540,
+            content: (
+              <div>
+                <Typography.Paragraph copyable={{ text: key }} code style={{ wordBreak: 'break-all' }}>{key}</Typography.Paragraph>
+                <div style={{ color: '#888' }}>
+                  {t('dataSrc.pushHint', 'Агенты шлют POST на {{path}} с заголовком X-API-KEY.', { path: INGEST_PATH })}
+                </div>
+              </div>
+            ),
+          });
+        }
+      }
       message.success(t('dataSrc.saved', 'Источник сохранён'));
       setModalOpen(false);
       fetchData();
@@ -102,6 +121,7 @@ export default function DataSourcesTab() {
         if (s.type === 'host_agent') return ((s.config.metrics as string[]) || []).join(', ');
         if (s.type === 'http_pull') return String(s.config.url ?? '');
         if (s.type === 'kafka') return String(s.config.topic ?? '');
+        if (s.type === 'http_push') return INGEST_PATH;
         return '';
       } },
     { title: t('dataSrc.enabled', 'Вкл'), dataIndex: 'enabled', key: 'enabled', width: 70,
@@ -210,6 +230,20 @@ export default function DataSourcesTab() {
                 tooltip={editingId ? t('dataSrc.secretHint', 'Оставьте «***», чтобы не менять') : undefined}>
                 <Input placeholder="optional" />
               </Form.Item>
+            </>
+          )}
+
+          {type === 'http_push' && (
+            <>
+              <Form.Item name={['config', 'api_key']} label={t('dataSrc.apiKey', 'API-ключ')}
+                tooltip={editingId
+                  ? t('dataSrc.secretHint', 'Оставьте «***», чтобы не менять')
+                  : t('dataSrc.keyAutogen', 'Оставьте пустым — ключ сгенерируется и покажется один раз')}>
+                <Input placeholder={editingId ? '***' : t('dataSrc.keyAutogen', 'авто')} />
+              </Form.Item>
+              <div style={{ color: 'var(--ant-color-text-secondary, #888)' }}>
+                {t('dataSrc.pushHint', 'Агенты шлют POST на {{path}} с заголовком X-API-KEY.', { path: INGEST_PATH })}
+              </div>
             </>
           )}
         </Form>
