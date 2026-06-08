@@ -12,25 +12,26 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      // Backend runs on :8010 locally (the meeting-ai project owns :8000 on this host).
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8010',
         changeOrigin: true,
       },
       '/token': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8010',
         changeOrigin: true,
       },
       // Cookie-auth endpoints: /auth/me (rehydrate), /auth/logout, OIDC callbacks.
       '/auth': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8010',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: 'ws://localhost:8010',
         ws: true,
       },
       '/health': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8010',
         changeOrigin: true,
       },
     },

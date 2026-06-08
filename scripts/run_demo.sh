@@ -4,7 +4,7 @@
 # Idempotent and reboot-safe:
 #   * recreates /tmp/demo.env if missing (it lives in tmpfs, so a host reboot wipes it);
 #   * brings up the test-db + test-redis containers (data persists in their volumes);
-#   * restarts backend (:8000) + celery worker/beat + collector + frontend (:3010).
+#   * restarts backend (:8010) + celery worker/beat + collector + frontend (:3010).
 #
 # Process kill patterns are UNIQUE to this project — they never touch the askbot
 # container or the meeting-ai project, which share generic `celery -A tasks.celery_app`
@@ -76,8 +76,8 @@ done
 sleep 3
 
 # 4) launch (each sources demo.env; detached so they survive this shell)
-log "launching backend :8000"
-setsid bash -c "set -a; . '$ENV_FILE'; set +a; export ADMIN_PASSWORD='$ADMIN_HASH'; exec '$VENV/uvicorn' api.main:app --host 0.0.0.0 --port 8000" \
+log "launching backend :8010"
+setsid bash -c "set -a; . '$ENV_FILE'; set +a; export ADMIN_PASSWORD='$ADMIN_HASH'; exec '$VENV/uvicorn' api.main:app --host 0.0.0.0 --port 8010" \
   > /tmp/backend.log 2>&1 < /dev/null & disown
 
 log "launching celery worker + beat"
@@ -94,7 +94,7 @@ setsid bash -c "cd '$ROOT/frontend' && exec npx vite --port 3010 --strictPort" \
 
 # 5) wait for the backend, then report
 log "waiting for readiness…"
-for _ in $(seq 1 40); do curl -sf http://localhost:8000/health >/dev/null 2>&1 && break; sleep 1; done
+for _ in $(seq 1 40); do curl -sf http://localhost:8010/health >/dev/null 2>&1 && break; sleep 1; done
 sleep 8
 
 rows="$(PGPASSWORD=test_pass psql -h localhost -p 5444 -U test_user -d test_db -tA \
@@ -102,7 +102,7 @@ rows="$(PGPASSWORD=test_pass psql -h localhost -p 5444 -U test_user -d test_db -
 
 echo
 echo "── status ──────────────────────────────────────────────"
-printf '  backend  :8000   http %s\n' "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health 2>/dev/null)"
+printf '  backend  :8010   http %s\n' "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8010/health 2>/dev/null)"
 printf '  frontend :3010   http %s\n' "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3010/ 2>/dev/null)"
 if grep -q 'ready\.' /tmp/celery.log 2>/dev/null; then echo '  celery           worker ready'; else echo '  celery           starting…'; fi
 printf '  collector        %s cpu/mem points in last 20s\n' "${rows:-0}"
