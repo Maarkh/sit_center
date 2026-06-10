@@ -16,6 +16,11 @@ depends_on = None
 
 
 def upgrade():
+    # The canonical schema is db/migrations/*.sql (001 already creates this table).
+    # Guard so running alembic against a SQL-provisioned DB doesn't collide.
+    insp = sa.inspect(op.get_bind())
+    if insp.has_table('metadata_ml_configs'):
+        return
     op.create_table(
         'metadata_ml_configs',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),

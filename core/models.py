@@ -1,6 +1,6 @@
 # core/models.py
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, Index, func, UUID, Boolean, Text, ForeignKey
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Float, Index, func, UUID, Boolean, Text, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 import enum
@@ -60,10 +60,12 @@ class UserRole(Base):
 class CanonicalMetric(Base):
     __tablename__ = "canonical_metrics"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    # Composite PK (id, timestamp) to match the SQL DDL — TimescaleDB requires the
+    # partitioning column in every unique index. BIGSERIAL → BigInteger.
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     metric_name = Column(String, nullable=False, index=True)
     value = Column(Float, nullable=False)
-    timestamp = Column(DateTime(timezone=True), nullable=False, default=func.now())
+    timestamp = Column(DateTime(timezone=True), primary_key=True, nullable=False, default=func.now())
     dimensions = Column(JSONB, nullable=False, default=dict)
     tags = Column(JSONB, nullable=False, default=dict)
     source = Column(String, nullable=True)
