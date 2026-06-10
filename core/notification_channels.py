@@ -113,11 +113,14 @@ def _send_email(cfg: dict, message: str, priority: str, event_type: str) -> None
 
 
 def _send_webhook(cfg: dict, message: str, priority: str, event_type: str) -> None:
+    from core.ssrf import guarded_request
+
     url = cfg.get("url")
     if not url:
         raise ValueError("webhook channel missing url")
-    resp = requests.post(
-        url,
+    # SSRF guard: validate the URL (and every redirect hop) resolves to a public host.
+    resp = guarded_request(
+        requests.request, "POST", url,
         json={"message": message, "priority": priority, "event_type": event_type},
         headers=cfg.get("headers") or {},
         timeout=(5, 10),

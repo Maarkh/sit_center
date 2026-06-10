@@ -89,6 +89,7 @@ def collect_http_pull(config: Dict[str, Any], timeout: int = 10) -> List[Tuple[s
     """GET config['url'] and extract each metric_map entry's json_path → value.
     metric_map: [{"json_path": "data.cpu", "metric_name": "ext_cpu"}, ...]."""
     import requests
+    from core.ssrf import guarded_request
 
     url = config.get("url")
     if not url:
@@ -98,7 +99,8 @@ def collect_http_pull(config: Dict[str, Any], timeout: int = 10) -> List[Tuple[s
     if token:
         headers.setdefault("Authorization", f"Bearer {token}")
     method = (config.get("method") or "GET").upper()
-    resp = requests.request(method, url, headers=headers, timeout=timeout)
+    # SSRF guard: validate the URL (and every redirect hop) is public http(s).
+    resp = guarded_request(requests.request, method, url, headers=headers, timeout=timeout)
     resp.raise_for_status()
     payload = resp.json()
 
