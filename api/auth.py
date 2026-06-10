@@ -109,6 +109,40 @@ def verify_token(token: str) -> TokenData:
         )
 
 
+# Sentinel: the DB query ran and confirmed there is no active user with that username.
+_USER_ABSENT = object()
+
+
+def _resolve_user_grants(username: str):
+    """Re-resolve a user's tenant/roles/permissions from the DB (the source of truth) so
+    a leaked or forged token cannot grant more than the user's CURRENT grants. Returns:
+      (tenant_id, roles, permissions) — an active DB user was found;
+      _USER_ABSENT — the query ran but no active user has that username;
+      None — DB error (caller falls back to the token claims, as before this change)."""
+    from sqlalchemy import text as sa_text
+    from core.database import get_engine
+    from config import logger, mask_secrets
+    try:
+        with get_engine().connect() as conn:
+            row = conn.execute(sa_text("""
+                SELECT u.tenant_id, u.is_active,
+                       COALESCE(jsonb_agg(DISTINCT r.name) FILTER (WHERE r.name IS NOT NULL), '[]'::jsonb) AS roles,
+                       COALESCE(jsonb_agg(DISTINCT perm) FILTER (WHERE perm IS NOT NULL), '[]'::jsonb) AS permissions
+                FROM users u
+                LEFT JOIN user_roles ur ON u.id = ur.user_id
+                LEFT JOIN roles r ON ur.role_id = r.id
+                LEFT JOIN LATERAL jsonb_array_elements_text(r.permissions) AS perm ON true
+                WHERE u.username = :username
+                GROUP BY u.tenant_id, u.is_active
+            """), {"username": username}).mappings().first()
+    except Exception as e:
+        logger.warning("auth re-resolve DB error (falling back to token claims): %s", mask_secrets(str(e)))
+        return None
+    if not row or not row["is_active"]:
+        return _USER_ABSENT
+    return row["tenant_id"], list(row["roles"] or []), list(row["permissions"] or [])
+
+
 def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme)) -> TokenData:
     # Prefer the Authorization header (programmatic clients / tests); fall back to
     # the httpOnly cookie set for the browser SPA.
@@ -120,4 +154,27 @@ def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_sch
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return verify_token(token)
+    td = verify_token(token)
+    # Under TESTING (and the local demo) tokens are env-admin / minted fixtures with no
+    # DB user — trust the claims. In production, re-resolve authz from the DB so the
+    # token's tenant_id/roles/permissions can't outlive a revocation or be forged.
+    if os.getenv("TESTING", "").lower() in ("1", "true"):
+        return td
+    grants = _resolve_user_grants(td.username)
+    if grants is None:
+        return td  # DB error → token claims (don't lock everyone out on a DB blip)
+    if grants is _USER_ABSENT:
+        # no active DB user → only the env-admin bootstrap account may proceed on claims
+        if td.username == settings.ADMIN_USERNAME and settings.ENV_ADMIN_ENABLED:
+            return td
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User no longer valid",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    tenant_id, roles, permissions = grants
+    return TokenData(
+        username=td.username,
+        scopes=["admin"] if "admin" in roles else [],
+        tenant_id=tenant_id, roles=roles, permissions=permissions,
+    )
