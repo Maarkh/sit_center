@@ -1,4 +1,5 @@
 # core/analytics_service.py
+import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from config import logger, mask_secrets
@@ -27,6 +28,11 @@ class AnalyticsService:
         allowed_aggs = {"avg", "sum", "min", "max", "count"}
         if aggregation not in allowed_aggs:
             aggregation = "avg"
+
+        # `interval` is interpolated into the ClickHouse query, so validate it HERE
+        # (not only at the route) — any internal caller is otherwise an injection vector.
+        if not re.fullmatch(r"\d+ (MINUTE|HOUR|DAY|WEEK|MONTH)", interval or ""):
+            interval = "1 HOUR"
 
         query = f"""
             SELECT
