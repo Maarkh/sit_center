@@ -46,6 +46,7 @@ class SourceRead(BaseModel):
 
 def _mask(config: dict) -> dict:
     out = dict(config or {})
+    out.pop("api_key_sha256", None)  # never expose the stored key hash on reads
     for k in SECRET_KEYS:
         if out.get(k):
             out[k] = MASK
@@ -59,6 +60,28 @@ def _merge_secrets(incoming: dict, existing: dict) -> dict:
         if out.get(k) == MASK:
             out[k] = (existing or {}).get(k, "")
     return out
+
+
+def _apply_http_push_key(config: dict, existing: dict, generate_if_missing: bool):
+    """http_push auth: store only the SHA-256 of the api key, never the plaintext.
+    A new plaintext key in `config['api_key']` rotates it; otherwise the existing hash
+    is preserved (and one is generated on create when none exists). Returns the config
+    (with `api_key_sha256`, no plaintext) and the plaintext to reveal once, or None."""
+    from core.data_sources import hash_api_key
+    out = dict(config or {})
+    plaintext = out.pop("api_key", None)  # plaintext is never persisted
+    revealed = None
+    if plaintext and plaintext != MASK:
+        revealed = plaintext
+        out["api_key_sha256"] = hash_api_key(plaintext)
+    else:
+        existing_hash = (existing or {}).get("api_key_sha256")
+        if existing_hash:
+            out["api_key_sha256"] = existing_hash
+        elif generate_if_missing:
+            revealed = secrets.token_urlsafe(32)
+            out["api_key_sha256"] = hash_api_key(revealed)
+    return out, revealed
 
 
 def _row(r) -> SourceRead:
@@ -81,12 +104,11 @@ def list_sources(current_user: TokenData = Depends(require_permission("read:metr
 @router.post("", response_model=SourceRead, status_code=201)
 def create_source(data: SourceCreate, current_user: TokenData = Depends(require_permission("write:metrics"))):
     config = dict(data.config or {})
-    # http_push sources authenticate inbound pushes by api_key; generate a strong one
-    # when the admin didn't supply it, and reveal it ONCE in this response.
+    # http_push sources authenticate inbound pushes by api_key; store only its hash and
+    # reveal the plaintext ONCE in this response (generated if the admin didn't supply one).
     revealed_key = None
-    if data.type == "http_push" and not config.get("api_key"):
-        revealed_key = secrets.token_urlsafe(32)
-        config["api_key"] = revealed_key
+    if data.type == "http_push":
+        config, revealed_key = _apply_http_push_key(config, {}, generate_if_missing=True)
     engine = get_engine()
     try:
         with engine.begin() as conn:
@@ -121,6 +143,9 @@ def update_source(source_id: UUID, data: SourceCreate,
         if not existing:
             raise HTTPException(404, "Source not found")
         merged = _merge_secrets(data.config, existing["config"] or {})
+        revealed_key = None
+        if data.type == "http_push":
+            merged, revealed_key = _apply_http_push_key(merged, existing["config"] or {}, generate_if_missing=False)
         row = conn.execute(
             text("""UPDATE data_sources SET
                         name = :name, type = :type, config = :config,
@@ -131,7 +156,10 @@ def update_source(source_id: UUID, data: SourceCreate,
              "config": json.dumps(merged), "enabled": data.enabled},
         ).mappings().first()
     log_audit(current_user.username, current_user.tenant_id, "update", "data_source", resource_id=str(source_id))
-    return _row(row)
+    result = _row(row)
+    if revealed_key:
+        result.config = {**result.config, "api_key": revealed_key}  # one-time reveal on rotation
+    return result
 
 
 @router.delete("/{source_id}", status_code=204)

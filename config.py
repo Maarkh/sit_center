@@ -130,6 +130,12 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = Field(...)     # type: ignore
     WEBHOOK_API_KEY: str = Field(...) # type: ignore
 
+    # --- Auth bootstrap ---
+    # Env-admin fallback on /token (ADMIN_USERNAME/ADMIN_PASSWORD → full admin). Needed
+    # to bootstrap the first admin / for the local demo; set ENV_ADMIN_ENABLED=false in
+    # production once a real DB admin exists — it is a standing cross-tenant superuser.
+    ENV_ADMIN_ENABLED: bool = Field(True) # type: ignore
+
     # --- Kafka ---
     KAFKA_BOOTSTRAP_SERVERS: str = Field("kafka:9092") # type: ignore
     KAFKA_ENABLED: bool = Field(False) # type: ignore

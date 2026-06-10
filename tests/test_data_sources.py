@@ -97,7 +97,7 @@ def test_http_push_in_source_types():
 
 
 def test_probe_http_push_reports_readiness():
-    res = probe("http_push", {"api_key": "k"})
+    res = probe("http_push", {"api_key_sha256": "deadbeef"})
     assert res["ok"] is True
     assert res["sample"]["api_key_set"] is True
     assert res["sample"]["endpoint"].endswith("/ingest/metrics")
@@ -107,6 +107,13 @@ def test_probe_http_push_reports_readiness():
 def test_find_source_by_api_key_empty_returns_none():
     assert find_source_by_api_key("") is None
     assert find_source_by_api_key(None) is None
+
+
+def test_hash_api_key_deterministic_sha256():
+    from core.data_sources import hash_api_key
+    import hashlib
+    assert hash_api_key("secret-key") == hashlib.sha256(b"secret-key").hexdigest()
+    assert len(hash_api_key("x")) == 64  # sha256 hex
 
 
 def test_mask_hides_api_key():

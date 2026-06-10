@@ -141,7 +141,7 @@ def probe(stype: str, config: Dict[str, Any]) -> Dict[str, Any]:
             return {"ok": True, "sample": {"topic": topic}}
         if stype == "http_push":
             # inbound source — nothing to call; just report readiness
-            return {"ok": True, "sample": {"api_key_set": bool(config.get("api_key")),
+            return {"ok": True, "sample": {"api_key_set": bool(config.get("api_key_sha256")),
                                            "endpoint": INGEST_PATH}}
         return {"ok": False, "error": f"unknown type {stype}"}
     except Exception as e:
@@ -227,8 +227,15 @@ def resolve_kafka_bootstrap(default_servers: str = None, tenant_id: str = "defau
 
 
 # ── http_push ingestion (used by api/routes/ingestion.py) ────────────────────
+def hash_api_key(key: str) -> str:
+    """SHA-256 of an http_push api key. Only the hash is stored; the plaintext is shown
+    once at creation and never persisted (so a DB dump / replica / log can't leak it)."""
+    import hashlib
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
 def find_source_by_api_key(api_key: str):
-    """Locate the enabled http_push source whose config.api_key matches. The key
+    """Locate the enabled http_push source whose stored api_key hash matches. The key
     identifies both the tenant and the source. Returns {id, tenant_id, name} or None."""
     if not api_key:
         return None
@@ -236,8 +243,8 @@ def find_source_by_api_key(api_key: str):
     with engine.connect() as conn:
         row = conn.execute(
             text("SELECT id, tenant_id, name FROM data_sources "
-                 "WHERE type = 'http_push' AND enabled = true AND config->>'api_key' = :k LIMIT 1"),
-            {"k": api_key},
+                 "WHERE type = 'http_push' AND enabled = true AND config->>'api_key_sha256' = :h LIMIT 1"),
+            {"h": hash_api_key(api_key)},
         ).mappings().first()
     if not row:
         return None

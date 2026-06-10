@@ -1,7 +1,7 @@
 # api/main.py
 import json
 import secrets
-from fastapi import FastAPI, Depends, Response, Request
+from fastapi import FastAPI, Depends, Response, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -244,7 +244,9 @@ def login(request: Request, response: Response, form_data: OAuth2PasswordRequest
         set_auth_cookies(response, db_result["token"])
         return {"access_token": db_result["token"], "token_type": "bearer"}
 
-    # 3) Env-based admin fallback
+    # 3) Env-based admin fallback (bootstrap only; disable in prod via ENV_ADMIN_ENABLED=false)
+    if not settings.ENV_ADMIN_ENABLED:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     token = try_env_admin_auth(form_data.username, form_data.password)
     log_audit(form_data.username, "default", "login", "session", ip_address=ip)
     set_auth_cookies(response, token)
