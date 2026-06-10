@@ -152,3 +152,27 @@ def healthcheck():
     return {"status": "ok"}
 
 
+# Self-monitoring: a beat-scheduled heartbeat is the deadman for the whole DSS loop —
+# if Celery beat hangs/dies, every scheduled task silently stops, so this key going stale
+# is the signal. The beat pod's liveness probe reads it; alert on its absence in prod.
+DLQ_DEPTH_WARN = 100
+
+
+@celery_app.task
+def beat_heartbeat():
+    try:
+        r = get_redis()
+        r.set("beat:heartbeat", datetime.now(timezone.utc).isoformat(), ex=180)
+        # surface notification DLQ growth (write+replay queue) as an alertable signal
+        try:
+            depth = r.xlen("dlq:notifications")
+            if depth and depth >= DLQ_DEPTH_WARN:
+                logger.warning("notification DLQ depth high: %d (>= %d)", depth, DLQ_DEPTH_WARN)
+            return {"heartbeat": True, "dlq_depth": int(depth or 0)}
+        except Exception:
+            return {"heartbeat": True}
+    except Exception:
+        logger.exception("beat_heartbeat failed")
+        return {"heartbeat": False}
+
+

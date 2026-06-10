@@ -17,6 +17,7 @@ spec:
         {{- include "sit-center.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: ml-worker
     spec:
+      serviceAccountName: {{ .Release.Name }}-sa
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -37,5 +38,12 @@ spec:
             {{- include "sit-center.env" . | nindent 12 }}
             - name: REDIS_URL
               value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          livenessProbe:
+            exec:
+              command: ["celery", "-A", "celery_app", "inspect", "ping", "-t", "10"]
+            initialDelaySeconds: 90
+            periodSeconds: 60
+            timeoutSeconds: 12
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.resources.mlWorker | nindent 12 }}

@@ -17,6 +17,7 @@ spec:
         {{- include "sit-center.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: celery-worker
     spec:
+      serviceAccountName: {{ .Release.Name }}-sa
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -36,6 +37,21 @@ spec:
             {{- include "sit-center.env" . | nindent 12 }}
             - name: REDIS_URL
               value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          # The worker responds to `inspect ping` only when it's connected to the broker
+          # and processing — a hung worker fails this and gets restarted.
+          readinessProbe:
+            exec:
+              command: ["celery", "-A", "tasks.celery_app", "inspect", "ping", "-t", "10"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 12
+          livenessProbe:
+            exec:
+              command: ["celery", "-A", "tasks.celery_app", "inspect", "ping", "-t", "10"]
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 12
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.resources.celeryWorker | nindent 12 }}
 ---
@@ -58,6 +74,7 @@ spec:
         {{- include "sit-center.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: celery-beat
     spec:
+      serviceAccountName: {{ .Release.Name }}-sa
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -75,6 +92,18 @@ spec:
             {{- include "sit-center.env" . | nindent 12 }}
             - name: REDIS_URL
               value: "redis://:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/0"
+          # Beat liveness uses the Redis heartbeat written by the beat-heartbeat task
+          # (core/dss_tasks): if beat hangs, the key expires and the pod is restarted.
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import os,redis,sys; sys.exit(0 if redis.from_url(os.environ['REDIS_URL']).get('beat:heartbeat') else 1)"
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 3
           resources:
             requests:
               cpu: 100m

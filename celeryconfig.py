@@ -26,6 +26,12 @@ beat_schedule = {
         'task': 'tasks.update_mv_data',
         'schedule': crontab(minute='*/10')
     },
+    # Self-monitoring deadman: refresh beat:heartbeat every 60s (TTL 180s). The beat
+    # pod's liveness probe + prod alerting watch this — if beat dies, the DSS loop stops.
+    'beat-heartbeat-60s': {
+        'task': 'tasks.beat_heartbeat',
+        'schedule': 60.0
+    },
     # Retired: classic rule detection (rule_engine → alert_events) is superseded by the
     # DSS indicator/corridor → deviation pipeline (evaluate-indicators-2min). The
     # rule_engine code stays for reference; it's simply no longer scheduled.
