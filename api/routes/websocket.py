@@ -3,7 +3,7 @@ import json
 import secrets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status, Depends
 from typing import List, Dict
-from api.auth import verify_token, get_current_user, TokenData
+from api.auth import get_current_user, TokenData
 from core.pubsub import subscribe_alerts
 from config import get_cache, logger, mask_secrets
 
@@ -86,13 +86,8 @@ def _resolve_ws_tenant(websocket: WebSocket):
             logger.warning("WS ticket lookup failed: %s", mask_secrets(str(e)))
         return None
 
-    # Backwards-compat: full JWT in the query (discouraged — prefer a ticket).
-    token = websocket.query_params.get("token")
-    if token:
-        try:
-            return verify_token(token).tenant_id
-        except Exception:
-            return None
+    # The full-JWT-in-?token= fallback was removed: it leaked the token into proxy
+    # logs / history. Clients must use the single-use ticket (POST /ws/ticket).
     return None
 
 

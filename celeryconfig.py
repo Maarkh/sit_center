@@ -7,14 +7,21 @@ from celery.schedules import crontab
 _EVAL_EVERY_SECONDS = float(os.environ.get("EVAL_EVERY_SECONDS", "120"))
 
 beat_schedule = {
-    'ml-anomaly-10min': {
-        'task': 'core.ml_tasks.run_ml_anomaly_check',
-        'schedule': crontab(minute='*/10')
-    },
-    'retrain-ml-models-daily': {
-        'task': 'core.ml_tasks.retrain_ml_models',
-        'schedule': crontab(hour=3, minute=0)
-    },
+    # DECOMMISSIONED: the legacy ml_anomaly detector is statistically unreliable —
+    # it scores in-sample (train == predict, no holdout/backtest), forces
+    # contamination=0.1 (a ~10% false-positive factory), percentile-clips the very
+    # outliers it hunts, and its confidence column mixes 3 incompatible/inverted
+    # formulas — so ml_anomalies.confidence is noise. DSS deviation/predictive engines
+    # supersede it. Re-enable only after a rebuild with a holdout split + calibrated
+    # threshold. (retrain only fed this detector, so it's parked too.)
+    # 'ml-anomaly-10min': {
+    #     'task': 'core.ml_tasks.run_ml_anomaly_check',
+    #     'schedule': crontab(minute='*/10')
+    # },
+    # 'retrain-ml-models-daily': {
+    #     'task': 'core.ml_tasks.retrain_ml_models',
+    #     'schedule': crontab(hour=3, minute=0)
+    # },
     'update-mv-10min': {
         'task': 'tasks.update_mv_data',
         'schedule': crontab(minute='*/10')
