@@ -13,6 +13,15 @@ from config import mask_secrets, logger
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
+PLATFORM_TENANT = "default"
+
+
+def _require_superadmin(current_user: TokenData) -> None:
+    """Tenant management is a platform-level operation: only an admin of the root
+    'default' tenant may list/create tenants. A tenant admin must not provision tenants."""
+    if current_user.tenant_id != PLATFORM_TENANT:
+        raise HTTPException(status_code=403, detail="Tenant management requires the platform (default) tenant")
+
 
 # --- Schemas ---
 
@@ -67,6 +76,7 @@ class UserRoleAssign(BaseModel):
 
 @router.get("/tenants", response_model=List[TenantRead], summary="List all tenants")
 def list_tenants(current_user: TokenData = Depends(require_role("admin"))):
+    _require_superadmin(current_user)
     engine = get_engine()
     with engine.connect() as conn:
         rows = conn.execute(text("SELECT id, name, is_active FROM tenants ORDER BY id")).mappings().all()
@@ -76,6 +86,7 @@ def list_tenants(current_user: TokenData = Depends(require_role("admin"))):
 @router.post("/tenants", response_model=TenantRead, status_code=status.HTTP_201_CREATED, summary="Create new tenant")
 @limiter.limit("10/minute")
 def create_tenant(request: Request, data: TenantCreate, current_user: TokenData = Depends(require_role("admin"))):
+    _require_superadmin(current_user)
     engine = get_engine()
     try:
         with engine.begin() as conn:
@@ -95,12 +106,13 @@ def create_tenant(request: Request, data: TenantCreate, current_user: TokenData 
 # --- Users ---
 
 @router.get("/users", response_model=List[UserRead], summary="List users in tenant")
-def list_users(tenant_id: str = "default", current_user: TokenData = Depends(require_role("admin"))):
+def list_users(current_user: TokenData = Depends(require_role("admin"))):
+    # always scoped to the caller's tenant (was an unvalidated query param → cross-tenant read)
     engine = get_engine()
     with engine.connect() as conn:
         rows = conn.execute(
             text("SELECT id, username, email, tenant_id, is_active, auth_provider FROM users WHERE tenant_id = :tid ORDER BY username"),
-            {"tid": tenant_id},
+            {"tid": current_user.tenant_id},
         ).mappings().all()
         return [UserRead(**row) for row in rows]
 
@@ -126,7 +138,8 @@ def create_user(request: Request, data: UserCreate, current_user: TokenData = De
                     "username": data.username,
                     "email": data.email,
                     "password_hash": password_hash,
-                    "tenant_id": data.tenant_id,
+                    # force the caller's tenant — never trust the body (cross-tenant write)
+                    "tenant_id": current_user.tenant_id,
                 },
             ).mappings().first()
             log_audit(current_user.username, current_user.tenant_id, "create", "user", resource_id=data.username)
@@ -141,12 +154,13 @@ def create_user(request: Request, data: UserCreate, current_user: TokenData = De
 # --- Roles ---
 
 @router.get("/roles", response_model=List[RoleRead], summary="List roles in tenant")
-def list_roles(tenant_id: str = "default", current_user: TokenData = Depends(require_role("admin"))):
+def list_roles(current_user: TokenData = Depends(require_role("admin"))):
+    # always scoped to the caller's tenant (was an unvalidated query param)
     engine = get_engine()
     with engine.connect() as conn:
         rows = conn.execute(
             text("SELECT id, name, tenant_id, permissions, description FROM roles WHERE tenant_id = :tid ORDER BY name"),
-            {"tid": tenant_id},
+            {"tid": current_user.tenant_id},
         ).mappings().all()
         return [RoleRead(**row) for row in rows]
 
@@ -166,7 +180,8 @@ def create_role(request: Request, data: RoleCreate, current_user: TokenData = De
                 """),
                 {
                     "name": data.name,
-                    "tenant_id": data.tenant_id,
+                    # force the caller's tenant — never trust the body
+                    "tenant_id": current_user.tenant_id,
                     "permissions": json.dumps(data.permissions),
                     "description": data.description,
                 },
@@ -188,6 +203,14 @@ def assign_role(request: Request, data: UserRoleAssign, current_user: TokenData 
     engine = get_engine()
     try:
         with engine.begin() as conn:
+            # both the user and the role must belong to the caller's tenant
+            owned = conn.execute(
+                text("SELECT (SELECT tenant_id FROM users WHERE id = :uid) AS ut, "
+                     "(SELECT tenant_id FROM roles WHERE id = :rid) AS rt"),
+                {"uid": data.user_id, "rid": data.role_id},
+            ).mappings().first()
+            if not owned or owned["ut"] != current_user.tenant_id or owned["rt"] != current_user.tenant_id:
+                raise HTTPException(403, "User and role must belong to your tenant")
             conn.execute(
                 text("INSERT INTO user_roles (user_id, role_id) VALUES (:uid, :rid) ON CONFLICT DO NOTHING"),
                 {"uid": data.user_id, "rid": data.role_id},
@@ -206,9 +229,11 @@ def assign_role(request: Request, data: UserRoleAssign, current_user: TokenData 
 def unassign_role(data: UserRoleAssign, current_user: TokenData = Depends(require_role("admin"))):
     engine = get_engine()
     with engine.begin() as conn:
+        # only touch an assignment whose user belongs to the caller's tenant
         conn.execute(
-            text("DELETE FROM user_roles WHERE user_id = :uid AND role_id = :rid"),
-            {"uid": data.user_id, "rid": data.role_id},
+            text("DELETE FROM user_roles WHERE user_id = :uid AND role_id = :rid "
+                 "AND (SELECT tenant_id FROM users WHERE id = :uid) = :tid"),
+            {"uid": data.user_id, "rid": data.role_id, "tid": current_user.tenant_id},
         )
     log_audit(current_user.username, current_user.tenant_id, "unassign_role", "user_role",
               resource_id=str(data.user_id), changes={"role_id": str(data.role_id)})

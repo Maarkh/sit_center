@@ -1,6 +1,25 @@
 # tests/test_admin_api.py
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
+from datetime import timedelta
+
+
+def _tenant_admin_headers(tenant_id: str):
+    """Admin token for a NON-platform tenant (to test the superadmin gate)."""
+    from api.auth import create_access_token
+    token = create_access_token(
+        data={"sub": "tadmin", "scopes": ["admin"], "tenant_id": tenant_id,
+              "roles": ["admin"], "permissions": ["admin:tenants", "admin:users"]},
+        expires_delta=timedelta(minutes=30),
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_tenant_admin_cannot_manage_tenants(api_client):
+    # a tenant-B admin must not list/create platform tenants (H-1 superadmin gate)
+    headers = _tenant_admin_headers("acme")
+    assert api_client.get("/admin/tenants", headers=headers).status_code == 403
+    assert api_client.post("/admin/tenants", json={"id": "x", "name": "X"}, headers=headers).status_code == 403
 
 
 def _mock_engine_with_rows(rows):
@@ -134,7 +153,8 @@ def test_create_role(api_client, auth_headers):
 # --- User-Role assignment ---
 
 def test_assign_role(api_client, auth_headers):
-    engine = _mock_engine_for_write()
+    # the ownership check requires the user + role to be in the caller's tenant (default)
+    engine = _mock_engine_for_write(returning_row={"ut": "default", "rt": "default"})
     with patch("api.routes.admin.get_engine", return_value=engine), \
          patch("api.routes.admin.log_audit"):
         response = api_client.post(
