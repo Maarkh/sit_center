@@ -19,8 +19,9 @@ from api.limiter import limiter
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-def _oidc_sync_user_and_perms(username: str, email: Optional[str], sub: str, roles: list) -> list:
-    """Sync the OIDC user row and resolve its permissions.
+def _oidc_sync_user_and_perms(username: str, email: Optional[str], sub: str, roles: list,
+                              tenant_id: str = "default") -> list:
+    """Sync the OIDC user row and resolve its permissions, in the given tenant.
 
     Synchronous DB work — call via run_in_threadpool so the awaited OIDC callback
     never blocks the event loop.
@@ -35,7 +36,7 @@ def _oidc_sync_user_and_perms(username: str, email: Optional[str], sub: str, rol
             conn.execute(
                 text("""
                     INSERT INTO users (username, email, tenant_id, auth_provider, external_id, is_active)
-                    VALUES (:username, :email, 'default', 'oidc', :sub, true)
+                    VALUES (:username, :email, :tenant_id, 'oidc', :sub, true)
                     ON CONFLICT (username) DO UPDATE SET
                         email = EXCLUDED.email,
                         auth_provider = 'oidc',
@@ -43,7 +44,7 @@ def _oidc_sync_user_and_perms(username: str, email: Optional[str], sub: str, rol
                         is_active = true,
                         updated_at = NOW()
                 """),
-                {"username": username, "email": email, "sub": sub},
+                {"username": username, "email": email, "sub": sub, "tenant_id": tenant_id},
             )
     except Exception as e:
         logger.warning("Failed to sync OIDC user: %s", e)
@@ -53,8 +54,8 @@ def _oidc_sync_user_and_perms(username: str, email: Optional[str], sub: str, rol
         with engine.connect() as conn:
             for role_name in roles:
                 r = conn.execute(
-                    text("SELECT permissions FROM roles WHERE name = :name AND tenant_id = 'default'"),
-                    {"name": role_name},
+                    text("SELECT permissions FROM roles WHERE name = :name AND tenant_id = :tenant_id"),
+                    {"name": role_name, "tenant_id": tenant_id},
                 ).mappings().first()
                 if r:
                     perms = r["permissions"]
@@ -62,6 +63,21 @@ def _oidc_sync_user_and_perms(username: str, email: Optional[str], sub: str, rol
     except Exception as e:
         logger.warning("Failed to resolve OIDC permissions: %s", e)
     return permissions
+
+
+def _valid_tenant_or_default(candidate: str) -> str:
+    """Return `candidate` if it is an active tenant, else 'default'."""
+    from sqlalchemy import text
+    from core.database import get_engine
+    try:
+        with get_engine().connect() as conn:
+            ok = conn.execute(
+                text("SELECT 1 FROM tenants WHERE id = :id AND is_active = true"),
+                {"id": candidate},
+            ).first()
+        return candidate if ok else "default"
+    except Exception:
+        return "default"
 
 
 @router.get("/me", summary="Current authenticated user (for the SPA)")
@@ -135,17 +151,25 @@ async def callback_oidc(request: Request):
         kc_roles = (userinfo.get("realm_access", {}) or {}).get("roles", []) or []
     roles = kc_roles if kc_roles else ["viewer"]
 
+    # Tenant from a configurable claim (validated against the tenants table), not a
+    # hardcoded 'default'. Empty OIDC_TENANT_CLAIM → 'default'.
+    tenant_id = "default"
+    if settings.OIDC_TENANT_CLAIM:
+        candidate = str(userinfo.get(settings.OIDC_TENANT_CLAIM) or "").strip()
+        if candidate:
+            tenant_id = await run_in_threadpool(_valid_tenant_or_default, candidate)
+
     # User sync + permission resolution are synchronous DB calls — run them off
     # the event loop so this awaited handler doesn't block the worker.
     permissions = await run_in_threadpool(
-        _oidc_sync_user_and_perms, username, email, userinfo.get("sub", ""), roles
+        _oidc_sync_user_and_perms, username, email, userinfo.get("sub", ""), roles, tenant_id
     )
 
     access_token = create_access_token(
         data={
             "sub": username,
             "scopes": ["admin"] if "admin" in roles else [],
-            "tenant_id": "default",
+            "tenant_id": tenant_id,
             "roles": roles,
             "permissions": list(set(permissions)),
         },
@@ -157,7 +181,7 @@ async def callback_oidc(request: Request):
         from core.audit import log_audit
         ip = request.client.host if request.client else None
         await run_in_threadpool(
-            partial(log_audit, username, "default", "login", "session", ip_address=ip)
+            partial(log_audit, username, tenant_id, "login", "session", ip_address=ip)
         )
     except Exception as e:
         logger.warning("Failed to log OIDC audit: %s", e)

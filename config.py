@@ -163,6 +163,9 @@ class Settings(BaseSettings):
     OIDC_CLIENT_ID: str = Field("") # type: ignore
     OIDC_CLIENT_SECRET: str = Field("") # type: ignore
     OIDC_BASE_URL: str = Field("http://localhost:8000") # type: ignore
+    # Claim that carries the user's tenant id (e.g. a Keycloak attribute). Empty → all
+    # OIDC users land in 'default'. The value is validated against the tenants table.
+    OIDC_TENANT_CLAIM: str = Field("") # type: ignore
 
     # --- CORS ---
     CORS_ORIGINS: str = Field(
