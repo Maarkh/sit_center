@@ -127,3 +127,15 @@ vault:
   address: "https://vault.example.com"
   role: sit-center
   secretPath: secret/data/sit-center
+
+# -- Dedicated ServiceAccount (token mounted because vault.py needs it for k8s auth)
+serviceAccount:
+  automountToken: true
+
+# -- Scheduled DB backup CronJob (off by default; point pvcName at durable storage)
+backup:
+  enabled: false
+  schedule: "0 2 * * *"   # daily 02:00
+  retain: 7               # keep the last N dumps
+  image: postgres:15
+  pvcName: ""             # defaults to <release>-backups
