@@ -64,7 +64,6 @@ def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hou
     from core.database import get_engine
     from sqlalchemy import text
     from config import get_cache
-    import joblib
 
     # Try to load a pre-trained model from cache
     group_key = "_".join(f"{k}={v}" for k, v in sorted(dimensions.items())) or "all"
@@ -75,7 +74,8 @@ def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hou
 
     if model_bytes:
         try:
-            model = joblib.loads(model_bytes)
+            from core.secure_pickle import loads_signed
+            model = loads_signed(model_bytes)  # HMAC-verified before deserialization
         except Exception:
             model = None
 
@@ -129,9 +129,10 @@ def _generate_forecast(metric_name: str, dimensions: Dict[str, str], horizon_hou
             finally:
                 sys.stdout = old
 
-        # Cache the model for 24h
+        # Cache the model for 24h (HMAC-signed so it can't be swapped for a malicious pickle)
         try:
-            cache.set(cache_key, joblib.dumps(model), ex=86400)
+            from core.secure_pickle import dumps_signed
+            cache.set(cache_key, dumps_signed(model), ex=86400)
         except Exception:
             pass
 
