@@ -18,6 +18,7 @@ class MetricKafkaConsumer:
         # Topics + bootstrap come from the data-source registry (enabled kafka sources)
         # with the env values as fallback — so adding a kafka source in the admin UI
         # subscribes the consumer to its topic/cluster on the next restart.
+        self.tenant_id = tenant_id
         self.topics = resolve_kafka_topics(TOPIC, tenant_id) or [TOPIC]
         bootstrap = resolve_kafka_bootstrap(bootstrap_servers, tenant_id) or bootstrap_servers
         self.consumer = KafkaConsumer(
@@ -71,6 +72,9 @@ class MetricKafkaConsumer:
                     "dimensions": json.dumps(msg.get("dimensions", {})),
                     "tags": json.dumps(msg.get("tags", {})),
                     "source": msg.get("source", "kafka"),
+                    # tenant from the message, else this consumer's tenant (NOT the DDL
+                    # default) — otherwise all streamed metrics land in 'default'.
+                    "tenant_id": msg.get("tenant_id") or self.tenant_id,
                 })
 
         if batch:
@@ -95,10 +99,10 @@ class MetricKafkaConsumer:
         # CAST(... AS ...) not '::' — SQLAlchemy text() mis-parses a bind param
         # immediately followed by '::', producing a psycopg2 syntax error.
         insert_sql = text("""
-            INSERT INTO canonical_metrics (metric_name, value, timestamp, dimensions, tags, source)
+            INSERT INTO canonical_metrics (metric_name, value, timestamp, dimensions, tags, source, tenant_id)
             VALUES (:metric_name, :value,
                     COALESCE(CAST(:timestamp AS timestamptz), NOW()),
-                    CAST(:dimensions AS jsonb), CAST(:tags AS jsonb), :source)
+                    CAST(:dimensions AS jsonb), CAST(:tags AS jsonb), :source, :tenant_id)
         """)
         # Let exceptions propagate: the caller relies on a raised error to skip
         # the offset commit. Swallowing here would commit offsets for data that

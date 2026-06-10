@@ -4,6 +4,7 @@
 # tenant + source, and the points land in canonical_metrics under them. No JWT — the
 # api_key IS the credential (and with no cookie, the CSRF middleware skips it).
 from fastapi import APIRouter, HTTPException, Request
+from slowapi.util import get_remote_address
 
 from api.schemas import MetricBatchIn
 from api.limiter import limiter
@@ -14,8 +15,14 @@ from config import logger
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 
 
+def _ingest_key(request: Request) -> str:
+    # rate-limit per api key (each source gets its own bucket), not per proxy IP —
+    # otherwise one noisy source exhausts a bucket shared by every tenant behind nginx.
+    return request.headers.get("X-API-KEY") or get_remote_address(request)
+
+
 @router.post("/metrics", summary="Push metrics (X-API-KEY of an http_push source)")
-@limiter.limit("1000/minute")
+@limiter.limit("1000/minute", key_func=_ingest_key)
 def ingest_metrics(request: Request, batch: MetricBatchIn):
     api_key = request.headers.get("X-API-KEY")
     if not api_key:
