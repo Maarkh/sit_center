@@ -2,6 +2,31 @@
 """Unit tests for DSS M3 corridor classification (pure functions — no DB)."""
 
 from core.deviation_engine import classify_breach, breach_severity, fingerprint_for
+from core.deviation_engine import breach_severity_score, IndicatorEvaluator
+
+
+def test_severity_score_zero_inside_corridor():
+    assert breach_severity_score(100.0, 0.0, 100.0, "none") == 0.0
+    assert breach_severity_score(100.0, 0.0, 100.0, "above") == 0.0  # exactly at the bound
+
+
+def test_severity_score_scales_with_depth():
+    shallow = breach_severity_score(150.0, 0.0, 100.0, "above", periods=1, chronicle_threshold=3)
+    deep = breach_severity_score(200.0, 0.0, 100.0, "above", periods=1, chronicle_threshold=3)
+    assert deep > shallow > 0
+
+
+def test_severity_score_persistence_boost():
+    fresh = breach_severity_score(150.0, 0.0, 100.0, "above", periods=1, chronicle_threshold=3)
+    chronic = breach_severity_score(150.0, 0.0, 100.0, "above", periods=3, chronicle_threshold=3)
+    assert chronic > fresh  # same depth, longer streak ranks higher
+
+
+def test_weighted_aggregate_and_missing():
+    fm = {"f1": (2.0, ["a", "b"]), "f2": (1.0, ["c"])}
+    # f1 = mean(10,20)=15 (w2), f2 = 30 (w1) → (15*2 + 30*1)/3 = 20
+    assert IndicatorEvaluator._weighted(fm, {"a": 10, "b": 20, "c": 30}) == 20.0
+    assert IndicatorEvaluator._weighted(fm, {}) is None  # no data → the 'no_data' trigger
 
 
 class TestClassifyBreach:

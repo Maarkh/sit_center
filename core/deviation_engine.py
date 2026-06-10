@@ -24,6 +24,11 @@ from config import logger, mask_secrets
 # 1); the default 5 smooths noise for production.
 WINDOW_MINUTES = int(os.environ.get("EVAL_WINDOW_MIN", "5"))
 
+# Dynamic-corridor ('baseline') params: corridor = weighted mean ± K·std over this
+# historical window (minutes). Defaults: 7 days, 3σ.
+BASELINE_WINDOW_MIN = int(os.environ.get("BASELINE_WINDOW_MIN", str(7 * 24 * 60)))
+BASELINE_K = float(os.environ.get("BASELINE_K", "3"))
+
 
 def classify_breach(
     value: float,
@@ -66,6 +71,32 @@ def breach_severity(
     return "warning"
 
 
+def breach_severity_score(
+    value: float,
+    low: Optional[float],
+    high: Optional[float],
+    breach_dir: str,
+    periods: int = 1,
+    chronicle_threshold: int = 3,
+) -> float:
+    """Continuous, rankable severity: breach margin normalised by the reference scale
+    (0 at the boundary, 1 when the margin equals the scale), boosted by persistence so a
+    chronic breach ranks above a fresh one of the same depth. Pure → unit-tested."""
+    if breach_dir == "below" and low is not None:
+        margin = low - value
+        ref = (high - low) if (high is not None and high > low) else abs(low)
+    elif breach_dir == "above" and high is not None:
+        margin = value - high
+        ref = (high - low) if (low is not None and high > low) else abs(high)
+    else:
+        return 0.0
+    if not ref or ref <= 0 or margin <= 0:
+        return 0.0
+    depth = margin / ref
+    persistence = 1.0 + min(periods, chronicle_threshold) / max(chronicle_threshold, 1)
+    return round(depth * persistence, 4)
+
+
 def fingerprint_for(indicator_id) -> str:
     # MVP: one fingerprint per indicator (no per-dimension split yet).
     return f"ind:{indicator_id}"
@@ -74,13 +105,13 @@ def fingerprint_for(indicator_id) -> str:
 class IndicatorEvaluator:
     def evaluate_tenant(self, tenant_id: str = "default", window_minutes: int = WINDOW_MINUTES) -> dict:
         engine = get_engine()
-        summary = {"evaluated": 0, "skipped": 0, "breaching": 0,
+        summary = {"evaluated": 0, "skipped": 0, "no_data": 0, "breaching": 0,
                    "opened": 0, "resolved": 0, "chronic": 0}
         with engine.connect() as conn:
             indicators = conn.execute(
                 text(
-                    "SELECT id, name, target_low, target_high, direction, chronicle_threshold "
-                    "FROM indicators WHERE tenant_id = :tid AND is_active = true"
+                    "SELECT id, name, target_low, target_high, direction, chronicle_threshold, "
+                    "corridor_type FROM indicators WHERE tenant_id = :tid AND is_active = true"
                 ),
                 {"tid": tenant_id},
             ).mappings().all()
@@ -93,31 +124,50 @@ class IndicatorEvaluator:
         return summary
 
     # -- value computation -------------------------------------------------
-    def _indicator_value(self, indicator_id, tenant_id: str, window_minutes: int) -> Optional[float]:
-        """Weighted average of factor values; factor value = mean of its metrics'
-        recent averages. Returns None when nothing recent is available."""
+    def _gather_factor_metrics(self, conn, indicator_id):
+        """Return (factor_metrics: {fid: (weight, [names])}, all_names: set) or
+        (None, None) when the indicator has no factors/metrics configured."""
+        factors = conn.execute(
+            text("SELECT id, weight FROM factors WHERE indicator_id = :iid"),
+            {"iid": indicator_id},
+        ).mappings().all()
+        if not factors:
+            return None, None
+        factor_metrics: Dict = {}
+        all_names: set = set()
+        for f in factors:
+            names = conn.execute(
+                text("SELECT metric_name FROM factor_metrics WHERE factor_id = :fid"),
+                {"fid": f["id"]},
+            ).scalars().all()
+            factor_metrics[f["id"]] = (float(f["weight"]), list(names))
+            all_names.update(names)
+        if not all_names:
+            return None, None
+        return factor_metrics, all_names
+
+    @staticmethod
+    def _weighted(factor_metrics, per_metric) -> Optional[float]:
+        """Weighted mean of factor values; factor value = mean of its metrics' values
+        from `per_metric`. None when no factor has any available metric."""
+        num = den = 0.0
+        for weight, names in factor_metrics.values():
+            vals = [per_metric[n] for n in names if n in per_metric]
+            if not vals:
+                continue
+            num += (sum(vals) / len(vals)) * weight
+            den += weight
+        return (num / den) if den else None
+
+    def _value_status(self, indicator_id, tenant_id: str, window_minutes: int):
+        """Return ('unconfigured'|'no_data'|'ok', value_or_None). 'no_data' means the
+        indicator HAS metrics configured but none reported in the window — a signal
+        (dead source), not a healthy skip."""
         engine = get_engine()
         with engine.connect() as conn:
-            factors = conn.execute(
-                text("SELECT id, weight FROM factors WHERE indicator_id = :iid"),
-                {"iid": indicator_id},
-            ).mappings().all()
-            if not factors:
-                return None
-
-            factor_metrics: Dict = {}
-            all_names: set = set()
-            for f in factors:
-                names = conn.execute(
-                    text("SELECT metric_name FROM factor_metrics WHERE factor_id = :fid"),
-                    {"fid": f["id"]},
-                ).scalars().all()
-                factor_metrics[f["id"]] = (float(f["weight"]), list(names))
-                all_names.update(names)
-
-            if not all_names:
-                return None
-
+            factor_metrics, all_names = self._gather_factor_metrics(conn, indicator_id)
+            if not factor_metrics:
+                return "unconfigured", None
             rows = conn.execute(
                 text(
                     "SELECT metric_name, AVG(value) AS v FROM canonical_metrics "
@@ -127,31 +177,65 @@ class IndicatorEvaluator:
                 ),
                 {"tid": tenant_id, "names": list(all_names), "win": window_minutes},
             ).mappings().all()
+        per_metric = {r["metric_name"]: float(r["v"]) for r in rows}
+        if not per_metric:
+            return "no_data", None
+        value = self._weighted(factor_metrics, per_metric)
+        if value is None:
+            return "no_data", None
+        return "ok", value
 
-        latest = {r["metric_name"]: float(r["v"]) for r in rows}
-        num = 0.0
-        den = 0.0
-        for weight, names in factor_metrics.values():
-            vals = [latest[n] for n in names if n in latest]
-            if not vals:
-                continue
-            factor_value = sum(vals) / len(vals)
-            num += factor_value * weight
-            den += weight
-        if den == 0:
-            return None
-        return num / den
+    def _indicator_value(self, indicator_id, tenant_id: str, window_minutes: int) -> Optional[float]:
+        """Back-compat scalar value (used by scenario_engine); None if unavailable."""
+        _, value = self._value_status(indicator_id, tenant_id, window_minutes)
+        return value
+
+    def _baseline_corridor(self, indicator_id, tenant_id: str):
+        """Dynamic corridor for corridor_type='baseline': weighted mean ± K·std of the
+        indicator's metrics over BASELINE_WINDOW_MIN. Returns (low, high) or (None, None)
+        if there isn't enough history."""
+        engine = get_engine()
+        with engine.connect() as conn:
+            factor_metrics, all_names = self._gather_factor_metrics(conn, indicator_id)
+            if not factor_metrics:
+                return None, None
+            rows = conn.execute(
+                text(
+                    "SELECT metric_name, AVG(value) AS mean, "
+                    "COALESCE(STDDEV_SAMP(value), 0) AS sd FROM canonical_metrics "
+                    "WHERE tenant_id = :tid AND metric_name = ANY(:names) "
+                    "AND timestamp >= NOW() - make_interval(mins => :win) GROUP BY metric_name"
+                ),
+                {"tid": tenant_id, "names": list(all_names), "win": BASELINE_WINDOW_MIN},
+            ).mappings().all()
+        means = {r["metric_name"]: float(r["mean"]) for r in rows}
+        stds = {r["metric_name"]: float(r["sd"]) for r in rows}
+        wmean = self._weighted(factor_metrics, means)
+        wstd = self._weighted(factor_metrics, stds)
+        if wmean is None or wstd is None:
+            return None, None
+        return wmean - BASELINE_K * wstd, wmean + BASELINE_K * wstd
 
     # -- per-indicator evaluation -----------------------------------------
     def _evaluate_one(self, ind, tenant_id: str, window_minutes: int, summary: dict):
-        value = self._indicator_value(ind["id"], tenant_id, window_minutes)
-        if value is None:
+        status, value = self._value_status(ind["id"], tenant_id, window_minutes)
+        if status == "unconfigured":
             summary["skipped"] += 1
             return
+        if status == "no_data":
+            # configured but the source went dark — a SIGNAL, not a healthy skip
+            summary["no_data"] += 1
+            self._signal_no_data(ind, tenant_id, window_minutes)
+            return
         summary["evaluated"] += 1
+        self._clear_no_data_flag(tenant_id, ind["id"])  # data is back
 
-        low = float(ind["target_low"]) if ind["target_low"] is not None else None
-        high = float(ind["target_high"]) if ind["target_high"] is not None else None
+        # Corridor bounds: static (target_low/high) or a dynamic 'baseline' band.
+        if ind["corridor_type"] == "baseline":
+            low, high = self._baseline_corridor(ind["id"], tenant_id)
+        else:
+            low = float(ind["target_low"]) if ind["target_low"] is not None else None
+            high = float(ind["target_high"]) if ind["target_high"] is not None else None
         breach_dir = classify_breach(value, low, high, ind["direction"])
         threshold = int(ind["chronicle_threshold"])
         fp = fingerprint_for(ind["id"])
@@ -191,10 +275,11 @@ class IndicatorEvaluator:
                 conn.execute(
                     text(
                         "UPDATE deviations SET value = :v, direction = :dir, severity = :sev, "
-                        "periods = :p, last_seen = NOW() WHERE id = :id"
+                        "severity_score = :score, periods = :p, last_seen = NOW() WHERE id = :id"
                     ),
                     {"v": value, "dir": breach_dir,
                      "sev": "critical" if periods >= threshold else severity,
+                     "score": breach_severity_score(value, low, high, breach_dir, periods, threshold),
                      "p": periods, "id": existing["id"]},
                 )
             else:
@@ -203,12 +288,14 @@ class IndicatorEvaluator:
                 dev_id = conn.execute(
                     text(
                         "INSERT INTO deviations (tenant_id, indicator_id, direction, value, "
-                        "target_low, target_high, severity, status, periods, fingerprint) "
-                        "VALUES (:tid, :iid, :dir, :v, :low, :high, :sev, 'open', 1, :fp) RETURNING id"
+                        "target_low, target_high, severity, severity_score, status, periods, fingerprint) "
+                        "VALUES (:tid, :iid, :dir, :v, :low, :high, :sev, :score, 'open', 1, :fp) RETURNING id"
                     ),
                     {"tid": tenant_id, "iid": ind["id"], "dir": breach_dir, "v": value,
                      "low": low, "high": high,
-                     "sev": "critical" if periods >= threshold else severity, "fp": fp},
+                     "sev": "critical" if periods >= threshold else severity,
+                     "score": breach_severity_score(value, low, high, breach_dir, periods, threshold),
+                     "fp": fp},
                 ).scalar()
                 summary["opened"] += 1
 
@@ -322,6 +409,33 @@ class IndicatorEvaluator:
             notify(msg, priority, event_type="alert")
         except Exception as e:
             logger.error("deviation notify failed: %s", mask_secrets(str(e)))
+
+    def _signal_no_data(self, ind, tenant_id, window_minutes):
+        """Emit a deduped 'no data' signal (≤ once/hour per indicator) — a dead source
+        must not read as a healthy/static state."""
+        try:
+            from config import get_redis
+            r = get_redis()
+            if r.get(f"nodata:{tenant_id}:{ind['id']}"):
+                return  # already signalled this gap
+            r.set(f"nodata:{tenant_id}:{ind['id']}", "1", ex=3600)
+        except Exception:
+            pass  # no Redis → still notify (best effort; may repeat)
+        try:
+            from core.notifications import notify
+            notify(
+                f"Показатель '{ind['name']}': нет данных за {window_minutes} мин — источник молчит?",
+                "warning", event_type="system",
+            )
+        except Exception as e:
+            logger.error("no-data notify failed: %s", mask_secrets(str(e)))
+
+    def _clear_no_data_flag(self, tenant_id, indicator_id):
+        try:
+            from config import get_redis
+            get_redis().delete(f"nodata:{tenant_id}:{indicator_id}")
+        except Exception:
+            pass
 
 
 indicator_evaluator = IndicatorEvaluator()
