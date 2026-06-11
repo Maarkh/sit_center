@@ -27,6 +27,7 @@ def publish_alert(data: dict) -> None:
 async def subscribe_alerts(callback):
     """Subscribe to alert channel and invoke callback for each message (async, for WS)."""
     while True:
+        r = pubsub = None  # bind before try so the finally never hits an unbound name
         try:
             r = aioredis.from_url(_get_redis_url(), decode_responses=True)
             pubsub = r.pubsub()
@@ -47,7 +48,9 @@ async def subscribe_alerts(callback):
             await asyncio.sleep(5)
         finally:
             try:
-                await pubsub.unsubscribe(ALERT_CHANNEL)
-                await r.aclose()
+                if pubsub is not None:
+                    await pubsub.unsubscribe(ALERT_CHANNEL)
+                if r is not None:
+                    await r.aclose()
             except Exception:
                 pass

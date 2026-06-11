@@ -53,11 +53,15 @@ def check_sla_breaches():
     engine = get_engine()
 
     with engine.begin() as conn:
-        # Response breach: incident still NEW past response deadline
+        # Response breach: never acknowledged past the response deadline. Key on
+        # started_at IS NULL (no operator picked it up) rather than status='new' —
+        # auto-escalation flips an unanswered incident to 'escalated' before this sweep,
+        # which would otherwise let it escape the response-breach check entirely.
         breached_response = conn.execute(
             text("""
                 UPDATE incidents SET response_breached = true
-                WHERE status = 'new'
+                WHERE started_at IS NULL
+                  AND status NOT IN ('resolved', 'closed')
                   AND response_deadline IS NOT NULL
                   AND response_deadline < :now
                   AND response_breached = false

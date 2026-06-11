@@ -36,7 +36,9 @@ class ConnectionManager:
         # to every tenant by accident.
         message_tenant = message.get("tenant_id", "default")
         disconnected = []
-        for connection in self.active_connections:
+        # Iterate a snapshot: send_text awaits (yields the loop), so a concurrent
+        # disconnect() must not mutate the list mid-iteration.
+        for connection in list(self.active_connections):
             if self.connection_tenants.get(id(connection)) != message_tenant:
                 continue
             try:
@@ -103,4 +105,8 @@ async def websocket_alerts(websocket: WebSocket):
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
+        pass
+    finally:
+        # Always clean up — not only on WebSocketDisconnect — so any other error can't
+        # leak the connection in active_connections/connection_tenants.
         manager.disconnect(websocket)

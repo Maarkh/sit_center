@@ -277,6 +277,10 @@ def update_incident_status(
         elif data.status == "closed":
             updates.append("closed_at = :now")
             params["now"] = now
+        # Re-opening a resolved incident → clear the stale resolved_at so MTTR/SLA
+        # reporting isn't skewed by a resolution that was undone.
+        if current_status == "resolved" and data.status in ("new", "in_progress"):
+            updates.append("resolved_at = NULL")
 
         conn.execute(
             text(f"UPDATE incidents SET {', '.join(updates)} WHERE id = :id"),

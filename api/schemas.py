@@ -27,11 +27,21 @@ class MetricRead(MetricCreate):
 
 # --- Push ingestion (http_push data source) ---
 class MetricPointIn(BaseModel):
-    metric_name: str = Field(..., min_length=1, pattern=r"^[a-zA-Z0-9_\-\.]+$")
+    metric_name: str = Field(..., min_length=1, max_length=200, pattern=r"^[a-zA-Z0-9_\-\.]+$")
     value: float
     timestamp: Optional[datetime] = None  # defaults to NOW() on insert
-    dimensions: Dict[str, str] = Field(default_factory=dict)
-    tags: Dict[str, str] = Field(default_factory=dict)
+    # Bound dimensions/tags (stored as JSONB on the high-volume ingest path) so a
+    # caller can't amplify storage with thousands of huge keys/values.
+    dimensions: Dict[str, str] = Field(default_factory=dict, max_length=32)
+    tags: Dict[str, str] = Field(default_factory=dict, max_length=32)
+
+    @field_validator("dimensions", "tags")
+    @classmethod
+    def _bound_kv(cls, v: Dict[str, str]) -> Dict[str, str]:
+        for k, val in v.items():
+            if len(k) > 64 or len(str(val)) > 256:
+                raise ValueError("dimension/tag key must be ≤64 and value ≤256 chars")
+        return v
 
 class MetricBatchIn(BaseModel):
     metrics: List[MetricPointIn] = Field(..., min_length=1, max_length=1000)
