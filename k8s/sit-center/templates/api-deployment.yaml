@@ -62,3 +62,7 @@ spec:
               port: http
             failureThreshold: 10
             periodSeconds: 5
+          volumeMounts:
+            {{- include "sit-center.writableVolumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "sit-center.writableVolumes" . | nindent 8 }}

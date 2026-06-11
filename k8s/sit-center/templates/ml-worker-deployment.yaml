@@ -47,3 +47,7 @@ spec:
             failureThreshold: 3
           resources:
             {{- toYaml .Values.resources.mlWorker | nindent 12 }}
+          volumeMounts:
+            {{- include "sit-center.writableVolumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "sit-center.writableVolumes" . | nindent 8 }}

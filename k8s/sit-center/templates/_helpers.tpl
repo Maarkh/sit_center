@@ -90,4 +90,27 @@ Common environment variables for all pods
   value: {{ .Values.ldap.enabled | quote }}
 - name: OIDC_ENABLED
   value: {{ .Values.oidc.enabled | quote }}
+# Point matplotlib's config/cache at the writable /tmp emptyDir so it never tries
+# to write the font cache under a read-only root filesystem (readOnlyRootFilesystem).
+- name: MPLCONFIGDIR
+  value: /tmp/matplotlib
+{{- end }}
+
+{{/*
+Writable scratch for a read-only root filesystem: /tmp (libs, matplotlib cache,
+joblib) and /app/logs (RotatingFileHandler; it already degrades to stdout if
+absent, but the emptyDir keeps file logs working). Mounted by every workload.
+*/}}
+{{- define "sit-center.writableVolumeMounts" -}}
+- name: tmp
+  mountPath: /tmp
+- name: logs
+  mountPath: /app/logs
+{{- end }}
+
+{{- define "sit-center.writableVolumes" -}}
+- name: tmp
+  emptyDir: {}
+- name: logs
+  emptyDir: {}
 {{- end }}

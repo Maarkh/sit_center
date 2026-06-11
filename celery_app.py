@@ -50,6 +50,12 @@ def make_celery(app_name=__name__):
     if sentinel_opts:
         celery.conf.broker_transport_options = sentinel_opts
         celery.conf.result_backend_transport_options = sentinel_opts
+    else:
+        # RedBeat (the Redis-backed beat scheduler used in K8s/compose) reads
+        # redbeat_redis_url, defaulting to broker_url. Pin it explicitly for the
+        # plain-Redis path so beat and the schedule store always share one Redis.
+        # (Sentinel: RedBeat needs its own non-sentinel URL — left unset here.)
+        celery.conf.redbeat_redis_url = redis_url
     return celery
 
 def get_beat_schedule():

@@ -54,6 +54,10 @@ spec:
             failureThreshold: 3
           resources:
             {{- toYaml .Values.resources.celeryWorker | nindent 12 }}
+          volumeMounts:
+            {{- include "sit-center.writableVolumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "sit-center.writableVolumes" . | nindent 8 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -88,6 +92,10 @@ spec:
             - tasks.celery_app
             - beat
             - --loglevel=INFO
+            # Redis-backed schedule (RedBeat): no local celerybeat-schedule file, so
+            # beat runs under a read-only root FS and its state survives pod restarts
+            # (HA). redbeat_redis_url defaults to broker_url, which is our Redis.
+            - --scheduler=redbeat.RedBeatScheduler
           env:
             {{- include "sit-center.env" . | nindent 12 }}
             - name: REDIS_URL
@@ -111,3 +119,7 @@ spec:
             limits:
               cpu: 250m
               memory: 512Mi
+          volumeMounts:
+            {{- include "sit-center.writableVolumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "sit-center.writableVolumes" . | nindent 8 }}

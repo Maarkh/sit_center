@@ -22,7 +22,11 @@ podSecurityContext:
 
 securityContext:
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false  # app writes to /app/logs and MPLCONFIGDIR
+  # Root FS is read-only; the few writable paths (/tmp, /app/logs, MPLCONFIGDIR→
+  # /tmp/matplotlib) are backed by emptyDir volumes injected into every workload
+  # (see sit-center.writableVolume* helpers). Celery beat uses the Redis-backed
+  # RedBeat scheduler, so it writes no celerybeat-schedule file either.
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
       - ALL
