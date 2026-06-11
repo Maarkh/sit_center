@@ -28,6 +28,10 @@ NON_TERMINAL = {"pending", "active", "in_progress"}
 # step_assignments table on instantiate. Reject those up front. Configurable.
 MAX_PROCESS_STEPS = int(os.environ.get("MAX_PROCESS_STEPS", "500"))
 
+# OODA Act→Observe: how long after a deviation-linked process completes to re-measure
+# and confirm the breach actually cleared. Gives the remediation time to take effect.
+REMEDIATION_VERIFY_DELAY_SECONDS = int(os.environ.get("REMEDIATION_VERIFY_DELAY_SECONDS", "300"))
+
 
 def current_wave_order(assignments: List[Dict[str, Any]]) -> Optional[int]:
     """Lowest step_order with a non-terminal assignment, or None if all terminal."""
@@ -214,8 +218,33 @@ class ProcessEngine:
             instance_id = row["instance_id"]
             self._activate_wave(conn, instance_id, tenant_id)
             assignment = self._load_assignment(conn, assignment_id)
+            # Did THIS completion finish the whole instance, and was it remediating a
+            # deviation? Capture inside the txn; schedule the Observe re-check after commit.
+            inst = conn.execute(
+                text("SELECT status, deviation_id FROM process_instances "
+                     "WHERE id = :id AND tenant_id = :tid"),
+                {"id": instance_id, "tid": tenant_id},
+            ).mappings().first()
         log_audit(user, tenant_id, "complete", "process_step", resource_id=str(assignment_id))
+        if inst and inst["status"] == "completed" and inst["deviation_id"]:
+            self._schedule_remediation_verify(inst["deviation_id"], tenant_id)
         return assignment
+
+    def _schedule_remediation_verify(self, deviation_id, tenant_id: str):
+        """OODA Act→Observe: enqueue a delayed re-measure to confirm the deviation
+        this process addressed actually cleared. Best-effort — never block completion."""
+        try:
+            from celery_app import celery_app
+            celery_app.send_task(
+                "core.dss_tasks.verify_remediation_task",
+                args=[str(deviation_id), tenant_id],
+                countdown=REMEDIATION_VERIFY_DELAY_SECONDS,
+            )
+            logger.info("scheduled remediation verify for deviation %s in %ds",
+                        deviation_id, REMEDIATION_VERIFY_DELAY_SECONDS)
+        except Exception as e:
+            logger.error("could not schedule remediation verify for %s: %s",
+                         deviation_id, mask_secrets(str(e)))
 
     def cancel_instance(self, instance_id, tenant_id: str, *, user: str) -> None:
         engine = get_engine()

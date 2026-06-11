@@ -89,6 +89,68 @@ def evaluate_decision_outcomes_task():
 
 
 @celery_app.task(time_limit=120)
+def verify_remediation_task(deviation_id: str, tenant_id: str = "default"):
+    """OODA Act→Observe: re-measure after a remediation process completes.
+
+    Scheduled (with a countdown) when an M8 process instance tied to a deviation
+    finishes. Re-evaluates that deviation's indicator NOW and records whether the
+    breach actually cleared — 'confirmed' (back inside corridor) or 'persisted'
+    (still breaching → the playbook didn't work; notify so an operator escalates).
+    This closes the loop: 'we ran the playbook' vs. 'the playbook worked'.
+    """
+    from sqlalchemy import text
+    from core.database import get_engine
+    from core.deviation_engine import indicator_evaluator
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            dev = conn.execute(
+                text("SELECT indicator_id, status FROM deviations "
+                     "WHERE id = :id AND tenant_id = :tid"),
+                {"id": deviation_id, "tid": tenant_id},
+            ).mappings().first()
+        if not dev:
+            logger.info("remediation verify: deviation %s not found", deviation_id)
+            return {"missing": True}
+
+        # Re-measure the indicator so status reflects current reality, not the last tick.
+        indicator_evaluator.reevaluate_indicator(dev["indicator_id"], tenant_id)
+
+        with engine.begin() as conn:
+            status = conn.execute(
+                text("SELECT status FROM deviations WHERE id = :id AND tenant_id = :tid"),
+                {"id": deviation_id, "tid": tenant_id},
+            ).scalar()
+            cleared = status == "resolved"
+            outcome = "confirmed" if cleared else "persisted"
+            conn.execute(
+                text("UPDATE deviations SET remediation_outcome = :o, "
+                     "remediation_verified_at = CASE WHEN :cleared THEN NOW() "
+                     "ELSE remediation_verified_at END WHERE id = :id AND tenant_id = :tid"),
+                {"o": outcome, "cleared": cleared, "id": deviation_id, "tid": tenant_id},
+            )
+
+        from core.audit import log_audit
+        log_audit("system", tenant_id, "verify_remediation", "deviation",
+                  resource_id=str(deviation_id), changes={"outcome": outcome})
+        try:
+            from core.notifications import notify
+            if cleared:
+                notify(f"Устранение подтверждено: отклонение {deviation_id} вернулось в коридор", "info")
+            else:
+                notify(f"Процесс завершён, но отклонение {deviation_id} всё ещё активно — "
+                       f"меры не сработали, нужна эскалация", "warning")
+        except Exception as e:
+            logger.error("remediation verify notify failed: %s", e)
+
+        logger.info("remediation verify: deviation %s → %s", deviation_id, outcome)
+        return {"deviation_id": str(deviation_id), "outcome": outcome}
+    except Exception as e:
+        logger.exception("remediation verification failed")
+        return {"error": str(e)}
+
+
+@celery_app.task(time_limit=120)
 @single_run("dss:check_process_step_sla")
 def check_process_step_sla_task():
     """M8: escalate process step assignments that are past their due_at."""

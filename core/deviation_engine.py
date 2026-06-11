@@ -123,6 +123,30 @@ class IndicatorEvaluator:
                 logger.error("indicator eval failed for %s: %s", ind["name"], mask_secrets(str(e)))
         return summary
 
+    def reevaluate_indicator(self, indicator_id, tenant_id: str = "default",
+                             window_minutes: int = WINDOW_MINUTES) -> dict:
+        """Force a fresh evaluation of a SINGLE active indicator (same path as the
+        periodic sweep, scoped to one id). Used by the OODA Act→Observe re-check so a
+        deviation's status reflects the current measurement, not the last beat tick."""
+        engine = get_engine()
+        summary = {"evaluated": 0, "skipped": 0, "no_data": 0, "breaching": 0,
+                   "opened": 0, "resolved": 0, "chronic": 0}
+        with engine.connect() as conn:
+            ind = conn.execute(
+                text(
+                    "SELECT id, name, target_low, target_high, direction, chronicle_threshold, "
+                    "corridor_type FROM indicators "
+                    "WHERE id = :iid AND tenant_id = :tid AND is_active = true"
+                ),
+                {"iid": indicator_id, "tid": tenant_id},
+            ).mappings().first()
+        if ind:
+            try:
+                self._evaluate_one(ind, tenant_id, window_minutes, summary)
+            except Exception as e:
+                logger.error("indicator re-eval failed for %s: %s", ind["name"], mask_secrets(str(e)))
+        return summary
+
     # -- value computation -------------------------------------------------
     def _gather_factor_metrics(self, conn, indicator_id):
         """Return (factor_metrics: {fid: (weight, [names])}, all_names: set) or
