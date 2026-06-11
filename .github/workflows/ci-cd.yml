@@ -43,9 +43,15 @@ jobs:
           pip install --upgrade pip
           pip install pip-audit bandit
       # Blocking. Audits runtime deps only (requirements.txt). Test tooling lives
-      # in requirements-dev.txt (pytest >= 9.0.3), so there's nothing to ignore.
+      # in requirements-dev.txt (pytest >= 9.0.3).
+      # Ignored, with justification:
+      #   GHSA-rrmf-rvhw-rf47 (CVE-2025-3000) — memory corruption in
+      #   torch.jit.script. No fixed release exists (2.12.0 is the latest on PyPI
+      #   and is still `last_affected`), and we never call torch.jit.script /
+      #   jit.load / torch.load on untrusted input — the vulnerable surface is
+      #   unused. Re-audit when a patched torch ships and drop this ignore.
       - name: Dependency vulnerability scan (pip-audit)
-        run: pip-audit -r requirements.txt
+        run: pip-audit -r requirements.txt --ignore-vuln GHSA-rrmf-rvhw-rf47
       - name: Static security analysis (bandit)
         run: bandit -r api core --severity-level medium --confidence-level medium -q
 
