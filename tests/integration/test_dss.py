@@ -990,3 +990,4 @@ class TestForecastDrift:
                 conn.execute(text("DELETE FROM forecasts WHERE indicator_id=:i"), {"i": iid})
                 conn.execute(text("DELETE FROM canonical_metrics WHERE metric_name=:m"), {"m": metric})
                 conn.execute(text("DELETE FROM indicators WHERE id=:i"), {"i": iid})
+

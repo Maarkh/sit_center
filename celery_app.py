@@ -38,8 +38,14 @@ def make_celery(app_name=__name__):
         timezone='UTC',
         enable_utc=True,
         # At-least-once delivery: a task is ack'd only after it finishes, and is
-        # requeued if the worker dies mid-task. DSS tasks are idempotent (unique
-        # indexes / upserts / dedup keys), so re-runs are safe.
+        # requeued if the worker dies mid-task. The partial-unique indexes
+        # (ux_deviations_active_fp / ux_predalerts_active_fp) and ON CONFLICT upserts
+        # make re-runs safe against *duplicates*. Caveat (not full idempotency): the
+        # per-tenant evaluation loop commits per indicator and the chronicle/periods
+        # counters are additive, so a worker lost mid-loop could re-process already-
+        # committed indicators and inflate those counters. soft_time_limit (see the
+        # task decorators) makes the common time-out path unwind gracefully instead of
+        # SIGKILL mid-loop; the residual (OOM/evict) is a rare, bounded over-count.
         task_acks_late=True,
         task_reject_on_worker_lost=True,
         beat_schedule=get_beat_schedule(),
@@ -47,16 +53,47 @@ def make_celery(app_name=__name__):
             'core.ml_tasks.*': {'queue': 'ml'},
         },
     )
+    # RedBeat (the Redis-backed beat scheduler used in K8s/compose) reads
+    # redbeat_redis_url, defaulting to broker_url. It speaks plain redis:// only —
+    # NOT Celery's sentinel:// scheme — so under Sentinel we must resolve the current
+    # master to a concrete redis:// URL, or RedBeat fails to start (beat dies in the
+    # exact HA mode Sentinel provides). On failover the beat liveness probe restarts
+    # the pod, which re-resolves the new master.
     if sentinel_opts:
         celery.conf.broker_transport_options = sentinel_opts
         celery.conf.result_backend_transport_options = sentinel_opts
+        celery.conf.redbeat_redis_url = _resolve_redbeat_url(settings, nodes)
     else:
-        # RedBeat (the Redis-backed beat scheduler used in K8s/compose) reads
-        # redbeat_redis_url, defaulting to broker_url. Pin it explicitly for the
-        # plain-Redis path so beat and the schedule store always share one Redis.
-        # (Sentinel: RedBeat needs its own non-sentinel URL — left unset here.)
         celery.conf.redbeat_redis_url = redis_url
     return celery
+
+
+def _resolve_redbeat_url(settings, sentinel_nodes):
+    """Concrete redis:// URL for RedBeat under Sentinel. Honours an explicit
+    REDBEAT_REDIS_URL override; otherwise discovers the master via Sentinel. Returns
+    None on failure (RedBeat then falls back to broker_url and logs)."""
+    import os
+    import logging
+    log = logging.getLogger("celery")
+    override = os.environ.get("REDBEAT_REDIS_URL")
+    if override:
+        return override
+    try:
+        from redis.sentinel import Sentinel
+        hostports = []
+        for n in sentinel_nodes:
+            host, _, port = n.partition(":")
+            hostports.append((host, int(port or 26379)))
+        skwargs = {"password": settings.REDIS_SENTINEL_PASSWORD} if settings.REDIS_SENTINEL_PASSWORD else {}
+        sentinel = Sentinel(hostports, sentinel_kwargs=skwargs,
+                            password=settings.REDIS_PASSWORD or None)
+        mhost, mport = sentinel.discover_master(settings.REDIS_MASTER_NAME)
+        auth = f":{quote_plus(settings.REDIS_PASSWORD)}@" if settings.REDIS_PASSWORD else ""
+        return f"redis://{auth}{mhost}:{mport}/{settings.REDIS_DB}"
+    except Exception as e:
+        log.warning("RedBeat master discovery under Sentinel failed (%s); set REDBEAT_REDIS_URL "
+                    "to a concrete redis:// master URL", e)
+        return None
 
 def get_beat_schedule():
     from celeryconfig import beat_schedule
