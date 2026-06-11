@@ -140,6 +140,7 @@ app.add_middleware(
 # unauthenticated request gets no tenant → RLS fails open.
 @app.middleware("http")
 async def bind_rls_tenant(request: Request, call_next):
+    from fastapi.concurrency import run_in_threadpool
     from core.rls import current_tenant, set_request_tenant
     from api.auth import effective_request_tenant, ACCESS_COOKIE_NAME
     current_tenant.set(None)
@@ -147,9 +148,14 @@ async def bind_rls_tenant(request: Request, call_next):
     token = auth[7:] if auth.startswith("Bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
     if token:
         try:
-            # DB-resolved tenant (same as the auth dependency) so RLS agrees with the
-            # app's WHERE tenant_id filters; None for invalid tokens → RLS fails open.
-            set_request_tenant(effective_request_tenant(token))
+            # effective_request_tenant() runs a sync DB query (the auth grant lookup) —
+            # offload it to a thread so it doesn't block this async middleware's event
+            # loop. set_request_tenant runs back in the async context so the contextvar
+            # still propagates to the sync endpoint's DB checkout. DB-resolved tenant
+            # keeps RLS in agreement with the app's WHERE tenant_id filters; None for an
+            # invalid token → RLS fails open.
+            tenant = await run_in_threadpool(effective_request_tenant, token)
+            set_request_tenant(tenant)
         except Exception:
             pass  # never block a request over RLS binding; the route's auth dep will 401
     return await call_next(request)
