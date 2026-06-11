@@ -80,6 +80,34 @@ def _valid_tenant_or_default(candidate: str) -> str:
         return "default"
 
 
+# Cached JWKS client for verifying the Keycloak access-token signature (keys are
+# fetched once and cached internally; reused across logins).
+_kc_jwks_client = None
+
+
+def _verified_kc_roles(access_jwt: str) -> list:
+    """Verify the Keycloak access token's RS256 signature against the realm JWKS, then
+    read realm_access.roles. Returns [] on ANY failure so unverified roles are never
+    trusted to grant admin. The access token's `aud` varies on Keycloak, so signature
+    + expiry are checked but `aud` is not. JWKS = {issuer}/protocol/openid-connect/certs."""
+    global _kc_jwks_client
+    issuer = getattr(settings, "OIDC_ISSUER_URL", "").rstrip("/")
+    if not access_jwt or not issuer:
+        return []
+    try:
+        import jwt as _jwt
+        from jwt import PyJWKClient
+        if _kc_jwks_client is None:
+            _kc_jwks_client = PyJWKClient(f"{issuer}/protocol/openid-connect/certs")
+        signing_key = _kc_jwks_client.get_signing_key_from_jwt(access_jwt)
+        claims = _jwt.decode(access_jwt, signing_key.key, algorithms=["RS256"],
+                             options={"verify_aud": False})
+        return (claims.get("realm_access", {}) or {}).get("roles", []) or []
+    except Exception as e:
+        logger.warning("OIDC access-token signature verification failed: %s", e)
+        return []
+
+
 @router.get("/me", summary="Current authenticated user (for the SPA)")
 def auth_me(current_user: TokenData = Depends(get_current_user)):
     """Return the current user's identity for the UI. With httpOnly-cookie auth the
@@ -133,23 +161,14 @@ async def callback_oidc(request: Request):
     if not username:
         raise HTTPException(401, "No username in OIDC token")
 
-    # Map Keycloak roles -> local permissions. Keycloak realm roles live in the
-    # ACCESS token claims, NOT in userinfo/id_token, and authlib does not expose
-    # an "access_token_claims" key — so decode the access token to read them.
-    # (Without this every SSO user silently collapsed to "viewer".) CPU-only.
-    kc_roles: list = []
-    try:
-        import jwt as _jwt
-        access_jwt = token.get("access_token", "")
-        if access_jwt:
-            # Claims only — the token was already validated by authlib during the
-            # code exchange; we just read realm_access. PyJWT's no-verify decode.
-            claims = _jwt.decode(access_jwt, options={"verify_signature": False})
-            kc_roles = (claims.get("realm_access", {}) or {}).get("roles", []) or []
-    except Exception as e:
-        logger.warning("Failed to decode OIDC access-token roles: %s", e)
+    # Map Keycloak roles -> local permissions. Keycloak realm roles live in the ACCESS
+    # token claims (not userinfo/id_token), so we read them from there — but VERIFY the
+    # access token's signature against the realm JWKS first, since these roles decide
+    # admin scope. (Previously this read the token with verify_signature=False.)
+    kc_roles: list = _verified_kc_roles(token.get("access_token", ""))
     if not kc_roles:
-        # Some providers surface realm_access via userinfo instead.
+        # Fall back to userinfo (which authlib validated) — some providers surface
+        # realm_access there; and don't let a JWKS hiccup silently collapse to viewer.
         kc_roles = (userinfo.get("realm_access", {}) or {}).get("roles", []) or []
     roles = kc_roles if kc_roles else ["viewer"]
 
