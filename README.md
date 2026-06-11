@@ -82,6 +82,7 @@ CI (`.github/workflows/ci-cd.yml`): lint · security (pip-audit + bandit) · uni
 
 ## 📚 Документация
 
+- **[docs/concepts.md](docs/concepts.md)** — 🗺️ карта концепций и глоссарий: что есть что (deviation/situation/playbook/process/incident...), чем отличается, кто на кого ссылается. **Начни отсюда.**
 - **[docs/dss-guide.md](docs/dss-guide.md)** — как работает СППР, кокпит, API, сценарий end-to-end.
 - [DSS_TARGET_ARCHITECTURE.md](DSS_TARGET_ARCHITECTURE.md) — целевая архитектура (12 модулей, статус).
 - [ARCHITECTURE.md](ARCHITECTURE.md) — архитектура (C4, ER, эндпоинты).
