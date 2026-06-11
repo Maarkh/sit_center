@@ -2,7 +2,7 @@
 from __future__ import annotations
 from celery import Celery
 from urllib.parse import quote_plus
-from celery.signals import worker_shutting_down
+from celery.signals import worker_shutting_down, worker_process_init
 
 
 def make_celery(app_name=__name__):
@@ -66,6 +66,19 @@ celery_app = make_celery()
 
 import core.celery_metrics  # noqa: F401, E402 — register Celery signal handlers
 import core.dss_tasks  # noqa: F401, E402 — register DSS beat tasks (default queue)
+
+@worker_process_init.connect
+def init_worker_tracing(**kwargs):
+    """Each pre-forked worker process gets its own OTel exporter (no-op unless
+    OTEL_ENABLED). Spans for task publish/execute + DB/Redis/HTTP/Kafka now thread
+    through the worker, joined to the web trace that enqueued the task."""
+    try:
+        from core.tracing import setup_celery_tracing
+        setup_celery_tracing()
+    except Exception as e:  # tracing must never break task startup
+        from config import logger
+        logger.debug(f"Celery OTel init skipped: {e}")
+
 
 @worker_shutting_down.connect
 def worker_shutting_down_handler(sig, how, exitcode, **kwargs):

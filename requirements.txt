@@ -41,3 +41,5 @@ opentelemetry-instrumentation-fastapi>=0.43b0
 opentelemetry-instrumentation-sqlalchemy>=0.43b0
 opentelemetry-instrumentation-redis>=0.43b0
 opentelemetry-instrumentation-requests>=0.43b0
+opentelemetry-instrumentation-celery>=0.43b0
+opentelemetry-instrumentation-kafka-python>=0.43b0
