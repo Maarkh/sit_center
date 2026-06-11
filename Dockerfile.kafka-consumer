@@ -1,21 +1,20 @@
-FROM python:3.11-slim
-
+# Dockerfile.kafka-consumer — multi-stage: compilers live only in the builder.
+# Stage 1: build wheels into /root/.local
+FROM python:3.11-slim AS builder
 WORKDIR /app
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc && \
-    rm -rf /var/lib/apt/lists/*
-
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc g++ build-essential \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --user --no-cache-dir -r requirements.txt
 
-COPY . .
-
-ENV PYTHONPATH=/app
-
-# Запуск под непривилегированным пользователем (uid/gid 1000), не root.
-RUN groupadd -r -g 1000 app && useradd -r -u 1000 -g app -m -d /home/app app \
-    && chown -R 1000:1000 /app
+# Stage 2: runtime — no toolchain.
+FROM python:3.11-slim
+WORKDIR /app
+RUN groupadd -r -g 1000 app && useradd -r -u 1000 -g app -m -d /home/app app
+COPY --from=builder --chown=1000:1000 /root/.local /home/app/.local
+COPY --chown=1000:1000 . .
+ENV PYTHONPATH=/app \
+    PATH=/home/app/.local/bin:$PATH
 USER 1000
-
 CMD ["python", "kafka_consumer_main.py"]

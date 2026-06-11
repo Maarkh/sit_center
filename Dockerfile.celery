@@ -1,33 +1,28 @@
-# Dockerfile.celery
-FROM python:3.11-slim
-
+# Dockerfile.celery — multi-stage so the build toolchain (gcc/g++/build-essential)
+# lives ONLY in the builder, not the runtime image (smaller image + attack surface).
+# Stage 1: build wheels into /root/.local
+FROM python:3.11-slim AS builder
 WORKDIR /app
-
-# Установка системных зависимостей
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        gcc \
-        postgresql-client \
-        && rm -rf /var/lib/apt/lists/*
-
-# Копируем зависимости
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc g++ build-essential \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --user --no-cache-dir -r requirements.txt
 
-# Копируем код приложения
-COPY . .
-
-# Убедимся, что файлы исполняемы
+# Stage 2: runtime — only what's needed to RUN (psql for wait-for-db); no compilers.
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+# Non-root uid/gid 1000 (matches the Helm securityContext.runAsUser).
+RUN groupadd -r -g 1000 app && useradd -r -u 1000 -g app -m -d /home/app app
+COPY --from=builder --chown=1000:1000 /root/.local /home/app/.local
+COPY --chown=1000:1000 . .
 RUN chmod +x wait-for-db-and-start.sh
-
-# Переменные окружения (временные, переопределятся в docker-compose)
-ENV PYTHONPATH=/app
-
-# Запуск под непривилегированным пользователем (uid/gid 1000 — совпадает с
-# securityContext в Helm-чарте). Контейнер не должен работать от root.
-RUN groupadd -r -g 1000 app && useradd -r -u 1000 -g app -m -d /home/app app \
-    && chown -R 1000:1000 /app
+ENV PYTHONPATH=/app \
+    PATH=/home/app/.local/bin:$PATH \
+    MPLCONFIGDIR=/tmp/matplotlib
 USER 1000
-
-# Команда по умолчанию — будет переопределена в docker-compose
+# Command is overridden in docker-compose / Helm.
 CMD ["celery", "-A", "tasks.celery_app", "worker", "-l", "INFO", "--concurrency", "2"]
