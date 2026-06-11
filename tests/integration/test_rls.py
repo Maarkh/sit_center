@@ -65,3 +65,40 @@ def test_rls_enforces_tenant_isolation(db_engine):
             pass
         trans.rollback()
         conn.close()
+
+
+def test_rls_request_tenant_reaches_db_guc(db_engine):
+    """Regression for the propagation fix: the per-request tenant set in HTTP
+    middleware must reach the sync endpoint's DB checkout as app.current_tenant.
+    Uses the REAL engine + verify_token + RLS checkout hook (mirrors the
+    bind_rls_tenant middleware in api/main.py). A dependency-set would NOT propagate."""
+    from fastapi import FastAPI, Request
+    from fastapi.testclient import TestClient
+    from core import rls
+    from core.database import get_engine  # the engine install_rls hooked
+    from api.auth import create_access_token, verify_token, ACCESS_COOKIE_NAME
+
+    app = FastAPI()
+
+    @app.middleware("http")
+    async def bind(request: Request, call_next):
+        rls.current_tenant.set(None)
+        auth = request.headers.get("Authorization", "")
+        tok = auth[7:] if auth.startswith("Bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
+        if tok:
+            try:
+                rls.set_request_tenant(verify_token(tok).tenant_id)
+            except Exception:
+                pass
+        return await call_next(request)
+
+    @app.get("/guc")
+    def guc():  # sync endpoint → runs in threadpool, like the real routes
+        with get_engine().connect() as c:
+            return {"guc": c.execute(text("SELECT current_setting('app.current_tenant', true)")).scalar()}
+
+    client = TestClient(app)
+    assert client.get("/guc").json()["guc"] in ("", None)  # anon → fail-open
+    tok = create_access_token({"sub": "u", "tenant_id": "acme", "roles": [], "permissions": []})
+    assert client.get("/guc", headers={"Authorization": f"Bearer {tok}"}).json()["guc"] == "acme"
+    assert client.get("/guc").json()["guc"] in ("", None)  # next anon req → no leak

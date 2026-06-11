@@ -24,9 +24,35 @@ current_tenant: contextvars.ContextVar = contextvars.ContextVar("rls_current_ten
 
 def set_request_tenant(tenant_id) -> None:
     """Bind the current request/task to a tenant for RLS. No-op for falsy values.
-    ContextVars are per-task, so this never leaks across requests."""
-    if tenant_id:
-        current_tenant.set(str(tenant_id))
+
+    Must be called from an HTTP MIDDLEWARE, not a dependency: a contextvar set inside
+    a FastAPI sync dependency runs in a separate threadpool context and never reaches
+    the sync endpoint's DB checkout (verified empirically). Middleware-set values do
+    propagate. See RLSTenantMiddleware in api/middleware.py."""
+    current_tenant.set(str(tenant_id) if tenant_id else None)
+
+
+def warn_if_rls_bypassed(engine) -> None:
+    """Log a LOUD warning if RLS is enabled but the app's DB role bypasses it
+    (SUPERUSER / BYPASSRLS) — in which case migration 029's policies are a silent
+    no-op and RLS_ENABLED=true is false assurance. Cheap one-shot check at startup."""
+    if not getattr(settings, "RLS_ENABLED", True):
+        return
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            bypass = conn.execute(text(
+                "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user"
+            )).scalar()
+        if bypass:
+            logger.warning(
+                "⚠️ RLS_ENABLED=true but the app connects as a SUPERUSER/BYPASSRLS role — "
+                "row-level security is BYPASSED (migration 029 is a no-op). Run the app as "
+                "a NOSUPERUSER NOBYPASSRLS role for tenant isolation to take effect "
+                "(see docs/operations.md §10)."
+            )
+    except Exception as e:
+        logger.debug("RLS role check skipped: %s", e)
 
 
 def _on_checkout(dbapi_conn, connection_record, connection_proxy):

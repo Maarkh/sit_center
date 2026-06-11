@@ -144,16 +144,10 @@ def _resolve_user_grants(username: str):
 
 
 def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme)) -> TokenData:
-    """Auth dependency. Resolves the caller, then binds the request to that tenant so
-    RLS (core/rls.py) can DB-enforce isolation on every subsequent query this request
-    makes — defense-in-depth behind the explicit per-query tenant filters."""
-    td = _authenticate(request, token)
-    try:
-        from core.rls import set_request_tenant
-        set_request_tenant(td.tenant_id)
-    except Exception:
-        pass  # RLS is a backstop; never fail a request over it
-    return td
+    """Auth dependency. (RLS tenant binding is done in the bind_rls_tenant HTTP
+    middleware, not here — a contextvar set in a sync dependency never reaches the
+    sync endpoint's DB checkout.)"""
+    return _authenticate(request, token)
 
 
 def _authenticate(request: Request, token: Optional[str]) -> TokenData:

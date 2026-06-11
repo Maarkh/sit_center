@@ -126,6 +126,28 @@ app.add_middleware(
 )
 
 
+# --- RLS request-tenant binding ---
+# Bind each request to its tenant so DB Row-Level Security (migration 029) actually
+# enforces isolation. This MUST be middleware: a contextvar set in a FastAPI sync
+# dependency runs in a separate threadpool context and never reaches the sync
+# endpoint's DB checkout — only a middleware-set value propagates (verified). The
+# decode is best-effort and never rejects (auth is the route's job); an
+# unauthenticated request gets no tenant → RLS fails open.
+@app.middleware("http")
+async def bind_rls_tenant(request: Request, call_next):
+    from core.rls import current_tenant, set_request_tenant
+    from api.auth import verify_token, ACCESS_COOKIE_NAME
+    current_tenant.set(None)
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:] if auth.startswith("Bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
+    if token:
+        try:
+            set_request_tenant(verify_token(token).tenant_id)
+        except Exception:
+            pass  # invalid/expired token → no tenant; the route's auth dep will 401
+    return await call_next(request)
+
+
 # --- CSRF protection for cookie-authenticated browser requests ---
 # Double-submit token: an unsafe request that authenticates via the httpOnly
 # cookie (i.e. has the access_token cookie and NO Authorization header) must echo

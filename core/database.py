@@ -53,8 +53,9 @@ def get_engine():
         # connection so DB-level row security can enforce tenant isolation (fail-open
         # when no request context is set — workers/migrations are unaffected).
         try:
-            from core.rls import install_rls
+            from core.rls import install_rls, warn_if_rls_bypassed
             install_rls(_engine)
+            warn_if_rls_bypassed(_engine)
         except Exception as e:
             logger.warning(f"RLS hooks not installed: {e}")
 
