@@ -210,19 +210,15 @@ _redis_lock = threading.Lock()
 
 def get_redis():
     global _redis_client
-    
+
+    # Fast path: return the cached client WITHOUT pinging. redis-py's connection pool
+    # + health_check_interval=30 + retry_on_timeout already detect and replace dead
+    # connections, so a per-call ping() was a redundant Redis round-trip on every
+    # lock / dedup / notify / cache op — pure latency, amplified when Redis is slow.
+    # (Also removes a reset of the global done outside _redis_lock.)
     if _redis_client is not None:
-        try:
-            _redis_client.ping()
-            return _redis_client
-        except (redis.ConnectionError, redis.TimeoutError):
-            # Соединение потеряно, закрываем старый клиент
-            try:
-                _redis_client.close()
-            except Exception:
-                pass
-            _redis_client = None
-    
+        return _redis_client
+
     with _redis_lock:
         # Double-check после получения блокировки
         if _redis_client is not None:
