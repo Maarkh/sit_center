@@ -25,7 +25,10 @@ export default function HeaderBar() {
       key: 'logout',
       label: t('common.logout'),
       icon: <LogoutOutlined />,
-      onClick: () => { logout(); navigate('/login'); },
+      // Hard redirect (not SPA navigate) so ALL in-memory store state is dropped —
+      // otherwise alertStore's cached liveAlerts (metric names/values) would survive
+      // into the next user's session on the same tab. Mirrors the 401-interceptor path.
+      onClick: async () => { await logout(); window.location.assign('/login'); },
     },
   ];
 

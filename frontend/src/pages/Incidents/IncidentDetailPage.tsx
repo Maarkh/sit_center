@@ -77,9 +77,15 @@ export default function IncidentDetailPage() {
           <Descriptions.Item label={t('incidents.escalation_level')}>{incident.escalation_level}</Descriptions.Item>
           {incident.external_url && (
             <Descriptions.Item label={t('incidents.external')}>
-              <a href={incident.external_url} target="_blank" rel="noopener noreferrer">
-                {incident.external_system} #{incident.external_id}
-              </a>
+              {/* Only render an actual link for http(s) — React doesn't sanitize href,
+                  so a javascript: URL would execute on click. Fall back to plain text. */}
+              {/^https?:\/\//i.test(incident.external_url) ? (
+                <a href={incident.external_url} target="_blank" rel="noopener noreferrer">
+                  {incident.external_system} #{incident.external_id}
+                </a>
+              ) : (
+                <span>{incident.external_system} #{incident.external_id}</span>
+              )}
             </Descriptions.Item>
           )}
         </Descriptions>
