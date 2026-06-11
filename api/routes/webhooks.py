@@ -183,7 +183,7 @@ def idoit_sync_webhook(request: Request, payload: IdoitSyncPayload):
     engine = get_engine()
     with engine.connect() as conn:
         row = conn.execute(
-            sa_text("SELECT id, status FROM incidents WHERE external_id = :eid"),
+            sa_text("SELECT id, status, tenant_id FROM incidents WHERE external_id = :eid"),
             {"eid": payload.object_id},
         ).mappings().first()
 
@@ -192,6 +192,12 @@ def idoit_sync_webhook(request: Request, payload: IdoitSyncPayload):
         raise HTTPException(404, "Incident not found for this external_id")
 
     incident_id = row["id"]
+    # Trust boundary: this is a single, global integration key (one i-doit instance for
+    # the whole system), so a sync may legitimately target any tenant's incident — the
+    # incident is matched by i-doit's object_id. Use the incident's REAL tenant_id for
+    # the audit (was hardcoded 'default'). Per-tenant webhook keys (like http_push) are
+    # the path to true per-tenant scoping if multiple i-doit instances are ever added.
+    incident_tenant = row["tenant_id"]
     result = {"incident_id": incident_id, "synced": []}
 
     if payload.status:
@@ -214,7 +220,7 @@ def idoit_sync_webhook(request: Request, payload: IdoitSyncPayload):
     try:
         from core.audit import log_audit
         log_audit(
-            f"idoit:{payload.assigned or 'system'}", "default",
+            f"idoit:{payload.assigned or 'system'}", incident_tenant,
             "sync", "incident",
             resource_id=str(incident_id),
             changes={"synced": result.get("synced", [])},

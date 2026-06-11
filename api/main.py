@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
-from config import logger, setup_logging, settings
+from config import logger, setup_logging, settings, mask_secrets
 
 # Настройка логирования (важно: до импорта других модулей)
 setup_logging()
@@ -110,6 +110,11 @@ app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 app.add_middleware(PrometheusMiddleware)
 app.add_middleware(DeprecationMiddleware)
 app.state.limiter = limiter
+# Register the middleware so the limiter's default_limits actually apply to EVERY
+# route (per endpoint, per client IP) — not only the routes with an explicit
+# @limiter.limit decorator. Without this, undecorated endpoints had no limit at all.
+from slowapi.middleware import SlowAPIMiddleware
+app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler) # type: ignore
 app.add_exception_handler(SituationalCenterError, situational_center_error_handler) # type: ignore
 app.add_exception_handler(SQLADatabaseError, sqlalchemy_error_handler) # type: ignore
@@ -305,7 +310,10 @@ def health():
             conn.execute(text("SELECT 1"))
         checks["database"] = {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
     except Exception as e:
-        checks["database"] = {"status": "error", "detail": str(e)[:200]}
+        # Log the detail server-side; the public probe must not leak internal
+        # hostnames/ports/creds embedded in connection errors.
+        logger.warning("health: database check failed: %s", mask_secrets(str(e)))
+        checks["database"] = {"status": "error"}
 
     # Redis
     try:
@@ -314,7 +322,8 @@ def health():
         get_redis().ping()
         checks["redis"] = {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
     except Exception as e:
-        checks["redis"] = {"status": "error", "detail": str(e)[:200]}
+        logger.warning("health: redis check failed: %s", mask_secrets(str(e)))
+        checks["redis"] = {"status": "error"}
 
     # Kafka (optional)
     if settings.KAFKA_ENABLED:
@@ -325,7 +334,8 @@ def health():
             p.close(timeout=2)
             checks["kafka"] = {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
         except Exception as e:
-            checks["kafka"] = {"status": "error", "detail": str(e)[:200]}
+            logger.warning("health: kafka check failed: %s", mask_secrets(str(e)))
+            checks["kafka"] = {"status": "error"}
 
     # ClickHouse (optional)
     if settings.CLICKHOUSE_ENABLED:
@@ -340,7 +350,8 @@ def health():
             ch.close()
             checks["clickhouse"] = {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
         except Exception as e:
-            checks["clickhouse"] = {"status": "error", "detail": str(e)[:200]}
+            logger.warning("health: clickhouse check failed: %s", mask_secrets(str(e)))
+            checks["clickhouse"] = {"status": "error"}
 
     overall = "ok" if all(c["status"] == "ok" for c in checks.values()) else "degraded"
     status_code = 200 if overall == "ok" else 503
