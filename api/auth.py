@@ -185,3 +185,25 @@ def _authenticate(request: Request, token: Optional[str]) -> TokenData:
         scopes=["admin"] if "admin" in roles else [],
         tenant_id=tenant_id, roles=roles, permissions=permissions,
     )
+
+
+def effective_request_tenant(token: str) -> Optional[str]:
+    """The tenant RLS should bind for a request — resolved the SAME way get_current_user
+    resolves it (the DB grant is the source of truth; the token claim only under TESTING
+    or on a DB error / env-admin fallback). Binding RLS from the raw token claim instead
+    would disagree with the app's own `WHERE tenant_id = <DB-resolved>` filters whenever a
+    token's claimed tenant != the user's current DB tenant (e.g. a tenant reassignment
+    within the token's lifetime), blanking the user out (fail-closed). Returns None for an
+    invalid/expired token. NB: this re-runs the grant lookup the auth dependency also does
+    (one extra indexed query per authenticated request) — acceptable for consistency."""
+    try:
+        td = verify_token(token)
+    except Exception:
+        return None
+    if os.getenv("TESTING", "").lower() in ("1", "true"):
+        return td.tenant_id
+    grants = _resolve_user_grants(td.username)
+    if grants is None or grants is _USER_ABSENT:
+        return td.tenant_id  # DB error / env-admin / absent → mirrors get_current_user's fallback
+    tenant_id, _roles, _perms = grants
+    return tenant_id

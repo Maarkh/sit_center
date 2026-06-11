@@ -141,15 +141,17 @@ app.add_middleware(
 @app.middleware("http")
 async def bind_rls_tenant(request: Request, call_next):
     from core.rls import current_tenant, set_request_tenant
-    from api.auth import verify_token, ACCESS_COOKIE_NAME
+    from api.auth import effective_request_tenant, ACCESS_COOKIE_NAME
     current_tenant.set(None)
     auth = request.headers.get("Authorization", "")
     token = auth[7:] if auth.startswith("Bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
     if token:
         try:
-            set_request_tenant(verify_token(token).tenant_id)
+            # DB-resolved tenant (same as the auth dependency) so RLS agrees with the
+            # app's WHERE tenant_id filters; None for invalid tokens → RLS fails open.
+            set_request_tenant(effective_request_tenant(token))
         except Exception:
-            pass  # invalid/expired token → no tenant; the route's auth dep will 401
+            pass  # never block a request over RLS binding; the route's auth dep will 401
     return await call_next(request)
 
 
@@ -296,6 +298,7 @@ async def frontend_errors(request: Request):
 
 
 @app.get("/health", tags=["System"])
+@limiter.exempt  # probes must never be rate-limited (a 429 would restart healthy pods)
 def health():
     """Aggregated health check for all dependencies."""
     import time
@@ -362,6 +365,7 @@ def health():
     )
 
 @app.get("/metric", tags=["System"], summary="Prometheus metrics endpoint")
+@limiter.exempt  # the Prometheus scraper must never be rate-limited
 def metric():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

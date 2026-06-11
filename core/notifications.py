@@ -25,6 +25,8 @@ def notify(message: str, priority: str = "info", event_type: str = "system") -> 
 # NB: this module is imported by tasks.py (the Celery worker/beat entrypoint), so it
 # must NOT install process-wide signal handlers at import — doing so overrode Celery's
 # own SIGTERM graceful-drain with a bare sys.exit(0), requeuing in-flight tasks and
-# orphaning locks. Telegram-session cleanup now runs from Celery's worker_shutting_down
-# signal (celery_app.py) and the FastAPI lifespan, in the process that actually owns it.
+# orphaning locks. The Telegram session is owned by the Celery worker (notify() only
+# enqueues; the actual send happens in tasks.send_notification), so its cleanup runs
+# from Celery's worker_shutting_down signal (celery_app.py). The web process never
+# opens the session, so it needs no shutdown hook.
 logger.info("✅ Модуль уведомлений инициализирован")

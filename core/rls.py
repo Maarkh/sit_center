@@ -28,7 +28,7 @@ def set_request_tenant(tenant_id) -> None:
     Must be called from an HTTP MIDDLEWARE, not a dependency: a contextvar set inside
     a FastAPI sync dependency runs in a separate threadpool context and never reaches
     the sync endpoint's DB checkout (verified empirically). Middleware-set values do
-    propagate. See RLSTenantMiddleware in api/middleware.py."""
+    propagate. See the bind_rls_tenant middleware in api/main.py."""
     current_tenant.set(str(tenant_id) if tenant_id else None)
 
 
