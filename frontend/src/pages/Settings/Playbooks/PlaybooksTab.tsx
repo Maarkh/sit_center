@@ -145,7 +145,8 @@ export default function PlaybooksTab() {
               <InputNumber min={0} step={0.5} style={{ width: 110 }} />
             </Form.Item>
           </Space>
-          <Form.Item name="process_template_id" label={t('settingsDss.processTemplate')}>
+          <Form.Item name="process_template_id" label={t('settingsDss.processTemplate')}
+            extra={t('settingsDss.processHint')}>
             <Select allowClear options={templates.map((x) => ({ label: x.name, value: x.id }))} />
           </Form.Item>
           <Form.Item name="indicator_ids" label={t('settingsDss.indicatorScope')}
@@ -154,7 +155,8 @@ export default function PlaybooksTab() {
               options={indicators.map((i) => ({ label: i.name, value: i.id }))} />
           </Form.Item>
 
-          <div style={{ fontWeight: 500, margin: '4px 0 8px' }}>{t('settingsDss.recommendedActions')}</div>
+          <div style={{ fontWeight: 500, margin: '4px 0 2px' }}>{t('settingsDss.recommendedActions')}</div>
+          <div style={{ color: '#888', fontSize: 12, margin: '0 0 8px' }}>{t('settingsDss.checklistHint')}</div>
           <Form.List name="actions">
             {(fields, { add, remove }) => (
               <>

@@ -6,6 +6,13 @@ Two routers:
   * /recommendations — generate ranked Next-Best-Action alternatives for a deviation
     or incident, then accept (→ instantiate the playbook's process) or dismiss.
 All queries are tenant-scoped.
+
+NB on the two "steps" concepts (see docs/concepts.md):
+  * playbook_actions = a lightweight INFORMATIONAL checklist shown in the recommendation
+    card (action + checklist text). It is NOT executed and has no roles/SLA.
+  * the executable workflow with roles/SLA/assignments lives ONLY in the playbook's
+    process_template (process_steps), instantiated as a process on accept.
+Don't treat playbook_actions as process steps — they're a hint, not a regulation.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from typing import List, Optional

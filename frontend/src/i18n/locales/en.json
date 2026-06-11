@@ -169,14 +169,16 @@
     "editPlaybook": "Edit playbook",
     "triggerSeverity": "Trigger severity",
     "triggerDirection": "Trigger direction",
-    "processTemplate": "Process template",
+    "processTemplate": "Process (executable workflow)",
+    "processHint": "The formal process: steps with assignees and SLA. Started when the recommendation is accepted.",
     "indicatorScope": "Indicator scope",
     "scopeHint": "Empty = applies to all indicators",
     "any": "any",
-    "recommendedActions": "Recommended actions",
+    "recommendedActions": "Quick checklist (hint)",
+    "checklistHint": "A hint shown in the recommendation card, NOT executable steps. Formal steps with roles and SLA are defined by the process above.",
     "action": "Action",
     "checklistCsv": "checklist, comma-separated",
-    "addAction": "Add action"
+    "addAction": "Add item"
   },
   "dashboard": {
     "firing_alerts": "Firing Alerts",
