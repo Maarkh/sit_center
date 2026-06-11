@@ -48,12 +48,12 @@ def test_oidc_login_enabled_redirects(api_client):
 
 
 def test_oidc_callback_success_issues_token(api_client):
-    from jose import jwt as jose_jwt
+    import jwt as pyjwt
     # Keycloak realm roles live in the ACCESS-token claims — encode a real JWT so
-    # the callback's get_unverified_claims() decode path is exercised.
-    access_jwt = jose_jwt.encode(
+    # the callback's no-verify claim-decode path is exercised.
+    access_jwt = pyjwt.encode(
         {"sub": "kc-1", "realm_access": {"roles": ["viewer"]}},
-        "irrelevant-signing-key",
+        "irrelevant-signing-key-decoded-without-verification",  # ≥32B: silence PyJWT key-length warning
         algorithm="HS256",
     )
     token = {

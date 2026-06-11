@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from fastapi import Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt  # PyJWT (replaces the unmaintained python-jose; HS256, symmetric key)
 from pydantic import BaseModel, Field
 
 from config import settings
@@ -93,7 +93,7 @@ def verify_token(token: str) -> TokenData:
         roles = payload.get("roles", [])
         permissions = payload.get("permissions", [])
         if username is None:
-            raise JWTError()
+            raise jwt.InvalidTokenError("token has no 'sub' claim")
         return TokenData(
             username=username,
             scopes=scopes,
@@ -101,7 +101,7 @@ def verify_token(token: str) -> TokenData:
             roles=roles,
             permissions=permissions,
         )
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",

@@ -139,10 +139,12 @@ async def callback_oidc(request: Request):
     # (Without this every SSO user silently collapsed to "viewer".) CPU-only.
     kc_roles: list = []
     try:
-        from jose import jwt as _jwt
+        import jwt as _jwt
         access_jwt = token.get("access_token", "")
         if access_jwt:
-            claims = _jwt.get_unverified_claims(access_jwt)
+            # Claims only — the token was already validated by authlib during the
+            # code exchange; we just read realm_access. PyJWT's no-verify decode.
+            claims = _jwt.decode(access_jwt, options={"verify_signature": False})
             kc_roles = (claims.get("realm_access", {}) or {}).get("roles", []) or []
     except Exception as e:
         logger.warning("Failed to decode OIDC access-token roles: %s", e)
