@@ -283,7 +283,7 @@ class ProcessEngine:
             msg = f"Шаг процесса просрочен: '{a['name']}' (ответственный: {who})"
             try:
                 from core.notifications import notify
-                notify(msg, "warning")
+                notify(msg, "warning", tenant_id=tenant_id)
             except Exception as e:
                 logger.error("process step escalation notify failed: %s", mask_secrets(str(e)))
         return len(overdue)

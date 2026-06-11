@@ -217,7 +217,7 @@ class SituationEngine:
                 {"id": sit_id},
             )
             if created:
-                self._notify(conn, title, impact, hypothesis)
+                self._notify(conn, title, impact, hypothesis, tenant_id)
         return created
 
     def _auto_resolve(self, tenant_id) -> int:
@@ -238,11 +238,12 @@ class SituationEngine:
                 )
         return len(ids)
 
-    def _notify(self, conn, title, impact, hypothesis):
+    def _notify(self, conn, title, impact, hypothesis, tenant_id):
         priority = "critical" if impact >= 4.0 else "warning"
         try:
             from core.notifications import notify
-            notify(f"{title} — impact {impact}. {hypothesis}", priority, event_type="situation")
+            notify(f"{title} — impact {impact}. {hypothesis}", priority,
+                   event_type="situation", tenant_id=tenant_id)
         except Exception as e:
             logger.error("situation notify failed: %s", mask_secrets(str(e)))
 

@@ -66,8 +66,10 @@ def run_alerts_check_task(self, time_filter: str = "1h"):
 def send_notification(self, message: str, priority: str, idempotency_key: str = None,
                       event_type: str = "system", tenant_id: str = "default"): # type: ignore
     if not idempotency_key:
-        # Non-security fingerprint for de-duplicating notifications.
-        idempotency_key = md5(f"{message}:{priority}:{event_type}".encode(), usedforsecurity=False).hexdigest()[:16]
+        # Non-security fingerprint for de-duplicating notifications. Includes tenant_id
+        # so two tenants with an identical message+priority+event_type don't cross-suppress.
+        idempotency_key = md5(f"{tenant_id}:{message}:{priority}:{event_type}".encode(),
+                              usedforsecurity=False).hexdigest()[:16]
 
     cache = get_redis()
     cache_key = f"notification_sent:{idempotency_key}"

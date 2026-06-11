@@ -167,10 +167,11 @@ def verify_remediation_task(deviation_id: str, tenant_id: str = "default"):
         try:
             from core.notifications import notify
             if cleared:
-                notify(f"Устранение подтверждено: отклонение {deviation_id} вернулось в коридор", "info")
+                notify(f"Устранение подтверждено: отклонение {deviation_id} вернулось в коридор",
+                       "info", tenant_id=tenant_id)
             else:
                 notify(f"Процесс завершён, но отклонение {deviation_id} всё ещё активно — "
-                       f"меры не сработали, нужна эскалация", "warning")
+                       f"меры не сработали, нужна эскалация", "warning", tenant_id=tenant_id)
         except Exception as e:
             logger.error("remediation verify notify failed: %s", e)
 

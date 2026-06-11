@@ -435,7 +435,7 @@ class IndicatorEvaluator:
         )
         try:
             from core.notifications import notify
-            notify(msg, priority, event_type="alert")
+            notify(msg, priority, event_type="alert", tenant_id=tenant_id)
         except Exception as e:
             logger.error("deviation notify failed: %s", mask_secrets(str(e)))
 
@@ -454,7 +454,7 @@ class IndicatorEvaluator:
             from core.notifications import notify
             notify(
                 f"Показатель '{ind['name']}': нет данных за {window_minutes} мин — источник молчит?",
-                "warning", event_type="system",
+                "warning", event_type="system", tenant_id=tenant_id,
             )
         except Exception as e:
             logger.error("no-data notify failed: %s", mask_secrets(str(e)))

@@ -463,7 +463,7 @@ def escalate_incident(
             f"Эскалация L{next_level_num} → {target}: инцидент #{incident_id} "
             f"({row['metric']}/{row['region']})",
             "critical" if next_level_num >= 3 else "warning",
-            event_type="escalation",
+            event_type="escalation", tenant_id=current_user.tenant_id,
         )
     except Exception as e:
         logger.warning(f"Escalation notification failed: {e}")

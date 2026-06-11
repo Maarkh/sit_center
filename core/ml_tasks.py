@@ -19,7 +19,7 @@ def evaluate_rules_task():
             fired = [r for r in results if r.fired]
             for r in fired:
                 msg = f"Rule '{r.rule_name}': {r.metric_name} {r.operator} {r.threshold} (current: {r.current_value:.2f})"
-                notify(msg, "warning")
+                notify(msg, "warning", tenant_id=tenant_id)
             total_checked += len(results)
             total_fired += len(fired)
         logger.info("Rule evaluation: %d rules checked, %d fired", total_checked, total_fired)

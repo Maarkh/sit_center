@@ -8,10 +8,15 @@ class NotificationError(Exception):
 
 # безопасно отправляем задачу без top-level импорта tasks
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-def notify(message: str, priority: str = "info", event_type: str = "system") -> None:
+def notify(message: str, priority: str = "info", event_type: str = "system",
+           tenant_id: str = "default") -> None:
     try:
+        # tenant_id MUST be threaded through — dispatch() selects notification_channels
+        # WHERE tenant_id = :tid, so omitting it routes EVERY tenant's alert to the
+        # 'default' tenant's channels (and its absence from the dedup key cross-suppresses
+        # tenants with an identical message). Callers in tenant context pass their tenant.
         celery_app.send_task("tasks.send_notification", args=[message, priority],
-                             kwargs={"event_type": event_type})
+                             kwargs={"event_type": event_type, "tenant_id": tenant_id})
         logger.debug(f"📨 Уведомление отправлено в Celery: [{priority}/{event_type}] {message[:80]}...")
         try:
             from api.main import ALERTS_SENT

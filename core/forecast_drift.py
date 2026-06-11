@@ -164,7 +164,7 @@ class ForecastDriftMonitor:
                 from core.notifications import notify
                 notify(f"Дрейф модели: прогноз '{metric_name}' за {window_days}д — "
                        f"MAPE {m['mape']:.1f}% (>{DRIFT_MAPE_ALERT:.0f}%, n={m['n']}); "
-                       f"модель деградирует, нужна переобучка", "warning")
+                       f"модель деградирует, нужна переобучка", "warning", tenant_id=tenant_id)
             except Exception as e:
                 logger.error("drift notify failed: %s", mask_secrets(str(e)))
             logger.warning("forecast drift: %s/%s MAPE=%.1f%% n=%d",
