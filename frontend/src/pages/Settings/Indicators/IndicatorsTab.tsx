@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, MinusCircleOutlined, AppstoreAddOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import PageHelp from '@/components/Common/PageHelp';
 import {
   listIndicators, createIndicator, updateIndicator, deleteIndicator,
   listGoals, createGoal, updateGoal, deleteGoal,
@@ -149,6 +150,7 @@ export default function IndicatorsTab() {
 
   return (
     <>
+      <PageHelp section="indicators" />
       <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('settingsDss.newIndicator')}</Button>
         <Button icon={<AppstoreAddOutlined />} onClick={openGoalCreate}>{t('settingsDss.newGoal')}</Button>

@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import PageHelp from '@/components/Common/PageHelp';
 import {
   listPlaybooks, getPlaybook, createPlaybook, updatePlaybook, deletePlaybook,
   listProcessTemplates, listIndicators,
@@ -124,6 +125,7 @@ export default function PlaybooksTab() {
 
   return (
     <>
+      <PageHelp section="playbooks" />
       <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ marginBottom: 16 }}>
         {t('settingsDss.newPlaybook')}
       </Button>

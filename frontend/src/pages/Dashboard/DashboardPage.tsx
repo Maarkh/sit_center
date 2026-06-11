@@ -7,6 +7,7 @@ import { listIncidents } from '@/api/incidents';
 import DeviationDetailDrawer from '@/components/Common/DeviationDetailDrawer';
 import { usePolling } from '@/hooks/usePolling';
 import StatusTag from '@/components/Common/StatusTag';
+import PageHelp from '@/components/Common/PageHelp';
 import PriorityTag from '@/components/Common/PriorityTag';
 import { formatDateShort } from '@/utils/formatters';
 import { useTranslation } from 'react-i18next';
@@ -79,6 +80,7 @@ export default function DashboardPage() {
 
   return (
     <>
+      <PageHelp section="dashboard" />
       <Row gutter={[16, 16]}>
         {cards.map((c) => (
           <Col xs={12} sm={6} key={c.title}>

@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, SendOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import PageHelp from '@/components/Common/PageHelp';
 import { listSources, createSource, updateSource, deleteSource, testSource } from '@/api/sources';
 import type { DataSource, SourceCreate, SourceType } from '@/types/sources';
 
@@ -175,6 +176,7 @@ export default function DataSourcesTab() {
 
   return (
     <>
+      <PageHelp section="dataSources" />
       <div style={{ marginBottom: 12, color: 'var(--ant-color-text-secondary, #888)' }}>
         {t('dataSrc.hint', 'Откуда система берёт метрики. Коллектор и kafka-consumer читают включённые источники из этого реестра.')}
       </div>

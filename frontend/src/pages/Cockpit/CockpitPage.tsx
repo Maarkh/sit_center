@@ -5,6 +5,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import CockpitOverview from './CockpitOverview';
+import PageHelp from '@/components/Common/PageHelp';
 
 const PredictivePanel = lazy(() => import('./PredictivePanel'));
 const ProcessPanel = lazy(() => import('./ProcessPanel'));
@@ -30,5 +31,10 @@ export default function CockpitPage() {
   ];
 
   // destroyInactiveTabPane so each panel re-fetches fresh data when revisited.
-  return <Tabs activeKey={active} onChange={setActive} items={items} destroyOnHidden />;
+  return (
+    <>
+      <PageHelp section="cockpit" />
+      <Tabs activeKey={active} onChange={setActive} items={items} destroyOnHidden />
+    </>
+  );
 }

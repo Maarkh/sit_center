@@ -8,6 +8,7 @@ import SlaIndicator from '@/components/Common/SlaIndicator';
 import { formatDate } from '@/utils/formatters';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import PageHelp from '@/components/Common/PageHelp';
 import { RU_CODE_TO_NAME } from '@/utils/ruRegions';
 import { usePolling } from '@/hooks/usePolling';
 import CreateIncidentModal from './CreateIncidentModal';
@@ -77,6 +78,7 @@ export default function IncidentsPage() {
 
   return (
     <>
+      <PageHelp section="incidents" />
       <Card>
         <Space wrap>
           <Select placeholder={t('incidents.status')} options={[

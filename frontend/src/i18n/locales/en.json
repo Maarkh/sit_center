@@ -1,4 +1,99 @@
 {
+  "help": {
+    "show": "Help",
+    "dashboard": {
+      "title": "Overview",
+      "body": "Status at a glance: key indicators, open deviations and incidents.\nWhat to do: scan the big picture; for root-cause analysis go to Cockpit, to work problems go to Incidents."
+    },
+    "cockpit": {
+      "title": "Cockpit — decision-making",
+      "body": "Your workspace for the loop: notice → understand → decide → act → learn. The system clusters deviations into Situations and shows the forecast, recommendations and running processes.\nWhat to do: pick a situation → review the root-cause hypothesis and forecast → accept a recommendation (it starts the process)."
+    },
+    "map": {
+      "title": "Map",
+      "body": "Geography by region: where indicators left their corridor.\nWhat to do: click a region for details."
+    },
+    "metrics": {
+      "title": "Metrics — explorer",
+      "body": "Charts of raw metric values over time and dimensions — for data exploration.\nWhat to do: pick a metric and slice. Thresholds and indicators are set in Settings → Indicators."
+    },
+    "alerts": {
+      "title": "Deviations",
+      "body": "An indicator is outside its normal corridor RIGHT NOW — a 'firing' signal.\nWhat to do: acknowledge / take it, or go to Cockpit where deviations are clustered into situations."
+    },
+    "incidents": {
+      "title": "Incidents",
+      "body": "Tickets to work (synced with i-doit). Opened on chronic deviations or manually.\nWhat to do: assign, change status, escalate per SLA."
+    },
+    "settings": {
+      "title": "Settings",
+      "body": "Configure the system: data sources, indicators and corridors, playbooks and processes, notifications, SLA, escalation.\nStart with Data sources (where data comes from) → Indicators (what counts as normal)."
+    },
+    "dataSources": {
+      "title": "Data sources",
+      "body": "Where metrics come from: host agent, HTTP pull/push, Kafka.\nWhat to do: add a source — metrics start flowing into the catalog and charts."
+    },
+    "indicators": {
+      "title": "Indicators",
+      "body": "Goal → indicator → factors. An indicator has a normal 'corridor'; leaving it = a deviation.\nWhat to do: attach metrics, set corridor bounds and the chronicle threshold."
+    },
+    "metricsCatalog": {
+      "title": "Metric catalog",
+      "body": "Reference of metrics: names, units, default thresholds. Actual values come from Data sources."
+    },
+    "dimensions": {
+      "title": "Dimensions",
+      "body": "Data slices (region, service, DC...) and their allowed values — used to filter metrics."
+    },
+    "playbooks": {
+      "title": "Playbooks — knowledge base",
+      "body": "'What to do' on a deviation: triggers + a hint checklist + a link to a Process (executable).\nThe system offers matching playbooks as recommendations in the Cockpit."
+    },
+    "rules": {
+      "title": "Rules (rule engine)",
+      "body": "Conditions on metrics → alert. Mostly superseded by indicators/corridors; use for one-off rules."
+    },
+    "mlConfigs": {
+      "title": "ML configs",
+      "body": "Forecast and anomaly-detection settings per metric (Prophet etc.)."
+    },
+    "notifications": {
+      "title": "Notification channels",
+      "body": "Where to send alerts: Telegram, e-mail, webhook. Per tenant."
+    },
+    "escalation": {
+      "title": "Escalation chains",
+      "body": "Who to escalate an incident to, and after how long, if no one responded."
+    },
+    "sla": {
+      "title": "SLA policies",
+      "body": "Response and resolution deadlines by priority. Breaches are computed against these."
+    },
+    "dependencies": {
+      "title": "Indicator dependencies",
+      "body": "A 'what depends on what' graph. Deviations are clustered into situations and root cause is found along it."
+    },
+    "admin": {
+      "title": "Administration",
+      "body": "Users, roles and permissions, tenants, audit log. For administrators."
+    },
+    "users": {
+      "title": "Users",
+      "body": "Accounts, roles and a user's tenant. You manage users in your own tenant."
+    },
+    "roles": {
+      "title": "Roles & permissions (RBAC)",
+      "body": "What a role is allowed to do. Permissions are carried in the user's token."
+    },
+    "tenants": {
+      "title": "Tenants",
+      "body": "Tenant organizations. Tenant management is only from the 'default' tenant (super-admin)."
+    },
+    "audit": {
+      "title": "Audit log",
+      "body": "Who did what: logins, changes, escalations, syncs. For review and compliance."
+    }
+  },
   "app_name": "Situational Center",
   "app_short": "SC",
   "login": {

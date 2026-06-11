@@ -8,6 +8,7 @@ import type { RegionMetricValue } from '@/api/data';
 import { listIncidents } from '@/api/incidents';
 import { resolveRegionName, codeForName } from '@/utils/ruRegions';
 import { useTranslation } from 'react-i18next';
+import PageHelp from '@/components/Common/PageHelp';
 import 'leaflet/dist/leaflet.css';
 
 const { Text } = Typography;
@@ -195,7 +196,9 @@ export default function MapPage() {
   if (!geoData) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 
   return (
-    <div style={{ height: 'calc(100vh - 140px)', position: 'relative' }}>
+    <>
+      <PageHelp section="map" />
+      <div style={{ height: 'calc(100vh - 200px)', position: 'relative' }}>
       <div style={{ position: 'absolute', top: 10, left: 60, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <Card size="small" styles={{ body: { padding: 8 } }}>
           <Segmented
@@ -251,6 +254,7 @@ export default function MapPage() {
         />
         <GeoJSON key={geoKey} data={geoData} style={style} onEachFeature={onEachFeature} />
       </MapContainer>
-    </div>
+      </div>
+    </>
   );
 }

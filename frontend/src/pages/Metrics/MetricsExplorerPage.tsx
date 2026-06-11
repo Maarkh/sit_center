@@ -4,6 +4,7 @@ import { getMetricNames } from '@/api/metrics';
 import { predict } from '@/api/forecasts';
 import ForecastChart from '@/components/Charts/ForecastChart';
 import { useTranslation } from 'react-i18next';
+import PageHelp from '@/components/Common/PageHelp';
 import type { ForecastResponse } from '@/types/forecasts';
 
 const { RangePicker } = DatePicker;
@@ -36,6 +37,7 @@ export default function MetricsExplorerPage() {
 
   return (
     <>
+      <PageHelp section="metrics" />
       <Card>
         <Space wrap>
           <Select

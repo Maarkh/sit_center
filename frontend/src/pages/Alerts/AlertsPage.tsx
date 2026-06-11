@@ -9,6 +9,7 @@ import DeviationDetailDrawer from '@/components/Common/DeviationDetailDrawer';
 import { usePolling } from '@/hooks/usePolling';
 import { formatDate } from '@/utils/formatters';
 import { useTranslation } from 'react-i18next';
+import PageHelp from '@/components/Common/PageHelp';
 import type { DeviationRead, IndicatorTreeResponse } from '@/types/dss';
 
 const { Text } = Typography;
@@ -90,6 +91,7 @@ export default function AlertsPage() {
 
   return (
     <>
+      <PageHelp section="alerts" />
       <Card>
         <Space>
           <Select
