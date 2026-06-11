@@ -7,6 +7,7 @@ from core.smart_alerts import check_growth_alert
 from core.alert_settings import load_alert_settings_cached
 from config import logger, get_redis
 from core.notifications import notify
+from core.locking import single_run
 from celery.signals import task_failure
 from datetime import datetime, timezone
 from hashlib import md5
@@ -129,6 +130,7 @@ def handle_task_failure(sender=None, task_id=None, exception=None, traceback=Non
         logger.exception("💥 Ошибка в handle_task_failure")
         
 @celery_app.task
+@single_run("sla:check_breaches")
 def check_sla_breaches_task():
     try:
         from core.sla_service import check_sla_breaches
@@ -141,6 +143,7 @@ def check_sla_breaches_task():
 
 
 @celery_app.task
+@single_run("sla:check_auto_escalation")
 def check_auto_escalation_task():
     try:
         from core.sla_service import check_auto_escalation

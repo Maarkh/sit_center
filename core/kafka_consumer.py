@@ -62,26 +62,41 @@ class MetricKafkaConsumer:
             return
 
         batch: List[Dict[str, Any]] = []
+        skipped = 0
         for tp, records in messages.items():
             for record in records:
                 msg = record.value
-                batch.append({
-                    "metric_name": msg["metric_name"],
-                    "value": msg["value"],
-                    "timestamp": msg.get("timestamp"),
-                    "dimensions": json.dumps(msg.get("dimensions", {})),
-                    "tags": json.dumps(msg.get("tags", {})),
-                    "source": msg.get("source", "kafka"),
-                    # tenant from the message, else this consumer's tenant (NOT the DDL
-                    # default) — otherwise all streamed metrics land in 'default'.
-                    "tenant_id": msg.get("tenant_id") or self.tenant_id,
-                })
+                try:
+                    # Build defensively: a missing key / non-numeric value must NOT wedge
+                    # the partition. Without this, one malformed record raises → offsets
+                    # aren't committed → the same poison pill re-delivers forever.
+                    row = {
+                        "metric_name": str(msg["metric_name"]),
+                        "value": float(msg["value"]),
+                        "timestamp": msg.get("timestamp"),
+                        "dimensions": json.dumps(msg.get("dimensions", {})),
+                        "tags": json.dumps(msg.get("tags", {})),
+                        "source": msg.get("source", "kafka"),
+                        # tenant from the message, else this consumer's tenant (NOT the DDL
+                        # default) — otherwise all streamed metrics land in 'default'.
+                        "tenant_id": msg.get("tenant_id") or self.tenant_id,
+                    }
+                except (KeyError, TypeError, ValueError) as e:
+                    skipped += 1
+                    logger.warning("Kafka: skipping malformed metric record: %s", mask_secrets(str(e)))
+                    continue
+                batch.append(row)
+
+        if skipped:
+            logger.warning("Kafka: skipped %d malformed record(s) this batch", skipped)
 
         if batch:
-            # Raises on failure → commit below is skipped → at-least-once.
+            # Raises only on a DB/infra failure (transient) → commit below is skipped →
+            # at-least-once retry. Malformed records were already filtered out above.
             self._bulk_insert(batch)
 
-        # Only advance committed offsets after the batch is durably persisted.
+        # Advance committed offsets past the whole poll (good + skipped-bad) so a single
+        # poison-pill record can't permanently stall the partition's ingestion.
         self.consumer.commit()
 
     def _seek_to_committed(self):

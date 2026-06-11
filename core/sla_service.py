@@ -128,17 +128,25 @@ def check_auto_escalation():
 
         elapsed = (now - reference_time).total_seconds() / 60
         if elapsed >= next_level["escalate_after_minutes"]:
+            # Compare-and-swap on the observed level so a concurrent manual escalation
+            # (incidents.escalate_incident, which locks) or an overlapping run can't be
+            # clobbered / double-escalated: the UPDATE only fires if the incident is
+            # still at current_level and not already resolved.
             with engine.begin() as conn:
-                conn.execute(
+                res = conn.execute(
                     text("""
                         UPDATE incidents SET
                             escalation_level = :level,
                             status = 'escalated',
                             last_escalated_at = :now
-                        WHERE id = :id
+                        WHERE id = :id AND escalation_level = :observed
+                          AND status NOT IN ('resolved', 'closed')
                     """),
-                    {"id": row["id"], "level": next_level["level"], "now": now},
+                    {"id": row["id"], "level": next_level["level"], "now": now,
+                     "observed": current_level},
                 )
+            if res.rowcount == 0:
+                continue  # raced — another escalation/resolve won; don't notify
 
             logger.warning(
                 f"Auto-escalated incident #{row['id']} to L{next_level['level']} "
