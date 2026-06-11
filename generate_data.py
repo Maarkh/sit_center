@@ -17,7 +17,6 @@ from config import settings, logger, mask_secrets
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 from core.database import get_engine
-from core.config_service import ConfigService
 from core.locking import global_lock
 import io
 
@@ -178,7 +177,7 @@ def insert_metadata(engine):
             conn.execute(text("""
                 INSERT INTO metadata_metrics (metric_name, display_name, unit, default_threshold, is_active)
                 VALUES (:metric_name, :display_name, :unit, :default_threshold, true)
-                ON CONFLICT (metric_name) DO UPDATE SET
+                ON CONFLICT (metric_name, tenant_id) DO UPDATE SET
                     display_name = EXCLUDED.display_name,
                     unit = EXCLUDED.unit,
                     default_threshold = EXCLUDED.default_threshold,
@@ -190,7 +189,7 @@ def insert_metadata(engine):
             conn.execute(text("""
                 INSERT INTO metadata_dimensions (dimension_key, description, allowed_values, is_required)
                 VALUES (:dimension_key, :description, :allowed_values, false)
-                ON CONFLICT (dimension_key) DO UPDATE SET
+                ON CONFLICT (dimension_key, tenant_id) DO UPDATE SET
                     description = EXCLUDED.description,
                     allowed_values = EXCLUDED.allowed_values
             """), {**d, "allowed_values": json.dumps(d["allowed_values"])})
@@ -240,15 +239,6 @@ def insert_metadata(engine):
                 "auto_alert": c.get("auto_alert", True),
                 "alert_severity": c.get("alert_severity", "warning")
             })
-
-        # config_tables
-        conn.execute(text("""
-            INSERT INTO config_tables (name, model_class, cache_key, ttl, description, is_active)
-            VALUES
-                ('metrics', 'core.models.Metric', 'config:metrics', 300, 'Метрики', true),
-                ('dimensions', 'core.models.Dimension', 'config:dimensions', 600, 'Измерения', true)
-            ON CONFLICT (name) DO NOTHING
-        """))
 
     logger.info("✅ Метаданные заполнены.")
 
@@ -363,13 +353,6 @@ def generate_sample_data(engine, hours: int = 24, points_per_hour: int = 4):
         rows = df.to_dict(orient="records")
         inserted = bulk_insert_canonical_metrics(engine, rows)
         logger.info(f"✅ Вставлено {inserted} записей.")
-    # Инвалидируем кэш ConfigService
-    try:
-        config_service = ConfigService()
-        config_service.refresh()
-        logger.info("🔁 Кэш ConfigService обновлён.")
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось обновить кэш ConfigService: {mask_secrets(str(e))}")
 
 
 # --- Главная функция ---

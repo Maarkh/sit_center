@@ -81,24 +81,6 @@ class CanonicalMetric(Base):
 
 # === Другие модели (остаются без изменений, кроме удаления Monitoring) ===
 
-class Metric(Base):
-    __tablename__ = "metrics"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    column_name = Column(String, unique=True, nullable=False)  # ← legacy alias! будет устаревать
-    display_name = Column(String, nullable=False)
-    threshold = Column(Integer, nullable=False, default=1)
-    priority = Column(Integer, nullable=False, default=1)
-    weight = Column(Float, nullable=False, default=1.0)
-    is_active = Column(Boolean, default=True)
-    description = Column(String, nullable=True)
-
-    __table_args__ = (
-        Index("ix_metrics_column_name", "column_name"),
-        Index("ix_metrics_is_active", "is_active"),
-    )
-
-
 class MLAnomaly(Base):
     __tablename__ = "ml_anomalies"
 
@@ -120,40 +102,6 @@ class MLAnomaly(Base):
         dims = ", ".join(f"{k}={v}" for k, v in self.dimensions.items())
         return f"<MLAnomaly {self.metric_name}[{dims}]={self.value} @ {self.timestamp}>"
 
-
-class AlertEvent(Base):
-    __tablename__ = "alert_events"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    rule_id = Column(UUID(as_uuid=True), nullable=True)
-    ml_config_id = Column(UUID(as_uuid=True), nullable=True)
-    metric_name = Column(String, nullable=False)
-    dimensions = Column(JSONB, nullable=False, default=dict)
-    value = Column(Float, nullable=False)
-    event_time = Column(DateTime(timezone=True), nullable=False)
-    detected_at = Column(DateTime(timezone=True), default=func.now())
-    status = Column(String, default="firing")  # firing, acknowledged, resolved
-    resolved_at = Column(DateTime(timezone=True), nullable=True)
-    sent = Column(Boolean, default=False)
-    sent_at = Column(DateTime(timezone=True), nullable=True)
-    delivery_attempts = Column(Integer, default=0)
-    last_error = Column(Text, nullable=True)
-    fingerprint = Column(String, nullable=False, index=True)
-    escalation_level = Column(Integer, default=0)
-    last_escalation = Column(DateTime(timezone=True), nullable=True)
-    alert_hash = Column(String, index=True)
-    tenant_id = Column(String, nullable=False, default="default")
-
-    incident_created = Column(Boolean, default=False)
-    incident_created_at = Column(DateTime(timezone=True), nullable=True)
-    acknowledged_by = Column(String, nullable=True)
-    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
-    resolved_by = Column(String, nullable=True)
-
-    __table_args__ = (
-        Index("ix_alerts_firing", "status", postgresql_where=(status == "firing")),
-        Index("ix_alerts_fingerprint", "fingerprint"),
-    )
 
 class IncidentStatus(enum.Enum):
     NEW = "new"

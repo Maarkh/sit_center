@@ -108,7 +108,7 @@ def load_metrics_from_db_cached():
         try:
             metrics_data = [asdict(m) for m in metrics]  # dataclass → dict
             cache.setex(key, 300, json.dumps(metrics_data, ensure_ascii=False))
-            logger.info(f"✅ Загружено {len(metrics)} активных метрик через ConfigService")
+            logger.info(f"✅ Загружено {len(metrics)} активных метрик из metadata_metrics (cached)")
         except Exception as e:
             logger.error(f"Ошибка сохранения метрик в кэш: {mask_secrets(str(e))}")
 
