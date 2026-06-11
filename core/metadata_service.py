@@ -127,7 +127,7 @@ class MetadataService:
                         :metric_name, :display_name, :description, :unit,
                         :default_threshold, :default_critical_threshold, :is_active, :tenant_id
                     )
-                    ON CONFLICT (metric_name) DO UPDATE SET
+                    ON CONFLICT (metric_name, tenant_id) DO UPDATE SET
                         display_name = EXCLUDED.display_name,
                         description = EXCLUDED.description,
                         unit = EXCLUDED.unit,
@@ -208,7 +208,7 @@ class MetadataService:
                     ) VALUES (
                         :dimension_key, :description, :allowed_values, :is_required, :tenant_id
                     )
-                    ON CONFLICT (dimension_key) DO UPDATE SET
+                    ON CONFLICT (dimension_key, tenant_id) DO UPDATE SET
                         description = EXCLUDED.description,
                         allowed_values = EXCLUDED.allowed_values,
                         is_required = EXCLUDED.is_required,
