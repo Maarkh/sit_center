@@ -49,6 +49,15 @@ def get_engine():
             }
         )
 
+        # RLS request-context hooks: push the per-request tenant onto each pooled
+        # connection so DB-level row security can enforce tenant isolation (fail-open
+        # when no request context is set — workers/migrations are unaffected).
+        try:
+            from core.rls import install_rls
+            install_rls(_engine)
+        except Exception as e:
+            logger.warning(f"RLS hooks not installed: {e}")
+
         with _engine.connect() as conn:
             conn.execute(text("SELECT 1"))
 

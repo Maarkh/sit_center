@@ -167,6 +167,12 @@ class Settings(BaseSettings):
     # OIDC users land in 'default'. The value is validated against the tenants table.
     OIDC_TENANT_CLAIM: str = Field("") # type: ignore
 
+    # --- Row-Level Security (defense-in-depth tenant isolation) ---
+    # When true (default), each request's tenant is pushed onto the DB connection so
+    # the fail-open RLS policies (migration 029) enforce isolation. Requires the app
+    # to connect as a NON-superuser role to actually bite (see docs/operations.md).
+    RLS_ENABLED: bool = Field(True)  # type: ignore
+
     # --- CORS ---
     CORS_ORIGINS: str = Field(
         "http://localhost:8050,http://localhost:3000,http://localhost:8000",

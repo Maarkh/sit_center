@@ -263,3 +263,39 @@ Without beat, every step is also reachable via the API (the cockpit's "Correlate
 - Indicator value = weighted average of its factors' metrics over the last ~5 minutes;
   an indicator with no recent data is skipped.
 - See **[dss-guide.md](dss-guide.md)** for the full operator/developer walkthrough.
+
+## 10. Row-Level Security (defense-in-depth tenant isolation)
+
+The application filters every query by `tenant_id`. Migration `029` adds a DB-level
+backstop: RLS policies on every tenant-scoped table so a query that forgets the filter
+(or an injection) still cannot cross tenants.
+
+**How it works (fail-open):**
+- The web layer binds each request to the caller's tenant (`core/rls.py` sets
+  `app.current_tenant` on the pooled connection at checkout, from a per-request
+  ContextVar). The policy then restricts rows to that tenant.
+- Workers, the collector, and migrations set no context → the policy allows all rows,
+  so legitimate cross-tenant work is unaffected. `'*'` is an explicit bypass sentinel.
+- Toggle with `RLS_ENABLED` (default `true`). The metrics hypertable
+  `canonical_metrics` is excluded (TimescaleDB columnstore can't take RLS; it's
+  append-only telemetry, already tenant-filtered in every query).
+
+**⚠️ REQUIRED for RLS to actually enforce — run the app as a non-superuser role:**
+PostgreSQL **bypasses RLS for SUPERUSER and BYPASSRLS roles** (and, without `FORCE`,
+for the table owner — `FORCE` is set, but the superuser exemption still applies). If
+the app connects as a superuser (common in dev), RLS is silently a no-op. In
+production create a dedicated, least-privilege role:
+
+```sql
+CREATE ROLE sitcenter_app LOGIN PASSWORD '<strong>' NOSUPERUSER NOBYPASSRLS;
+GRANT CONNECT ON DATABASE sit_center TO sitcenter_app;
+GRANT USAGE ON SCHEMA public TO sitcenter_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sitcenter_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sitcenter_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sitcenter_app;
+-- Run migrations as the owner/superuser; run the app (web + workers) as sitcenter_app.
+```
+
+Verify enforcement: `SET ROLE sitcenter_app; SELECT set_config('app.current_tenant','t1',false);`
+then confirm a `SELECT` only returns tenant `t1` rows.
