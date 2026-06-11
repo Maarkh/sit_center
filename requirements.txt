@@ -1,3 +1,7 @@
+# Floor the build backend to the patched version (CVE-2025-47273 / PYSEC-2025-49,
+# path traversal → arbitrary file write, fixed in 78.1.1) — it's a transitive/build
+# dep that `pip-audit -r requirements.txt` may not surface, so pin it explicitly.
+setuptools>=78.1.1
 aiohttp>=3.9,<4
 alembic>=1.13,<2
 pandas>=2.1,<3
