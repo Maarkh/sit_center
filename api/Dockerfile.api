@@ -25,7 +25,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN adduser --disabled-password --gecos '' appuser
+# Pin uid 1000 to match the Helm podSecurityContext.runAsUser (values.yaml). Relying
+# on the next-free uid happened to be 1000 today, but a base-image change could shift
+# it and break COPY --chown ownership under readOnlyRootFilesystem.
+RUN adduser --disabled-password --gecos '' --uid 1000 appuser
 
 RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
 

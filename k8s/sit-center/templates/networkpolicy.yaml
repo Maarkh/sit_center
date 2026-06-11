@@ -13,6 +13,9 @@ spec:
       {{- include "sit-center.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
+    {{- if .Values.networkPolicy.restrictEgress }}
+    - Egress
+    {{- end }}
   ingress:
     # 1. Allow traffic between this release's own pods (same namespace).
     - from:
@@ -30,4 +33,24 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+  {{- if .Values.networkPolicy.restrictEgress }}
+  egress:
+    # DNS resolution
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Intra-release pods (api ↔ workers etc.)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "sit-center.selectorLabels" . | nindent 14 }}
+    # Data stores + external APIs on known ports (tune egressPorts for your infra)
+    - ports:
+        {{- range .Values.networkPolicy.egressPorts }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+  {{- end }}
 {{- end }}

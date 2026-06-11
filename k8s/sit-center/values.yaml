@@ -36,6 +36,21 @@ networkPolicy:
   enabled: true
   ingressNamespace: ingress-nginx   # namespace of the ingress controller (reaches API :8000)
   monitoringNamespace: monitoring   # namespace of Prometheus (scrapes API :8000)
+  # Egress is open by default (pods need DNS + DB/Redis/Kafka/Vault/OTEL, whose
+  # locations vary per deploy). Opt in to a default-deny egress that allows only DNS,
+  # intra-release traffic, and the data-store ports below — set the ports to match
+  # your infra before enabling, or a wrong policy will silently break connectivity.
+  restrictEgress: false
+  egressPorts: [5432, 6379, 9092, 8200, 4317, 443]
+
+# -- PodDisruptionBudget: keep ≥1 api/worker pod up during voluntary disruptions
+# (node drains/upgrades). Only for multi-replica workloads; beat is singleton.
+podDisruptionBudget:
+  enabled: true
+
+# -- Spread API replicas across nodes (soft anti-affinity) so one node loss / drain
+# doesn't take the whole API down.
+apiAntiAffinity: true
 
 # -- External secrets (create manually or via ExternalSecrets operator)
 existingSecret: sit-center-secrets

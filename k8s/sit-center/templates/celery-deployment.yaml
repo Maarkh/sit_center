@@ -18,6 +18,9 @@ spec:
         app.kubernetes.io/component: celery-worker
     spec:
       serviceAccountName: {{ .Release.Name }}-sa
+      # Workers don't talk to the K8s API / Vault — don't mount the SA token (narrows
+      # blast radius of any worker RCE). Only the API needs it (Vault auth).
+      automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -79,6 +82,9 @@ spec:
         app.kubernetes.io/component: celery-beat
     spec:
       serviceAccountName: {{ .Release.Name }}-sa
+      # Workers don't talk to the K8s API / Vault — don't mount the SA token (narrows
+      # blast radius of any worker RCE). Only the API needs it (Vault auth).
+      automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:

@@ -26,6 +26,8 @@ spec:
           containers:
             - name: pg-dump
               image: {{ .Values.backup.image | default "postgres:15" | quote }}
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
               command:
                 - sh
                 - -c
@@ -41,8 +43,12 @@ spec:
               volumeMounts:
                 - name: backups
                   mountPath: /backups
+                - name: tmp           # pg_dump scratch under readOnlyRootFilesystem
+                  mountPath: /tmp
           volumes:
             - name: backups
               persistentVolumeClaim:
                 claimName: {{ .Values.backup.pvcName | default (printf "%s-backups" .Release.Name) }}
+            - name: tmp
+              emptyDir: {}
 {{- end }}

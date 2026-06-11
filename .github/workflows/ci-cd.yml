@@ -53,7 +53,7 @@ jobs:
       - name: Dependency vulnerability scan (pip-audit)
         run: pip-audit -r requirements.txt --ignore-vuln GHSA-rrmf-rvhw-rf47
       - name: Static security analysis (bandit)
-        run: bandit -r api core --severity-level medium --confidence-level medium -q
+        run: bandit -r api core tasks.py celery_app.py config.py --severity-level medium --confidence-level medium -q
 
   test:
     runs-on: ubuntu-latest

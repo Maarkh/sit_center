@@ -18,6 +18,8 @@ spec:
         app.kubernetes.io/component: ml-worker
     spec:
       serviceAccountName: {{ .Release.Name }}-sa
+      # ML worker doesn't talk to the K8s API / Vault — don't mount the SA token.
+      automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
