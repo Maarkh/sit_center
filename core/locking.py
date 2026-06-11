@@ -3,6 +3,7 @@ import time
 import uuid
 import logging
 import threading
+import functools
 from contextlib import contextmanager
 from config import settings, get_cache
 
@@ -27,7 +28,8 @@ end
 """
 
 @contextmanager
-def global_lock(lock_name: str, timeout: float = None):  # type: ignore
+def global_lock(lock_name: str, timeout: float = None,  # type: ignore
+                blocking: bool = True, lease_ttl: float = None):  # type: ignore
     """
     Распределённая блокировка через Redis (SETNX + PEXPIRE).
     Безопасное освобождение через Lua-скрипт (проверка owner).
@@ -36,6 +38,12 @@ def global_lock(lock_name: str, timeout: float = None):  # type: ignore
     периодически продлевает TTL ключа. Это убирает класс багов «секция работает
     дольше TTL → ключ истёк → два держателя одновременно». TTL продлевается только
     если ключ всё ещё наш (CAS через Lua).
+
+    blocking=True  — ждать освобождения до `timeout`, иначе TimeoutError (yield True).
+    blocking=False — одна попытка SETNX: захватили → yield True, занято → yield False
+                     (для «skip if already running» периодических задач, без ожидания).
+    lease_ttl      — длительность аренды ключа (сек). По умолчанию = timeout; задаётся
+                     отдельно, когда секция держится дольше окна ожидания захвата.
     """
     if timeout is None:
         timeout = settings.cache_locking_timeout
@@ -44,18 +52,24 @@ def global_lock(lock_name: str, timeout: float = None):  # type: ignore
     cache = get_cache()
     acquired = False
     start_time = time.time()
-    ttl_ms = max(int(timeout * 1.5 * 1000), 1000)
+    ttl_ms = max(int((lease_ttl if lease_ttl is not None else timeout) * 1.5 * 1000), 1000)
     stop_renew = threading.Event()
     renew_thread = None
 
     try:
-        while time.time() - start_time < timeout:
-            acquired = cache.set(lock_key, lock_value, nx=True, px=ttl_ms)
-            if acquired:
-                break
-            time.sleep(settings.cache_poll_interval)
+        if blocking:
+            while time.time() - start_time < timeout:
+                acquired = bool(cache.set(lock_key, lock_value, nx=True, px=ttl_ms))
+                if acquired:
+                    break
+                time.sleep(settings.cache_poll_interval)
+            else:
+                raise TimeoutError(f"Failed to acquire lock '{lock_name}' within {timeout}s")
         else:
-            raise TimeoutError(f"Failed to acquire lock '{lock_name}' within {timeout}s")
+            acquired = bool(cache.set(lock_key, lock_value, nx=True, px=ttl_ms))
+            if not acquired:
+                yield False
+                return
 
         # Watchdog: продлеваем lease на ~1/3 TTL, пока удерживаем блокировку.
         def _renew():
@@ -74,7 +88,7 @@ def global_lock(lock_name: str, timeout: float = None):  # type: ignore
         renew_thread = threading.Thread(target=_renew, name=f"lock-renew-{lock_name}", daemon=True)
         renew_thread.start()
 
-        yield
+        yield True
     finally:
         stop_renew.set()
         if renew_thread is not None:
@@ -84,6 +98,28 @@ def global_lock(lock_name: str, timeout: float = None):  # type: ignore
                 cache.eval(_UNLOCK_SCRIPT, 1, lock_key, lock_value)
             except Exception as e:
                 logger.error(f"Error releasing lock {lock_key}: {e}")
+
+
+def single_run(lock_name: str, lease_ttl: float = 300):
+    """Decorator: run the wrapped callable only if no other holder is active.
+
+    A non-blocking Redis lock that makes a periodic Celery task self-exclude when a
+    previous run is still in flight — overlapping beat fires no longer pile up,
+    contend on row locks, and roll each other back. If the lock is held the call is
+    skipped and returns {"skipped_locked": True}. The lease auto-renews (watchdog)
+    so a long-but-healthy run keeps the lock, while a crashed worker frees it within
+    ~1.5×TTL. Decorate INSIDE @celery_app.task so Celery still registers the task.
+    """
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            with global_lock(lock_name, blocking=False, lease_ttl=lease_ttl) as acquired:
+                if not acquired:
+                    logger.info("%s: previous run still in progress — skipping this tick", lock_name)
+                    return {"skipped_locked": True}
+                return fn(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def get_global_state(key: str, default=None):

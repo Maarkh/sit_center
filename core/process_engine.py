@@ -10,6 +10,7 @@ orders) and parallel (shared order) regulations.
 The wave arithmetic (current_wave_order / is_instance_complete) is pure and
 unit-tested without a DB. Persistence and notifications live in ProcessEngine.
 """
+import os
 from typing import List, Optional, Dict, Any
 from sqlalchemy import text
 
@@ -19,6 +20,13 @@ from config import logger, mask_secrets
 
 TERMINAL = {"done", "skipped"}
 NON_TERMINAL = {"pending", "active", "in_progress"}
+
+# Upper bound on the steps a single instance may snapshot. The wave model is flat
+# and monotonic (each step is terminal-once, so an instance always finishes in ≤N
+# completions — no recursion, no loop construct), but a pathological or hostile
+# template could still define an unbounded number of steps and explode the
+# step_assignments table on instantiate. Reject those up front. Configurable.
+MAX_PROCESS_STEPS = int(os.environ.get("MAX_PROCESS_STEPS", "500"))
 
 
 def current_wave_order(assignments: List[Dict[str, Any]]) -> Optional[int]:
@@ -61,6 +69,11 @@ class ProcessEngine:
             ).mappings().all()
             if not steps:
                 raise ProcessError("template has no steps")
+            if len(steps) > MAX_PROCESS_STEPS:
+                raise ProcessError(
+                    f"template has {len(steps)} steps, exceeding the {MAX_PROCESS_STEPS} "
+                    f"limit (raise MAX_PROCESS_STEPS to allow)"
+                )
 
             inst_id = conn.execute(
                 text(

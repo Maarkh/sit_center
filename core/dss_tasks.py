@@ -4,9 +4,13 @@ from celery_app import celery_app
 from config import logger
 # single source of truth for the active-tenant loop (was duplicated here)
 from core.data_sources import active_tenant_ids as _active_tenant_ids
+# Periodic beat tasks self-exclude: a still-running tick skips the next fire instead
+# of overlapping it (wasted work + contending row locks that roll each other back).
+from core.locking import single_run
 
 
 @celery_app.task(time_limit=120)
+@single_run("dss:evaluate_indicators")
 def evaluate_indicators_task():
     """M3: evaluate every active indicator against its corridor, per tenant."""
     try:
@@ -30,6 +34,7 @@ def evaluate_indicators_task():
 
 
 @celery_app.task(time_limit=180)
+@single_run("dss:correlate_situations")
 def correlate_situations_task(window_minutes: int = 30):
     """M4: correlate active deviations into situations, per tenant."""
     try:
@@ -48,6 +53,7 @@ def correlate_situations_task(window_minutes: int = 30):
 
 
 @celery_app.task(time_limit=600)
+@single_run("dss:predict_indicators", lease_ttl=600)
 def predict_indicators_task(horizon_hours: int = 24):
     """M5: forecast each active indicator and raise predictive alerts on projected
     corridor breaches, per tenant. No-op where Prophet/data is unavailable."""
@@ -67,6 +73,7 @@ def predict_indicators_task(horizon_hours: int = 24):
 
 
 @celery_app.task(time_limit=120)
+@single_run("dss:evaluate_decision_outcomes")
 def evaluate_decision_outcomes_task():
     """M10: auto-derive outcomes for accepted decisions whose process has finished."""
     try:
@@ -82,6 +89,7 @@ def evaluate_decision_outcomes_task():
 
 
 @celery_app.task(time_limit=120)
+@single_run("dss:check_process_step_sla")
 def check_process_step_sla_task():
     """M8: escalate process step assignments that are past their due_at."""
     try:

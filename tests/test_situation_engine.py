@@ -47,6 +47,16 @@ class TestCorrelate:
         assert len(clusters) == 1
         assert len(clusters[0]) == 3
 
+    def test_cyclic_dependency_graph_terminates(self):
+        # BL-5 guard: a cyclic dependency graph (I1→I2→I3→I1, plus a self-loop)
+        # must NOT hang the union-find. It terminates and treats the cycle as one
+        # connected component.
+        devs = [_dev("a", "I1", 0), _dev("b", "I2", 2), _dev("c", "I3", 4)]
+        edges = [("I1", "I2"), ("I2", "I3"), ("I3", "I1"), ("I1", "I1")]
+        clusters = correlate(devs, edges, window_seconds=600)
+        assert len(clusters) == 1
+        assert len(clusters[0]) == 3
+
 
 class TestComputeImpact:
     def test_severity_weighting(self):

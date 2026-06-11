@@ -9,6 +9,7 @@ situation gets an impact score (downstream influence) and a root-cause hypothesi
 
 The correlation math (correlate / compute_impact / root_cause) is pure and unit-tested.
 """
+import os
 from typing import List, Dict, Any, Optional, Iterable, Tuple
 from sqlalchemy import text
 
@@ -16,6 +17,13 @@ from core.database import get_engine
 from config import logger, mask_secrets
 
 _SEV_WEIGHT = {"critical": 2.0, "warning": 1.0}
+
+# correlate() is O(n²) in the open-deviation count (pairwise window/component test).
+# Union-find keeps it cycle-safe, but a tenant storming thousands of simultaneous
+# deviations would still make a single correlation tick quadratically expensive.
+# Bound it to the most-recent N (the freshest deviations are the ones worth
+# clustering now); anything beyond is logged, not silently dropped. Configurable.
+MAX_CORRELATE_DEVIATIONS = int(os.environ.get("MAX_CORRELATE_DEVIATIONS", "2000"))
 
 
 def correlate(deviations: List[Dict[str, Any]], edges: Iterable[Tuple], window_seconds: int) -> List[List[Dict[str, Any]]]:
@@ -109,9 +117,16 @@ class SituationEngine:
         with engine.connect() as conn:
             devs = conn.execute(
                 text("SELECT id, indicator_id, severity, detected_at FROM deviations "
-                     "WHERE tenant_id = :tid AND status <> 'resolved'"),
-                {"tid": tenant_id},
+                     "WHERE tenant_id = :tid AND status <> 'resolved' "
+                     "ORDER BY detected_at DESC LIMIT :lim"),
+                {"tid": tenant_id, "lim": MAX_CORRELATE_DEVIATIONS},
             ).mappings().all()
+            if len(devs) >= MAX_CORRELATE_DEVIATIONS:
+                logger.warning(
+                    "tenant %s has ≥%d open deviations; correlating only the %d most recent "
+                    "this tick (raise MAX_CORRELATE_DEVIATIONS to widen)",
+                    tenant_id, MAX_CORRELATE_DEVIATIONS, MAX_CORRELATE_DEVIATIONS,
+                )
             edges = conn.execute(
                 text("SELECT src_indicator_id, dst_indicator_id, weight FROM indicator_dependencies "
                      "WHERE tenant_id = :tid"),
