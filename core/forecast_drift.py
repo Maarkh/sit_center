@@ -28,6 +28,9 @@ DRIFT_TOLERANCE_SECONDS = int(os.environ.get("FORECAST_DRIFT_TOLERANCE_SEC", "60
 # Raise a drift alert when MAPE exceeds this (percent) over at least N samples.
 DRIFT_MAPE_ALERT = float(os.environ.get("FORECAST_DRIFT_MAPE_ALERT", "30"))
 DRIFT_MIN_SAMPLES = int(os.environ.get("FORECAST_DRIFT_MIN_SAMPLES", "5"))
+# Suppress repeat drift alerts for the same series for this long (default 3 days) so a
+# persistently-drifting model doesn't re-notify on every (daily) run. Always logged.
+DRIFT_ALERT_TTL = int(os.environ.get("FORECAST_DRIFT_ALERT_TTL", str(3 * 24 * 3600)))
 
 
 def error_metrics(pairs: List[Tuple[float, float]]) -> Dict[str, Any]:
@@ -96,13 +99,17 @@ class ForecastDriftMonitor:
         engine = get_engine()
         with engine.connect() as conn:
             rows = conn.execute(
-                text("SELECT indicator_id, metric_name, points FROM forecasts "
+                text("SELECT indicator_id, metric_name, points, generated_at FROM forecasts "
                      "WHERE tenant_id = :tid AND generated_at >= :start"),
                 {"tid": tenant_id, "start": window_start},
             ).mappings().all()
 
-        # Group past forecast points by (indicator, metric).
-        by_series: Dict[Tuple[Any, str], List[Tuple[datetime, float]]] = defaultdict(list)
+        # Group past forecast points by (indicator, metric), deduped by target ts. M5
+        # re-forecasts frequently, so a single future ts appears in many overlapping
+        # snapshots — scoring each would count that one ts (and its one actual) N times
+        # and skew the error. Keep only the prediction from the MOST RECENT snapshot for
+        # each ts (the freshest model's call for that moment).
+        by_series: Dict[Tuple[Any, str], Dict[datetime, Tuple[datetime, float]]] = defaultdict(dict)
         for r in rows:
             pts = r["points"]
             if isinstance(pts, str):
@@ -110,14 +117,18 @@ class ForecastDriftMonitor:
                     pts = json.loads(pts)
                 except (ValueError, TypeError):
                     continue
+            gen = r["generated_at"]
             for p in pts or []:
                 ts = _parse_ts(p.get("ts"))
                 yhat = p.get("yhat")
                 if ts is None or yhat is None or ts >= now:
                     continue
-                by_series[(r["indicator_id"], r["metric_name"])].append((ts, float(yhat)))
+                cur = by_series[(r["indicator_id"], r["metric_name"])].get(ts)
+                if cur is None or gen > cur[0]:
+                    by_series[(r["indicator_id"], r["metric_name"])][ts] = (gen, float(yhat))
 
-        for (indicator_id, metric_name), fpoints in by_series.items():
+        for (indicator_id, metric_name), ts_map in by_series.items():
+            fpoints = [(ts, yh) for ts, (_gen, yh) in ts_map.items()]
             summary["series"] += 1
             try:
                 scored = self._score_series(
@@ -160,13 +171,24 @@ class ForecastDriftMonitor:
 
         drift = m["mape"] is not None and m["n"] >= DRIFT_MIN_SAMPLES and m["mape"] > DRIFT_MAPE_ALERT
         if drift:
+            # Dedup the alert per series (Redis key, TTL) so a persistent drift doesn't
+            # re-notify on every run — but always record the row + log.
+            already = False
             try:
-                from core.notifications import notify
-                notify(f"Дрейф модели: прогноз '{metric_name}' за {window_days}д — "
-                       f"MAPE {m['mape']:.1f}% (>{DRIFT_MAPE_ALERT:.0f}%, n={m['n']}); "
-                       f"модель деградирует, нужна переобучка", "warning", tenant_id=tenant_id)
-            except Exception as e:
-                logger.error("drift notify failed: %s", mask_secrets(str(e)))
+                from config import get_redis
+                rkey = f"drift_alert:{tenant_id}:{indicator_id}:{metric_name}"
+                already = bool(get_redis().get(rkey))
+                get_redis().set(rkey, "1", ex=DRIFT_ALERT_TTL)
+            except Exception:
+                already = False  # no Redis → notify (best effort)
+            if not already:
+                try:
+                    from core.notifications import notify
+                    notify(f"Дрейф модели: прогноз '{metric_name}' за {window_days}д — "
+                           f"MAPE {m['mape']:.1f}% (>{DRIFT_MAPE_ALERT:.0f}%, n={m['n']}); "
+                           f"модель деградирует, нужна переобучка", "warning", tenant_id=tenant_id)
+                except Exception as e:
+                    logger.error("drift notify failed: %s", mask_secrets(str(e)))
             logger.warning("forecast drift: %s/%s MAPE=%.1f%% n=%d",
                            indicator_id, metric_name, m["mape"], m["n"])
         return {**m, "drift": drift}

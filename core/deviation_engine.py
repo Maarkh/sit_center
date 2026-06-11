@@ -147,6 +147,8 @@ class IndicatorEvaluator:
             return status  # 'no_data' | 'unconfigured'
         if ind["corridor_type"] == "baseline":
             low, high = self._baseline_corridor(ind["id"], tenant_id)
+            if low is None and high is None:
+                return "no_data"  # corridor can't be computed (no history) ≠ "clear"
         else:
             low = float(ind["target_low"]) if ind["target_low"] is not None else None
             high = float(ind["target_high"]) if ind["target_high"] is not None else None
@@ -262,6 +264,14 @@ class IndicatorEvaluator:
         # Corridor bounds: static (target_low/high) or a dynamic 'baseline' band.
         if ind["corridor_type"] == "baseline":
             low, high = self._baseline_corridor(ind["id"], tenant_id)
+            if low is None and high is None:
+                # Baseline corridor can't be computed (insufficient history) — that is
+                # INDETERMINATE, not "inside corridor". Skip rather than treat it as a
+                # breach-cleared and falsely resolve an active deviation / report healthy.
+                summary["skipped"] += 1
+                logger.warning("indicator %s: baseline corridor unavailable (no history) — skipping",
+                               ind.get("name", ind["id"]))
+                return
         else:
             low = float(ind["target_low"]) if ind["target_low"] is not None else None
             high = float(ind["target_high"]) if ind["target_high"] is not None else None
