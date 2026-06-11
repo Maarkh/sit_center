@@ -242,8 +242,9 @@ jobs:
         env:
           IMAGE: ${{ env.DOCKER_HUB_USERNAME }}/sit_center
         run: |
-          # Build the API image (no root Dockerfile exists — it lives at api/Dockerfile.api)
-          # and tag with both the commit SHA (immutable/traceable) and latest.
-          docker build -t "$IMAGE:${GITHUB_SHA}" -t "$IMAGE:latest" -f api/Dockerfile.api .
+          # Build the API image (Dockerfile lives at api/Dockerfile.api) and publish
+          # ONLY the immutable commit-SHA tag — no mutable :latest, so a deploy always
+          # references an exact, reproducible image. Deploy with:
+          #   helm upgrade ... --set image.repository="$IMAGE" --set image.tag="<git-sha>"
+          docker build -t "$IMAGE:${GITHUB_SHA}" -f api/Dockerfile.api .
           docker push "$IMAGE:${GITHUB_SHA}"
-          docker push "$IMAGE:latest"

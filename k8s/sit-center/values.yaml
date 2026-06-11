@@ -7,9 +7,12 @@ replicaCount:
   celeryBeat: 1
 
 image:
-  repository: situational-center/api
-  tag: "1.0.0"  # pinned (was latest) — override per release for reproducible rollouts
-  pullPolicy: IfNotPresent
+  # CI publishes <DOCKER_HUB_USERNAME>/sit_center:<git-sha> (immutable, no :latest).
+  # The repository contains a secret username, so it can't be a chart default — set both
+  # at deploy: helm upgrade ... --set image.repository=<user>/sit_center --set image.tag=<git-sha>
+  repository: situational-center/api  # placeholder — override at deploy
+  tag: "1.0.0"                        # placeholder — override with the immutable git SHA
+  pullPolicy: IfNotPresent            # safe: the SHA tag is immutable
 
 # -- Pod / container security hardening (applied to all workloads)
 podSecurityContext:
