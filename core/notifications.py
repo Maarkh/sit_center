@@ -1,6 +1,4 @@
 # core/notifications.py
-import signal
-import sys
 from config import logger, mask_secrets
 from celery_app import celery_app
 from tenacity import retry, stop_after_attempt, wait_fixed
@@ -24,18 +22,9 @@ def notify(message: str, priority: str = "info", event_type: str = "system") -> 
         logger.exception("❌ Ошибка при отправке уведомления в Celery")
         raise NotificationError(f"Failed to send notification: {mask_secrets(str(e))}")
 
-# graceful shutdown handler — использует telegram helper (lazy import inside function)
-def _shutdown_handler(signum, frame):
-    logger.info(f"🛑 Получен сигнал {signal.strsignal(signum)} — graceful shutdown...")
-    try:
-        from telegram_bot import close_telegram_session_sync
-        close_telegram_session_sync()
-    except Exception:
-        logger.debug("Не удалось закрыть Telegram session")
-    logger.info("✅ Завершение работы.")
-    sys.exit(0)
-
-signal.signal(signal.SIGTERM, _shutdown_handler)
-signal.signal(signal.SIGINT, _shutdown_handler)
-
+# NB: this module is imported by tasks.py (the Celery worker/beat entrypoint), so it
+# must NOT install process-wide signal handlers at import — doing so overrode Celery's
+# own SIGTERM graceful-drain with a bare sys.exit(0), requeuing in-flight tasks and
+# orphaning locks. Telegram-session cleanup now runs from Celery's worker_shutting_down
+# signal (celery_app.py) and the FastAPI lifespan, in the process that actually owns it.
 logger.info("✅ Модуль уведомлений инициализирован")

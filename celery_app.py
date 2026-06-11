@@ -84,4 +84,12 @@ def init_worker_tracing(**kwargs):
 def worker_shutting_down_handler(sig, how, exitcode, **kwargs):
     from config import logger
     logger.info(f"Worker shutting down (sig={sig}, how={how})")
+    # Close the Telegram aiohttp session the worker may hold. This used to be wired to a
+    # process-wide SIGTERM handler at import (core/notifications), which clobbered
+    # Celery's graceful drain — now it runs inside Celery's own shutdown path.
+    try:
+        from telegram_bot import close_telegram_session_sync
+        close_telegram_session_sync()
+    except Exception:
+        logger.debug("Telegram session close skipped")
 

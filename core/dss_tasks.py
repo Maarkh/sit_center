@@ -9,8 +9,8 @@ from core.data_sources import active_tenant_ids as _active_tenant_ids
 from core.locking import single_run
 
 
-@celery_app.task(time_limit=120)
-@single_run("dss:evaluate_indicators")
+@celery_app.task(time_limit=120, soft_time_limit=110)
+@single_run("dss:evaluate_indicators", lease_ttl=130)
 def evaluate_indicators_task():
     """M3: evaluate every active indicator against its corridor, per tenant."""
     try:
@@ -33,8 +33,8 @@ def evaluate_indicators_task():
         return {"error": str(e)}
 
 
-@celery_app.task(time_limit=180)
-@single_run("dss:correlate_situations")
+@celery_app.task(time_limit=180, soft_time_limit=170)
+@single_run("dss:correlate_situations", lease_ttl=190)
 def correlate_situations_task(window_minutes: int = 30):
     """M4: correlate active deviations into situations, per tenant."""
     try:
@@ -52,8 +52,8 @@ def correlate_situations_task(window_minutes: int = 30):
         return {"error": str(e)}
 
 
-@celery_app.task(time_limit=600)
-@single_run("dss:predict_indicators", lease_ttl=600)
+@celery_app.task(time_limit=600, soft_time_limit=585)
+@single_run("dss:predict_indicators", lease_ttl=610)
 def predict_indicators_task(horizon_hours: int = 24):
     """M5: forecast each active indicator and raise predictive alerts on projected
     corridor breaches, per tenant. No-op where Prophet/data is unavailable."""
@@ -72,8 +72,8 @@ def predict_indicators_task(horizon_hours: int = 24):
         return {"error": str(e)}
 
 
-@celery_app.task(time_limit=120)
-@single_run("dss:evaluate_decision_outcomes")
+@celery_app.task(time_limit=120, soft_time_limit=110)
+@single_run("dss:evaluate_decision_outcomes", lease_ttl=130)
 def evaluate_decision_outcomes_task():
     """M10: auto-derive outcomes for accepted decisions whose process has finished."""
     try:
@@ -88,8 +88,8 @@ def evaluate_decision_outcomes_task():
         return {"error": str(e)}
 
 
-@celery_app.task(time_limit=300)
-@single_run("dss:monitor_forecast_drift")
+@celery_app.task(time_limit=300, soft_time_limit=290)
+@single_run("dss:monitor_forecast_drift", lease_ttl=310)
 def monitor_forecast_drift_task(window_days: int = 7):
     """M5: score persisted forecasts against actuals, record MAE/RMSE/MAPE, and
     alert on model drift, per tenant."""
@@ -108,15 +108,19 @@ def monitor_forecast_drift_task(window_days: int = 7):
         return {"error": str(e)}
 
 
-@celery_app.task(time_limit=120)
+@celery_app.task(time_limit=120, soft_time_limit=110)
 def verify_remediation_task(deviation_id: str, tenant_id: str = "default"):
     """OODA Act→Observe: re-measure after a remediation process completes.
 
     Scheduled (with a countdown) when an M8 process instance tied to a deviation
-    finishes. Re-evaluates that deviation's indicator NOW and records whether the
-    breach actually cleared — 'confirmed' (back inside corridor) or 'persisted'
-    (still breaching → the playbook didn't work; notify so an operator escalates).
-    This closes the loop: 'we ran the playbook' vs. 'the playbook worked'.
+    finishes. READ-ONLY re-measure of the deviation's indicator, then records whether
+    the breach cleared — 'confirmed' (back inside corridor → also resolve the
+    deviation) or 'persisted' (still breaching → notify so an operator escalates).
+
+    It deliberately does NOT run the full evaluate path: that would inflate
+    periods/chronicle and could spuriously open a chronic incident, and its INSERT
+    would race the periodic sweep on the partial-unique index. Here we only OBSERVE
+    and do a targeted UPDATE by deviation id (never an INSERT).
     """
     from sqlalchemy import text
     from core.database import get_engine
@@ -133,22 +137,29 @@ def verify_remediation_task(deviation_id: str, tenant_id: str = "default"):
             logger.info("remediation verify: deviation %s not found", deviation_id)
             return {"missing": True}
 
-        # Re-measure the indicator so status reflects current reality, not the last tick.
-        indicator_evaluator.reevaluate_indicator(dev["indicator_id"], tenant_id)
+        # Read-only: is the indicator currently back inside its corridor?
+        breach = indicator_evaluator.current_breach_status(dev["indicator_id"], tenant_id)
+        cleared = breach == "clear"
+        outcome = "confirmed" if cleared else "persisted"
 
         with engine.begin() as conn:
-            status = conn.execute(
-                text("SELECT status FROM deviations WHERE id = :id AND tenant_id = :tid"),
-                {"id": deviation_id, "tid": tenant_id},
-            ).scalar()
-            cleared = status == "resolved"
-            outcome = "confirmed" if cleared else "persisted"
-            conn.execute(
-                text("UPDATE deviations SET remediation_outcome = :o, "
-                     "remediation_verified_at = CASE WHEN :cleared THEN NOW() "
-                     "ELSE remediation_verified_at END WHERE id = :id AND tenant_id = :tid"),
-                {"o": outcome, "cleared": cleared, "id": deviation_id, "tid": tenant_id},
-            )
+            if cleared:
+                # Remediation worked → close the episode (idempotent: only if still open)
+                # and stamp confirmation. Targeted by id — no INSERT, no race.
+                conn.execute(
+                    text("UPDATE deviations SET "
+                         "status = CASE WHEN status <> 'resolved' THEN 'resolved' ELSE status END, "
+                         "resolved_at = COALESCE(resolved_at, NOW()), last_seen = NOW(), "
+                         "remediation_outcome = 'confirmed', remediation_verified_at = NOW() "
+                         "WHERE id = :id AND tenant_id = :tid"),
+                    {"id": deviation_id, "tid": tenant_id},
+                )
+            else:
+                conn.execute(
+                    text("UPDATE deviations SET remediation_outcome = 'persisted' "
+                         "WHERE id = :id AND tenant_id = :tid"),
+                    {"id": deviation_id, "tid": tenant_id},
+                )
 
         from core.audit import log_audit
         log_audit("system", tenant_id, "verify_remediation", "deviation",
@@ -170,8 +181,8 @@ def verify_remediation_task(deviation_id: str, tenant_id: str = "default"):
         return {"error": str(e)}
 
 
-@celery_app.task(time_limit=120)
-@single_run("dss:check_process_step_sla")
+@celery_app.task(time_limit=120, soft_time_limit=110)
+@single_run("dss:check_process_step_sla", lease_ttl=130)
 def check_process_step_sla_task():
     """M8: escalate process step assignments that are past their due_at."""
     try:

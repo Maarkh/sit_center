@@ -123,29 +123,34 @@ class IndicatorEvaluator:
                 logger.error("indicator eval failed for %s: %s", ind["name"], mask_secrets(str(e)))
         return summary
 
-    def reevaluate_indicator(self, indicator_id, tenant_id: str = "default",
-                             window_minutes: int = WINDOW_MINUTES) -> dict:
-        """Force a fresh evaluation of a SINGLE active indicator (same path as the
-        periodic sweep, scoped to one id). Used by the OODA Act→Observe re-check so a
-        deviation's status reflects the current measurement, not the last beat tick."""
+    def current_breach_status(self, indicator_id, tenant_id: str = "default",
+                              window_minutes: int = WINDOW_MINUTES) -> str:
+        """READ-ONLY: re-measure a single indicator NOW and report whether it is
+        currently breaching its corridor. Returns 'breaching' | 'clear' | 'no_data' |
+        'unconfigured'. Used by the OODA Act→Observe re-check — it must NOT mutate
+        periods/chronicles or open incidents (that's what _evaluate_one does on the
+        beat path), and must NOT insert a deviation (which would race the periodic
+        sweep on the partial-unique index). Pure SELECTs only."""
         engine = get_engine()
-        summary = {"evaluated": 0, "skipped": 0, "no_data": 0, "breaching": 0,
-                   "opened": 0, "resolved": 0, "chronic": 0}
         with engine.connect() as conn:
             ind = conn.execute(
                 text(
-                    "SELECT id, name, target_low, target_high, direction, chronicle_threshold, "
-                    "corridor_type FROM indicators "
-                    "WHERE id = :iid AND tenant_id = :tid AND is_active = true"
+                    "SELECT id, target_low, target_high, direction, corridor_type "
+                    "FROM indicators WHERE id = :iid AND tenant_id = :tid AND is_active = true"
                 ),
                 {"iid": indicator_id, "tid": tenant_id},
             ).mappings().first()
-        if ind:
-            try:
-                self._evaluate_one(ind, tenant_id, window_minutes, summary)
-            except Exception as e:
-                logger.error("indicator re-eval failed for %s: %s", ind["name"], mask_secrets(str(e)))
-        return summary
+        if not ind:
+            return "unconfigured"
+        status, value = self._value_status(ind["id"], tenant_id, window_minutes)
+        if status != "ok":
+            return status  # 'no_data' | 'unconfigured'
+        if ind["corridor_type"] == "baseline":
+            low, high = self._baseline_corridor(ind["id"], tenant_id)
+        else:
+            low = float(ind["target_low"]) if ind["target_low"] is not None else None
+            high = float(ind["target_high"]) if ind["target_high"] is not None else None
+        return "breaching" if classify_breach(value, low, high, ind["direction"]) else "clear"
 
     # -- value computation -------------------------------------------------
     def _gather_factor_metrics(self, conn, indicator_id):

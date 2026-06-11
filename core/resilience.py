@@ -20,21 +20,19 @@ def redis_fallback(default=None):
 
 def safe_idoit_push(func):
     """Decorator: swallow i-doit push errors so they never crash callers.
-    Logs to sync_log and enqueues for retry via Celery."""
+
+    The failed push is logged (and the i-doit sync flow records its own sync_log row)
+    so it can be replayed. NB: this used to `send_task("tasks.retry_idoit_push", ...)`
+    with the original args/kwargs — but no such task exists, and a generic
+    re-invoke-by-name with arbitrary (often non-JSON-serializable) args could never
+    work over Celery's json serializer. That broken enqueue is removed; a real retry
+    needs a durable job carrying the actual push payload, not a function re-invoke."""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            logger.error(f"i-doit push failed in {func.__name__}: {e}. Will retry via Celery.")
-            try:
-                from celery_app import celery_app
-                celery_app.send_task(
-                    "tasks.retry_idoit_push",
-                    args=[func.__name__, args, kwargs],
-                    countdown=60,
-                )
-            except Exception as retry_err:
-                logger.error(f"Failed to enqueue i-doit retry: {retry_err}")
+            logger.error("i-doit push failed in %s: %s (swallowed; see sync_log to replay)",
+                         func.__name__, e)
             return None
     return wrapper

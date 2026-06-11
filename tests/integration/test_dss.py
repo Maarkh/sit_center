@@ -882,37 +882,66 @@ class TestRemediationVerification:
             pytest.skip("migration 027 not applied")
 
         from core.dss_tasks import verify_remediation_task
+        # The verify task now RE-MEASURES read-only (current_breach_status) instead of
+        # trusting the deviation's stored status — so each case needs a factor+metric
+        # whose live value puts the indicator inside ('clear'→confirmed) or outside
+        # ('breaching'→persisted) its corridor.
+        m_ok, m_bad = "__ooda_ok_metric__", "__ooda_bad_metric__"
         with db_engine.begin() as conn:
-            # indicator with NO factors → reevaluate_indicator is a no-op, so the
-            # seeded deviation status is what the task observes (deterministic).
-            iid = conn.execute(text(
-                "INSERT INTO indicators (tenant_id, name, direction, chronicle_threshold, "
-                "corridor_type, is_active) VALUES ('default','__ooda_it__','both',3,'static',true) "
-                "RETURNING id")).scalar()
+            # CONFIRMED case: corridor [0,100], live value 50 → clear
+            iid_ok = conn.execute(text(
+                "INSERT INTO indicators (tenant_id, name, target_low, target_high, direction, "
+                "chronicle_threshold, corridor_type, is_active) VALUES "
+                "('default','__ooda_ok__',0,100,'both',3,'static',true) RETURNING id")).scalar()
+            fid_ok = conn.execute(text("INSERT INTO factors (tenant_id, indicator_id, name, weight) "
+                "VALUES ('default',:i,'f',1) RETURNING id"), {"i": iid_ok}).scalar()
+            conn.execute(text("INSERT INTO factor_metrics (factor_id, metric_name) VALUES (:f,:m)"),
+                         {"f": fid_ok, "m": m_ok})
+            conn.execute(text("INSERT INTO canonical_metrics (tenant_id, metric_name, value, timestamp) "
+                "VALUES ('default',:m,50,NOW())"), {"m": m_ok})
             dev_ok = conn.execute(text(
                 "INSERT INTO deviations (tenant_id, indicator_id, direction, value, severity, "
                 "status, periods, fingerprint) VALUES "
-                "('default',:i,'above',5,'warning','resolved',1,'ind:__ooda_it_ok__') RETURNING id"),
-                {"i": iid}).scalar()
-            dev_open = conn.execute(text(
+                "('default',:i,'above',150,'warning','open',1,'ind:__ooda_it_ok__') RETURNING id"),
+                {"i": iid_ok}).scalar()
+            # PERSISTED case: corridor [0,100], live value 150 → breaching
+            iid_bad = conn.execute(text(
+                "INSERT INTO indicators (tenant_id, name, target_low, target_high, direction, "
+                "chronicle_threshold, corridor_type, is_active) VALUES "
+                "('default','__ooda_bad__',0,100,'both',3,'static',true) RETURNING id")).scalar()
+            fid_bad = conn.execute(text("INSERT INTO factors (tenant_id, indicator_id, name, weight) "
+                "VALUES ('default',:i,'f',1) RETURNING id"), {"i": iid_bad}).scalar()
+            conn.execute(text("INSERT INTO factor_metrics (factor_id, metric_name) VALUES (:f,:m)"),
+                         {"f": fid_bad, "m": m_bad})
+            conn.execute(text("INSERT INTO canonical_metrics (tenant_id, metric_name, value, timestamp) "
+                "VALUES ('default',:m,150,NOW())"), {"m": m_bad})
+            dev_bad = conn.execute(text(
                 "INSERT INTO deviations (tenant_id, indicator_id, direction, value, severity, "
                 "status, periods, fingerprint) VALUES "
-                "('default',:i,'above',5,'critical','open',2,'ind:__ooda_it_open__') RETURNING id"),
-                {"i": iid}).scalar()
+                "('default',:i,'above',150,'critical','open',2,'ind:__ooda_it_bad__') RETURNING id"),
+                {"i": iid_bad}).scalar()
         try:
             assert verify_remediation_task(str(dev_ok), "default")["outcome"] == "confirmed"
-            assert verify_remediation_task(str(dev_open), "default")["outcome"] == "persisted"
+            assert verify_remediation_task(str(dev_bad), "default")["outcome"] == "persisted"
             with db_engine.connect() as conn:
-                ok = conn.execute(text("SELECT remediation_outcome, remediation_verified_at IS NOT NULL "
-                                       "AS v FROM deviations WHERE id=:id"), {"id": dev_ok}).mappings().first()
-                op = conn.execute(text("SELECT remediation_outcome, remediation_verified_at IS NOT NULL "
-                                       "AS v FROM deviations WHERE id=:id"), {"id": dev_open}).mappings().first()
+                ok = conn.execute(text("SELECT status, remediation_outcome, remediation_verified_at "
+                    "IS NOT NULL AS v FROM deviations WHERE id=:id"), {"id": dev_ok}).mappings().first()
+                bad = conn.execute(text("SELECT status, remediation_outcome, remediation_verified_at "
+                    "IS NOT NULL AS v FROM deviations WHERE id=:id"), {"id": dev_bad}).mappings().first()
+            # confirmed → deviation resolved + verified stamped
             assert ok["remediation_outcome"] == "confirmed" and ok["v"] is True
-            assert op["remediation_outcome"] == "persisted" and op["v"] is False
+            assert ok["status"] == "resolved"
+            # persisted → still open, no verified stamp
+            assert bad["remediation_outcome"] == "persisted" and bad["v"] is False
+            assert bad["status"] == "open"
         finally:
             with db_engine.begin() as conn:
-                conn.execute(text("DELETE FROM deviations WHERE indicator_id=:i"), {"i": iid})
-                conn.execute(text("DELETE FROM indicators WHERE id=:i"), {"i": iid})
+                for iid in (iid_ok, iid_bad):
+                    conn.execute(text("DELETE FROM deviations WHERE indicator_id=:i"), {"i": iid})
+                    conn.execute(text("DELETE FROM factors WHERE indicator_id=:i"), {"i": iid})
+                    conn.execute(text("DELETE FROM indicators WHERE id=:i"), {"i": iid})
+                conn.execute(text("DELETE FROM canonical_metrics WHERE metric_name IN (:a,:b)"),
+                             {"a": m_ok, "b": m_bad})
 
 
 # ======================================================================
