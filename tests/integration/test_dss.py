@@ -913,3 +913,51 @@ class TestRemediationVerification:
             with db_engine.begin() as conn:
                 conn.execute(text("DELETE FROM deviations WHERE indicator_id=:i"), {"i": iid})
                 conn.execute(text("DELETE FROM indicators WHERE id=:i"), {"i": iid})
+
+
+# ======================================================================
+# M5 model-drift monitoring: forecast vs actual error (MAE/RMSE/MAPE)
+# ======================================================================
+class TestForecastDrift:
+    def test_compute_tenant_scores_forecast_against_actuals(self, db_engine):
+        if not _tables_present(db_engine, "indicators", "forecasts", "canonical_metrics"):
+            pytest.skip("M5 tables not found")
+        with db_engine.connect() as conn:
+            ok = conn.execute(text("SELECT 1 FROM information_schema.tables "
+                                   "WHERE table_name='forecast_accuracy'")).first()
+        if not ok:
+            pytest.skip("migration 028 not applied")
+
+        import json as _json
+        from datetime import datetime, timezone, timedelta
+        from core.forecast_drift import drift_monitor
+        now = datetime.now(timezone.utc)
+        metric = "__drift_it_metric__"
+        with db_engine.begin() as conn:
+            iid = conn.execute(text(
+                "INSERT INTO indicators (tenant_id,name,direction,chronicle_threshold,corridor_type,"
+                "is_active) VALUES ('default','__drift_it__','both',3,'static',true) RETURNING id")).scalar()
+            pts = [{"ts": (now - timedelta(minutes=mm)).isoformat(), "yhat": 100.0,
+                    "yhat_low": 99.0, "yhat_high": 101.0} for mm in (30, 20, 10, 5, 2)]
+            conn.execute(text("INSERT INTO forecasts (tenant_id,indicator_id,metric_name,horizon_hours,"
+                              "points) VALUES ('default',:i,:m,1,CAST(:p AS jsonb))"),
+                         {"i": iid, "m": metric, "p": _json.dumps(pts)})
+            for mm in (30, 20, 10, 5, 2):  # actuals 20% above the forecast
+                conn.execute(text("INSERT INTO canonical_metrics (tenant_id,metric_name,value,timestamp) "
+                                  "VALUES ('default',:m,120.0,:t)"), {"m": metric, "t": now - timedelta(minutes=mm)})
+        try:
+            drift_monitor.compute_tenant("default", window_days=7)
+            with db_engine.connect() as conn:
+                row = conn.execute(text("SELECT sample_size, mae, mape FROM forecast_accuracy "
+                                        "WHERE indicator_id=:i ORDER BY computed_at DESC LIMIT 1"),
+                                   {"i": iid}).mappings().first()
+            assert row is not None
+            assert row["sample_size"] == 5
+            assert abs(float(row["mae"]) - 20.0) < 0.01
+            assert abs(float(row["mape"]) - 16.6667) < 0.1   # 20/120
+        finally:
+            with db_engine.begin() as conn:
+                conn.execute(text("DELETE FROM forecast_accuracy WHERE indicator_id=:i"), {"i": iid})
+                conn.execute(text("DELETE FROM forecasts WHERE indicator_id=:i"), {"i": iid})
+                conn.execute(text("DELETE FROM canonical_metrics WHERE metric_name=:m"), {"m": metric})
+                conn.execute(text("DELETE FROM indicators WHERE id=:i"), {"i": iid})

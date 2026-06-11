@@ -88,6 +88,26 @@ def evaluate_decision_outcomes_task():
         return {"error": str(e)}
 
 
+@celery_app.task(time_limit=300)
+@single_run("dss:monitor_forecast_drift")
+def monitor_forecast_drift_task(window_days: int = 7):
+    """M5: score persisted forecasts against actuals, record MAE/RMSE/MAPE, and
+    alert on model drift, per tenant."""
+    try:
+        from core.forecast_drift import drift_monitor
+        totals = {"series": 0, "scored": 0, "drift_alerts": 0}
+        for tenant_id in _active_tenant_ids():
+            s = drift_monitor.compute_tenant(tenant_id=tenant_id, window_days=window_days)
+            for k in totals:
+                totals[k] += s.get(k, 0)
+        logger.info("Forecast drift: %d series, %d scored, %d drift alerts",
+                    totals["series"], totals["scored"], totals["drift_alerts"])
+        return totals
+    except Exception as e:
+        logger.exception("Forecast drift monitoring failed")
+        return {"error": str(e)}
+
+
 @celery_app.task(time_limit=120)
 def verify_remediation_task(deviation_id: str, tenant_id: str = "default"):
     """OODA Act→Observe: re-measure after a remediation process completes.

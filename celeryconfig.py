@@ -68,4 +68,9 @@ beat_schedule = {
         'task': 'core.dss_tasks.evaluate_decision_outcomes_task',
         'schedule': crontab(minute='*/10')
     },
+    # DSS M5: score forecasts against actuals (MAE/RMSE/MAPE) and alert on model drift.
+    'monitor-forecast-drift-daily': {
+        'task': 'core.dss_tasks.monitor_forecast_drift_task',
+        'schedule': crontab(hour=4, minute=0)
+    },
 }
