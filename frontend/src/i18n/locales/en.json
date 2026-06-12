@@ -15,7 +15,7 @@
     },
     "metrics": {
       "title": "Metrics — explorer",
-      "body": "Charts of raw metric values over time and dimensions — for data exploration.\nWhat to do: pick a metric and slice. Thresholds and indicators are set in Settings → Indicators."
+      "body": "Opens with the last 24 h of the first metric — charts of raw values.\nWhat to do: pick another metric or build a forecast. Thresholds and indicators are set in Settings → Indicators."
     },
     "alerts": {
       "title": "Deviations",
@@ -335,7 +335,8 @@
     "select_metric": "Select metric",
     "forecast": "Forecast (24h)",
     "forecast_title": "Forecast",
-    "empty": "Select a metric and click Forecast to see predictions"
+    "last24h": "last 24 h",
+    "empty": "No data in the last 24 h for this metric"
   },
   "map": {
     "select_metric": "Select metric",

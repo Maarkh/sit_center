@@ -1,39 +1,55 @@
-import { useState, useEffect } from 'react';
-import { Select, DatePicker, Button, Space, Card, Empty } from 'antd';
+import { useState, useEffect, useCallback } from 'react';
+import { Select, Button, Space, Card, Empty } from 'antd';
 import { getMetricNames } from '@/api/metrics';
+import { getMetricSeries } from '@/api/data';
 import { predict } from '@/api/forecasts';
 import ForecastChart from '@/components/Charts/ForecastChart';
 import { useTranslation } from 'react-i18next';
 import PageHelp from '@/components/Common/PageHelp';
 import type { ForecastResponse } from '@/types/forecasts';
-
-const { RangePicker } = DatePicker;
+import type { DataPoint } from '@/types/metrics';
 
 export default function MetricsExplorerPage() {
   const [metricNames, setMetricNames] = useState<string[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<string | undefined>();
+  const [historical, setHistorical] = useState<DataPoint[]>([]);
+  const [loadingHist, setLoadingHist] = useState(false);
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingFc, setLoadingFc] = useState(false);
   const { t } = useTranslation();
 
+  // Load metric names, then auto-select the first so the page opens with data, not empty.
   useEffect(() => {
-    getMetricNames().then(setMetricNames).catch((e) => {
-      console.error('Failed to load metric names', e);
-    });
+    getMetricNames().then((names) => {
+      setMetricNames(names);
+      setSelectedMetric((cur) => cur ?? names[0]);
+    }).catch((e) => console.error('Failed to load metric names', e));
   }, []);
 
-  const handleForecast = async () => {
+  // Whenever the selected metric changes, auto-load its last-24h series.
+  useEffect(() => {
     if (!selectedMetric) return;
-    setLoading(true);
+    setForecast(null);
+    setLoadingHist(true);
+    getMetricSeries(selectedMetric, 24)
+      .then(setHistorical)
+      .catch(() => setHistorical([]))
+      .finally(() => setLoadingHist(false));
+  }, [selectedMetric]);
+
+  const handleForecast = useCallback(async () => {
+    if (!selectedMetric) return;
+    setLoadingFc(true);
     try {
-      const result = await predict(selectedMetric, 24);
-      setForecast(result);
+      setForecast(await predict(selectedMetric, 24));
     } catch {
       setForecast(null);
     } finally {
-      setLoading(false);
+      setLoadingFc(false);
     }
-  };
+  }, [selectedMetric]);
+
+  const hasData = historical.length > 0 || !!forecast;
 
   return (
     <>
@@ -48,23 +64,23 @@ export default function MetricsExplorerPage() {
             showSearch
             style={{ width: 300 }}
           />
-          <RangePicker showTime />
-          <Button type="primary" onClick={handleForecast} loading={loading} disabled={!selectedMetric}>
+          <Button onClick={handleForecast} loading={loadingFc} disabled={!selectedMetric}>
             {t('metrics.forecast')}
           </Button>
         </Space>
       </Card>
 
       <div style={{ marginTop: 16 }}>
-        {forecast ? (
-          <Card title={`${t('metrics.forecast_title')}: ${forecast.metric_name}`}>
-            <ForecastChart historical={[]} forecast={forecast.points} height={500} />
-          </Card>
-        ) : (
-          <Card>
+        <Card
+          loading={loadingHist}
+          title={selectedMetric ? `${selectedMetric} — ${t('metrics.last24h', 'последние 24 ч')}` : t('metrics.select_metric')}
+        >
+          {hasData ? (
+            <ForecastChart historical={historical} forecast={forecast?.points ?? []} height={500} />
+          ) : (
             <Empty description={t('metrics.empty')} />
-          </Card>
-        )}
+          )}
+        </Card>
       </div>
     </>
   );
