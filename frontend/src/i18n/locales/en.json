@@ -54,12 +54,12 @@
       "body": "Where metrics come from: host agent, HTTP pull/push, Kafka.\nWhat to do: add a source — metrics start flowing into the catalog and charts."
     },
     "indicators": {
-      "title": "Indicators",
-      "body": "Goal → indicator → factors. An indicator has a normal 'corridor'; leaving it = a deviation.\nWhat to do: attach metrics, set corridor bounds and the chronicle threshold."
+      "title": "Indicators — goal-bound observation",
+      "body": "Goal → indicator → factors (metrics). An indicator has a normal 'corridor' and direction; leaving it = a deviation → situation → recommendation (the DSS core).\nWhat to do: attach metrics, set the corridor bounds and the chronicle threshold.\nVs the Metric catalog: the catalog only lists which metrics exist; an indicator JUDGES their value against a goal."
     },
     "metricsCatalog": {
-      "title": "Metric catalog",
-      "body": "Reference of metrics: names, units, default thresholds. Actual values come from Data sources."
+      "title": "Metric catalog — the dictionary",
+      "body": "A DICTIONARY (passport) of metrics: key, display name, unit, description, a simple default threshold. One row = one metric. The actual numbers arrive from Data sources.\nThis is NOT monitoring and not a duplicate of Indicators: the catalog only describes metrics. 'What we watch against a goal' is Indicators (corridor); 'when to fire an alert by expression' is Rules."
     },
     "dimensions": {
       "title": "Dimensions",
@@ -70,8 +70,8 @@
       "body": "'What to do' on a deviation: triggers + a hint checklist + a link to a Process (executable).\nThe system offers matching playbooks as recommendations in the Cockpit."
     },
     "rules": {
-      "title": "Rules (rule engine)",
-      "body": "Conditions on metrics → alert. Mostly superseded by indicators/corridors; use for one-off rules."
+      "title": "Alert rules — the simple engine",
+      "body": "Classic expression alerts: 'if cpu>80 for five minutes → signal'. A heritage of plain monitoring — no goal link, no deviations/situations.\nWhen to use: point technical alerts. For goal-bound observation use Indicators (corridor), not a rule."
     },
     "mlConfigs": {
       "title": "ML configs",
