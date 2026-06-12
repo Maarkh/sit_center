@@ -9,6 +9,26 @@
       "title": "Cockpit — decision-making",
       "body": "Your workspace for the loop: notice → understand → decide → act → learn. The system clusters deviations into Situations and shows the forecast, recommendations and running processes.\nWhat to do: pick a situation → review the root-cause hypothesis and forecast → accept a recommendation (it starts the process)."
     },
+    "cockpitOverview": {
+      "title": "Overview — situations & indicators",
+      "body": "Your main workspace: the goal → indicator tree with a traffic light, and the list of Situations (clusters of related deviations) ranked by impact.\nWhat to do: click «Correlate deviations» to group current deviations into situations, then open a situation to see the root-cause hypothesis and move to a decision."
+    },
+    "cockpitPredictive": {
+      "title": "Predictive — forecast & early warnings",
+      "body": "An indicator's forecast chart with its normal corridor (green/red bounds) plus predictive alerts «the indicator will leave its corridor» — ahead of an actual breach.\nWhat to do: review the forecast and confirm or dismiss the prediction — a confirmed one enters work as an early warning."
+    },
+    "cockpitProcesses": {
+      "title": "Processes — executable playbooks",
+      "body": "Running playbook processes (from accepted recommendations): steps with roles, deadlines (SLA) and checklists.\nWhat to do: open a process, complete the step's checklist items and mark the step done — the next step opens automatically."
+    },
+    "cockpitDecisions": {
+      "title": "Decisions — log & outcomes",
+      "body": "A log of decisions taken: which playbook was applied, its score, who decided and when. Below — playbook effectiveness stats (win-rate).\nWhat to do: once work is finished, record the outcome (helped / not) — this trains the system and refines playbook ranking."
+    },
+    "cockpitWhatIf": {
+      "title": "What-if — scenario modelling",
+      "body": "«What-if» scenarios: hypotheses with a potential effect, tied to an indicator.\nWhat to do: create a scenario with an assumption and run it to estimate the potential effect before acting for real."
+    },
     "map": {
       "title": "Map",
       "body": "Geography by region: where indicators left their corridor.\nWhat to do: click a region for details."

@@ -14,6 +14,15 @@ const WhatIfPanel = lazy(() => import('./WhatIfPanel'));
 
 const Loader = <Spin style={{ display: 'block', margin: '60px auto' }} />;
 
+// Each cockpit tab gets its own contextual help section (see i18n `help.cockpit*`).
+const HELP_SECTION: Record<string, string> = {
+  overview: 'cockpitOverview',
+  predictive: 'cockpitPredictive',
+  processes: 'cockpitProcesses',
+  decisions: 'cockpitDecisions',
+  whatif: 'cockpitWhatIf',
+};
+
 export default function CockpitPage() {
   const { t } = useTranslation();
   const [active, setActive] = useState('overview');
@@ -33,7 +42,7 @@ export default function CockpitPage() {
   // destroyInactiveTabPane so each panel re-fetches fresh data when revisited.
   return (
     <>
-      <PageHelp section="cockpit" />
+      <PageHelp key={active} section={HELP_SECTION[active] ?? 'cockpit'} />
       <Tabs activeKey={active} onChange={setActive} items={items} destroyOnHidden />
     </>
   );
