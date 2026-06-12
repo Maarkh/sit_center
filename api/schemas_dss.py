@@ -396,6 +396,7 @@ class PlaybookCreate(BaseModel):
     indicator_ids: List[UUID] = Field(default_factory=list, description="scope; empty = applies to all")
     actions: List[PlaybookActionCreate] = Field(default_factory=list)
     is_active: bool = True
+    auto_execute: bool = Field(False, description="auto-dispatch this playbook's process without a human accept (D)")
 
     @field_validator("trigger_direction")
     @classmethod
@@ -419,6 +420,7 @@ class PlaybookRead(BaseModel):
     effect_score: float
     process_template_id: Optional[UUID] = None
     is_active: bool
+    auto_execute: bool = False
     created_at: datetime
     updated_at: datetime
     indicator_ids: List[UUID] = Field(default_factory=list)
@@ -435,6 +437,7 @@ class PlaybookListItem(BaseModel):
     effect_score: float
     process_template_id: Optional[UUID] = None
     is_active: bool
+    auto_execute: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

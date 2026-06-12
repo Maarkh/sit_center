@@ -45,7 +45,7 @@ recommendations_router = APIRouter(prefix="/recommendations", tags=["DSS: Recomm
 def _load_playbook(conn, playbook_id, tenant_id) -> Optional[PlaybookRead]:
     pb = conn.execute(
         text("SELECT id, name, description, trigger_severity, trigger_direction, effect_score, "
-             "process_template_id, is_active, created_at, updated_at "
+             "process_template_id, is_active, auto_execute, created_at, updated_at "
              "FROM playbooks WHERE id = :id AND tenant_id = :tid"),
         {"id": playbook_id, "tid": tenant_id},
     ).mappings().first()
@@ -119,11 +119,11 @@ def create_playbook(
             _validate_template(conn, data.process_template_id, current_user.tenant_id)
             pb_id = conn.execute(
                 text("INSERT INTO playbooks (tenant_id, name, description, trigger_severity, "
-                     "trigger_direction, effect_score, process_template_id, is_active) "
-                     "VALUES (:tid, :name, :desc, :sev, :dir, :eff, :tmpl, :active) RETURNING id"),
+                     "trigger_direction, effect_score, process_template_id, is_active, auto_execute) "
+                     "VALUES (:tid, :name, :desc, :sev, :dir, :eff, :tmpl, :active, :auto) RETURNING id"),
                 {"tid": current_user.tenant_id, "name": data.name, "desc": data.description,
                  "sev": data.trigger_severity, "dir": data.trigger_direction, "eff": data.effect_score,
-                 "tmpl": data.process_template_id, "active": data.is_active},
+                 "tmpl": data.process_template_id, "active": data.is_active, "auto": data.auto_execute},
             ).scalar()
             _insert_playbook_children(conn, pb_id, current_user.tenant_id, data)
             result = _load_playbook(conn, pb_id, current_user.tenant_id)
@@ -146,7 +146,7 @@ def list_playbooks(
     with engine.connect() as conn:
         rows = conn.execute(
             text("SELECT id, name, trigger_severity, trigger_direction, effect_score, "
-                 f"process_template_id, is_active FROM playbooks WHERE {where} ORDER BY name"),
+                 f"process_template_id, is_active, auto_execute FROM playbooks WHERE {where} ORDER BY name"),
             {"tid": current_user.tenant_id},
         ).mappings().all()
     return [PlaybookListItem(**r) for r in rows]
@@ -180,10 +180,11 @@ def update_playbook(
             updated = conn.execute(
                 text("UPDATE playbooks SET name = :name, description = :desc, trigger_severity = :sev, "
                      "trigger_direction = :dir, effect_score = :eff, process_template_id = :tmpl, "
-                     "is_active = :active WHERE id = :id AND tenant_id = :tid RETURNING id"),
+                     "is_active = :active, auto_execute = :auto WHERE id = :id AND tenant_id = :tid RETURNING id"),
                 {"id": playbook_id, "tid": current_user.tenant_id, "name": data.name,
                  "desc": data.description, "sev": data.trigger_severity, "dir": data.trigger_direction,
-                 "eff": data.effect_score, "tmpl": data.process_template_id, "active": data.is_active},
+                 "eff": data.effect_score, "tmpl": data.process_template_id, "active": data.is_active,
+                 "auto": data.auto_execute},
             ).first()
             if not updated:
                 raise HTTPException(status_code=404, detail="Playbook not found")

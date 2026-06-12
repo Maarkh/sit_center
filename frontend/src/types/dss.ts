@@ -237,6 +237,7 @@ export interface PlaybookListItem {
   effect_score: number;
   process_template_id: string | null;
   is_active: boolean;
+  auto_execute: boolean;
 }
 
 // --- M6 Scenarios (what-if) ---
@@ -355,6 +356,7 @@ export interface PlaybookRead {
   effect_score: number;
   process_template_id: string | null;
   is_active: boolean;
+  auto_execute: boolean;
   created_at: string;
   updated_at: string;
   indicator_ids: string[];
@@ -370,6 +372,7 @@ export interface PlaybookCreate {
   process_template_id?: string | null;
   indicator_ids?: string[];
   actions?: { action: string; checklist: string[] }[];
+  auto_execute?: boolean;
 }
 
 export interface ProcessTemplateListItem {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, InputNumber, Select, Space, Popconfirm, Tag, App,
+  Table, Button, Modal, Form, Input, InputNumber, Select, Space, Popconfirm, Tag, Switch, App,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +46,7 @@ export default function PlaybooksTab() {
   const openCreate = () => {
     setEditingId(null);
     form.resetFields();
-    form.setFieldsValue({ trigger_severity: ANY, trigger_direction: ANY, effect_score: 1, actions: [] });
+    form.setFieldsValue({ trigger_severity: ANY, trigger_direction: ANY, effect_score: 1, auto_execute: false, actions: [] });
     setModalOpen(true);
   };
 
@@ -58,6 +58,7 @@ export default function PlaybooksTab() {
       trigger_severity: pb.trigger_severity ?? ANY,
       trigger_direction: pb.trigger_direction ?? ANY,
       effect_score: pb.effect_score, process_template_id: pb.process_template_id ?? undefined,
+      auto_execute: pb.auto_execute ?? false,
       indicator_ids: pb.indicator_ids,
       actions: pb.actions.map((a) => ({ action: a.action, checklist: a.checklist.join(', ') })),
     });
@@ -74,6 +75,7 @@ export default function PlaybooksTab() {
       trigger_direction: values.trigger_direction === ANY ? null : values.trigger_direction,
       effect_score: values.effect_score ?? 1,
       process_template_id: values.process_template_id ?? null,
+      auto_execute: values.auto_execute ?? false,
       indicator_ids: values.indicator_ids ?? [],
       actions: (values.actions ?? [])
         .filter((a: { action?: string }) => a && a.action)
@@ -110,6 +112,10 @@ export default function PlaybooksTab() {
     { title: t('settingsDss.effect'), dataIndex: 'effect_score', key: 'effect_score', width: 90 },
     { title: t('settingsDss.process'), key: 'process',
       render: (_: unknown, r: PlaybookListItem) => templateName(r.process_template_id) ?? '—' },
+    { title: t('settingsDss.autoExecute'), key: 'auto_execute', width: 90,
+      render: (_: unknown, r: PlaybookListItem) => (
+        r.auto_execute ? <Tag color="gold">🤖 {t('settingsDss.auto')}</Tag> : <span style={{ color: '#bbb' }}>—</span>
+      ) },
     {
       title: t('common.actions'), key: 'actions', width: 110,
       render: (_: unknown, r: PlaybookListItem) => (
@@ -150,6 +156,10 @@ export default function PlaybooksTab() {
           <Form.Item name="process_template_id" label={t('settingsDss.processTemplate')}
             extra={t('settingsDss.processHint')}>
             <Select allowClear options={templates.map((x) => ({ label: x.name, value: x.id }))} />
+          </Form.Item>
+          <Form.Item name="auto_execute" label={t('settingsDss.autoExecute')} valuePropName="checked"
+            extra={t('settingsDss.autoExecuteHint')}>
+            <Switch />
           </Form.Item>
           <Form.Item name="indicator_ids" label={t('settingsDss.indicatorScope')}
             extra={t('settingsDss.scopeHint')}>

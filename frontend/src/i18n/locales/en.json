@@ -288,6 +288,8 @@
     "triggerDirection": "Trigger direction",
     "processTemplate": "Process (executable workflow)",
     "processHint": "The formal process: steps with assignees and SLA. Started when the recommendation is accepted.",
+    "autoExecute": "Auto-run",
+    "autoExecuteHint": "Auto-remediation: on a chronic deviation the system accepts this recommendation and starts the process itself (no manual «Accept») — provided the global AUTO_REMEDIATION_ENABLED switch is on and the match is confident enough. Steps are still worked by the assigned roles; if it doesn't help, it escalates to a human.",
     "indicatorScope": "Indicator scope",
     "scopeHint": "Empty = applies to all indicators",
     "any": "any",

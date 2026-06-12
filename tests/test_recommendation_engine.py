@@ -3,8 +3,40 @@
 import pytest
 from pydantic import ValidationError
 
-from core.recommendation_engine import score_playbook, match_confidence
+from core.recommendation_engine import score_playbook, match_confidence, should_auto_execute
 from api.schemas_dss import PlaybookCreate, RecommendationGenerateRequest
+
+
+class TestShouldAutoExecute:
+    """D: the pure auto-remediation gate."""
+    def _top(self, **over):
+        base = {"auto_execute": True, "has_process": True, "confidence": 0.9}
+        base.update(over)
+        return base
+
+    def test_fires_when_all_conditions_met(self):
+        assert should_auto_execute(self._top(), enabled=True, min_confidence=0.7) is True
+
+    def test_blocked_when_globally_disabled(self):
+        assert should_auto_execute(self._top(), enabled=False, min_confidence=0.7) is False
+
+    def test_blocked_when_playbook_not_marked(self):
+        assert should_auto_execute(self._top(auto_execute=False), enabled=True, min_confidence=0.7) is False
+
+    def test_blocked_when_no_process(self):
+        assert should_auto_execute(self._top(has_process=False), enabled=True, min_confidence=0.7) is False
+
+    def test_blocked_when_confidence_below_threshold(self):
+        assert should_auto_execute(self._top(confidence=0.5), enabled=True, min_confidence=0.7) is False
+
+    def test_confidence_exactly_at_threshold_passes(self):
+        assert should_auto_execute(self._top(confidence=0.7), enabled=True, min_confidence=0.7) is True
+
+
+def test_playbook_create_auto_execute_defaults_false():
+    pb = PlaybookCreate(name="x")
+    assert pb.auto_execute is False
+    assert PlaybookCreate(name="x", auto_execute=True).auto_execute is True
 
 
 class TestScorePlaybook:

@@ -374,7 +374,8 @@ class IndicatorEvaluator:
             # M3 → M7: auto-generate Next-Best-Action recommendations.
             try:
                 from core.recommendation_engine import recommendation_engine
-                recommendation_engine.generate(tenant_id, deviation_id=dev_id)
+                # background path → allow auto-remediation (D) on the top match
+                recommendation_engine.generate(tenant_id, deviation_id=dev_id, auto_execute=True)
                 summary["recommended"] = summary.get("recommended", 0) + 1
             except Exception as e:
                 logger.error("auto-recommend on chronic failed: %s", mask_secrets(str(e)))

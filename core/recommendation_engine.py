@@ -7,14 +7,34 @@ process (M8) bound to the same situation and records the decision (proto-M10).
 
 Scoring (score_playbook) and confidence (match_confidence) are pure and unit-tested.
 """
+import os
 from typing import Optional, List, Dict, Any
 from sqlalchemy import text
 
 from core.database import get_engine
+from config import logger
 
 # Map incident priority → the severity vocabulary playbooks match on.
 _PRIORITY_TO_SEVERITY = {"critical": "critical", "high": "critical",
                          "medium": "warning", "low": "warning"}
+
+# D (auto-remediation): master switch + how confident a match must be to dispatch
+# without a human. Human-in-the-loop stays the default; auto fires only where an
+# operator marked THIS playbook auto_execute AND this global switch is on.
+AUTO_REMEDIATION_ENABLED = os.environ.get("AUTO_REMEDIATION_ENABLED", "false").lower() in ("1", "true", "yes")
+AUTO_REMEDIATION_MIN_CONFIDENCE = float(os.environ.get("AUTO_REMEDIATION_MIN_CONFIDENCE", "0.7"))
+
+
+def should_auto_execute(top: dict, *, enabled: bool = None,
+                        min_confidence: float = None) -> bool:
+    """Pure gate: dispatch the top recommendation automatically only when ALL hold —
+    the global switch is on, the operator marked this playbook auto_execute, the match
+    is confident enough, and there's actually a process to run (an action-less playbook
+    has nothing to dispatch)."""
+    enabled = AUTO_REMEDIATION_ENABLED if enabled is None else enabled
+    min_confidence = AUTO_REMEDIATION_MIN_CONFIDENCE if min_confidence is None else min_confidence
+    return bool(enabled and top.get("auto_execute") and top.get("has_process")
+                and top.get("confidence", 0) >= min_confidence)
 
 
 def score_playbook(
@@ -56,9 +76,15 @@ def match_confidence(
 
 
 class RecommendationEngine:
-    def generate(self, tenant_id: str, *, deviation_id=None, incident_id: Optional[int] = None) -> List[dict]:
+    def generate(self, tenant_id: str, *, deviation_id=None, incident_id: Optional[int] = None,
+                 auto_execute: bool = False) -> List[dict]:
         """(Re)generate ranked recommendations for a deviation or incident. Replaces
-        prior *proposed* rows (accepted/dismissed decisions are preserved)."""
+        prior *proposed* rows (accepted/dismissed decisions are preserved).
+
+        auto_execute=True (only from the background detection path, never a user GET):
+        if the top match clears should_auto_execute(), accept it as user='auto' so the
+        playbook's process starts without a human click. The Act→Observe verify still
+        re-measures on completion and escalates if it didn't help."""
         ctx = self._situation_context(tenant_id, deviation_id, incident_id)
         if ctx is None:
             from core.process_engine import ProcessError
@@ -89,6 +115,7 @@ class RecommendationEngine:
                 "score": score, "confidence": confidence,
                 "rationale": self._rationale(pb, ctx, indicator_scoped, severity_match, direction_match),
                 "has_process": pb["process_template_id"] is not None,
+                "auto_execute": bool(pb["auto_execute"]),
             })
 
         scored.sort(key=lambda r: (-r["score"], -r["confidence"], r["playbook_name"]))
@@ -114,7 +141,33 @@ class RecommendationEngine:
                 ).mappings().first()
                 out.append({**r, "id": row["id"], "rank": rank, "created_at": row["created_at"],
                             "status": "proposed", "deviation_id": deviation_id, "incident_id": incident_id})
+
+        # D: auto-dispatch the top recommendation when allowed (background path only).
+        if auto_execute and out:
+            self._maybe_auto_execute(out[0], tenant_id)
         return out
+
+    def _maybe_auto_execute(self, top: dict, tenant_id: str) -> None:
+        """If the top proposal clears the auto-remediation gate, accept it as 'auto' and
+        notify humans that a process started on its own. Best-effort — a failure here
+        must not lose the recommendations we just generated."""
+        if not should_auto_execute(top):
+            return
+        try:
+            res = self.accept(top["id"], tenant_id, user="auto")
+            top["status"] = "accepted"
+            top["auto_executed"] = True
+            logger.info("Auto-remediation: accepted rec %s (playbook=%s, conf=%.2f) → process %s",
+                        top["id"], top["playbook_name"], top["confidence"], res.get("process_instance_id"))
+            try:
+                from core.notifications import notify
+                notify(f"🤖 Авто-ремедиация: запущен регламент «{top['playbook_name']}» "
+                       f"(уверенность {top['confidence']:.0%}). Шаги назначены ответственным ролям.",
+                       "info", tenant_id=tenant_id)
+            except Exception as e:
+                logger.error("auto-remediation notify failed: %s", e)
+        except Exception as e:
+            logger.error("auto-remediation accept failed for rec %s: %s", top.get("id"), e)
 
     def accept(self, recommendation_id, tenant_id: str, *, user: str) -> dict:
         """Accept a recommendation: instantiate its playbook's process (if any) bound
@@ -201,7 +254,7 @@ class RecommendationEngine:
             rows = conn.execute(
                 text(
                     "SELECT p.id, p.name, p.trigger_severity, p.trigger_direction, p.effect_score, "
-                    "p.process_template_id, "
+                    "p.process_template_id, p.auto_execute, "
                     "EXISTS (SELECT 1 FROM playbook_indicators pi WHERE pi.playbook_id = p.id) AS has_scope, "
                     "EXISTS (SELECT 1 FROM playbook_indicators pi WHERE pi.playbook_id = p.id "
                     "        AND pi.indicator_id = :iid) AS matches_indicator "
