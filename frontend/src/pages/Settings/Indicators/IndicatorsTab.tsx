@@ -26,6 +26,9 @@ export default function IndicatorsTab() {
   const [editingGoal, setEditingGoal] = useState<GoalRead | null>(null);
   const [form] = Form.useForm();
   const [goalForm] = Form.useForm();
+  // C: when the corridor self-learns (baseline), manual bounds are irrelevant.
+  const corridorType = Form.useWatch('corridor_type', form);
+  const isBaseline = corridorType === 'baseline';
 
   const fetchData = async () => {
     setLoading(true);
@@ -43,7 +46,8 @@ export default function IndicatorsTab() {
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
-    form.setFieldsValue({ corridor_type: 'static', direction: 'both', chronicle_threshold: 3, is_active: true, factors: [{}] });
+    // Default to the self-learning corridor so operators don't hand-type thresholds.
+    form.setFieldsValue({ corridor_type: 'baseline', direction: 'both', chronicle_threshold: 3, is_active: true, factors: [{}] });
     setModalOpen(true);
   };
 
@@ -170,9 +174,16 @@ export default function IndicatorsTab() {
               <Select style={{ width: 130 }} options={[{ label: 'static', value: 'static' }, { label: 'baseline', value: 'baseline' }]} />
             </Form.Item>
           </Space>
+          {isBaseline && (
+            <div style={{ color: '#888', fontSize: 12, margin: '0 0 8px' }}>{t('settingsDss.baselineHint')}</div>
+          )}
           <Space style={{ display: 'flex' }} align="start">
-            <Form.Item name="target_low" label={t('settingsDss.targetLow')}><InputNumber style={{ width: 130 }} /></Form.Item>
-            <Form.Item name="target_high" label={t('settingsDss.targetHigh')}><InputNumber style={{ width: 130 }} /></Form.Item>
+            <Form.Item name="target_low" label={t('settingsDss.targetLow')}>
+              <InputNumber style={{ width: 130 }} disabled={isBaseline} placeholder={isBaseline ? t('settingsDss.auto') : undefined} />
+            </Form.Item>
+            <Form.Item name="target_high" label={t('settingsDss.targetHigh')}>
+              <InputNumber style={{ width: 130 }} disabled={isBaseline} placeholder={isBaseline ? t('settingsDss.auto') : undefined} />
+            </Form.Item>
             <Form.Item name="direction" label={t('settingsDss.direction')}>
               <Select style={{ width: 110 }} options={['both', 'below', 'above'].map((v) => ({ label: v, value: v }))} />
             </Form.Item>

@@ -258,6 +258,8 @@
     "goal": "Goal",
     "corridor": "Corridor",
     "corridorType": "Corridor type",
+    "baselineHint": "A 'baseline' corridor self-learns (mean ± K·σ from history) — no need to set bounds by hand.",
+    "auto": "auto",
     "direction": "Direction",
     "factors": "Factors",
     "active": "Active",
