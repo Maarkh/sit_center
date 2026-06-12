@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import {
   Table, Button, Modal, Form, Input, Select, Switch, Space, Popconfirm, Tag, App,
 } from 'antd';
@@ -141,6 +142,7 @@ export default function NotificationsTab() {
 
   return (
     <>
+      <PageHelp section="notifications" />
       <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ marginBottom: 16 }}>
         {t('notif.newChannel', 'Новый канал')}
       </Button>

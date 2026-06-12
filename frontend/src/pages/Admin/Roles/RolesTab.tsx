@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import { Table, Button, Modal, Form, Input, Select, message, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { listRoles, createRole } from '@/api/admin';
@@ -38,6 +39,7 @@ export default function RolesTab() {
 
   return (
     <>
+      <PageHelp section="roles" />
       <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)} style={{ marginBottom: 16 }}>Create Role</Button>
       <Table dataSource={roles} columns={columns} rowKey="id" loading={loading} />
       <Modal title="Create Role" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} destroyOnClose>

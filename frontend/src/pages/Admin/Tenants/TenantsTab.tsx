@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import { Table, Button, Modal, Form, Input, message, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { listTenants, createTenant } from '@/api/admin';
@@ -36,6 +37,7 @@ export default function TenantsTab() {
 
   return (
     <>
+      <PageHelp section="tenants" />
       <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)} style={{ marginBottom: 16 }}>Create Tenant</Button>
       <Table dataSource={tenants} columns={columns} rowKey="id" loading={loading} />
       <Modal title="Create Tenant" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} destroyOnClose>

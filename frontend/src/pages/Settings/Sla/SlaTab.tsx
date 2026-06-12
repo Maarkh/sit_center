@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import { Table, Button, Modal, Form, Input, Select, InputNumber, message, Popconfirm, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { listSlaPolicies, createSlaPolicy, updateSlaPolicy, deleteSlaPolicy } from '@/api/incidents';
@@ -75,6 +76,7 @@ export default function SlaTab() {
 
   return (
     <>
+      <PageHelp section="sla" />
       <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ marginBottom: 16 }}>
         Create SLA Policy
       </Button>

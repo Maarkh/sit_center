@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import { Table, Button, Select, InputNumber, Space, Popconfirm, App, Alert, Card } from 'antd';
 import { PlusOutlined, DeleteOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -68,6 +69,7 @@ export default function DependenciesTab() {
 
   return (
     <>
+      <PageHelp section="dependencies" />
       <Alert type="info" showIcon style={{ marginBottom: 16 }}
         title={t('settingsDep.title', 'Зависимости показателей')}
         description={t('settingsDep.hint',

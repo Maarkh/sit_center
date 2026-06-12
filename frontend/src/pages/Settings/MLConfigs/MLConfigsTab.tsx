@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import { Table, Button, Modal, Form, Input, Select, Switch, message, Popconfirm, Tag, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { listMLConfigs, createMLConfig, updateMLConfig, deleteMLConfig } from '@/api/mlConfigs';
@@ -77,6 +78,7 @@ export default function MLConfigsTab() {
 
   return (
     <>
+      <PageHelp section="mlConfigs" />
       <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ marginBottom: 16 }}>
         Create ML Config
       </Button>

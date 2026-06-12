@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import { Table, Button, Modal, Form, Input, message, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { listUsers, createUser } from '@/api/admin';
@@ -38,6 +39,7 @@ export default function UsersTab() {
 
   return (
     <>
+      <PageHelp section="users" />
       <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)} style={{ marginBottom: 16 }}>Create User</Button>
       <Table dataSource={users} columns={columns} rowKey="id" loading={loading} />
       <Modal title="Create User" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} destroyOnClose>

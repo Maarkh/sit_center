@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import { Table, Select, Input, Space, Card } from 'antd';
 import { listAuditLogs } from '@/api/audit';
 import { formatDate } from '@/utils/formatters';
@@ -31,6 +32,7 @@ export default function AuditTab() {
 
   return (
     <>
+      <PageHelp section="audit" />
       <Card size="small" style={{ marginBottom: 16 }}>
         <Space wrap>
           <Select placeholder={t('audit.action_filter')} options={['create', 'update', 'delete', 'login'].map((a) => ({ label: a, value: a }))} value={action} onChange={setAction} allowClear style={{ width: 150 }} />

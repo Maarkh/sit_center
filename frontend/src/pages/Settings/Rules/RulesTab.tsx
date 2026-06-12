@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import { Table, Button, Modal, Form, Input, Switch, message, Popconfirm, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { listRules, createRule, updateRule, deleteRule } from '@/api/rules';
@@ -80,6 +81,7 @@ export default function RulesTab() {
 
   return (
     <>
+      <PageHelp section="rules" />
       <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ marginBottom: 16 }}>
         Create Rule
       </Button>

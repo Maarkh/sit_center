@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import {
   Table, Button, Modal, Form, Input, InputNumber, Space, Popconfirm, Tag, App,
 } from 'antd';
@@ -107,6 +108,7 @@ export default function EscalationTab() {
 
   return (
     <>
+      <PageHelp section="escalation" />
       <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ marginBottom: 16 }}>
         {t('settingsEsc.newChain', 'Новая цепочка')}
       </Button>

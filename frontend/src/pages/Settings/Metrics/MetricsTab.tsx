@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageHelp from '@/components/Common/PageHelp';
 import {
   Table, Button, Modal, Form, Input, InputNumber, Switch, Space, Popconfirm, Tag, App,
 } from 'antd';
@@ -91,6 +92,7 @@ export default function MetricsTab() {
 
   return (
     <>
+      <PageHelp section="metricsCatalog" />
       <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ marginBottom: 16 }}>
         {t('metricCat.newMetric', 'Новая метрика')}
       </Button>
