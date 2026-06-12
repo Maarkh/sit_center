@@ -159,3 +159,60 @@ def test_kafka_bootstrap_prefers_source():
 def test_kafka_bootstrap_falls_back_to_default():
     assert kafka_bootstrap_from_sources([], "env:9092") == "env:9092"
     assert kafka_bootstrap_from_sources([{"config": {}}], "env:9092") == "env:9092"
+
+
+# ── A: metric auto-registration (self-populating catalog) ───────────────────
+class _FakeConn:
+    def __init__(self, calls):
+        self._calls = calls
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, _sql, params):
+        self._calls.append(params)
+
+
+class _FakeEngine:
+    def __init__(self, calls):
+        self._calls = calls
+
+    def begin(self):
+        return _FakeConn(self._calls)
+
+
+def test_register_metric_names_dedups_and_caches(monkeypatch):
+    import core.data_sources as ds
+    ds._REGISTERED_METRICS.clear()
+    calls = []
+    monkeypatch.setattr(ds, "get_engine", lambda: _FakeEngine(calls))
+
+    # first call: two distinct names (one repeated in the same call → deduped)
+    n = ds.register_metric_names(["m_a", "m_b", "m_a", "", None], "t1")
+    assert n == 2
+    assert {p["metric_name"] for p in calls[0]} == {"m_a", "m_b"}
+    assert all(p["display_name"] == p["metric_name"] for p in calls[0])
+
+    # second call: same names are cached now → no DB write
+    calls.clear()
+    assert ds.register_metric_names(["m_a", "m_b"], "t1") == 0
+    assert calls == []
+
+    # same name, different tenant → not cached across tenants
+    assert ds.register_metric_names(["m_a"], "t2") == 1
+
+
+def test_register_metric_names_swallows_db_error(monkeypatch):
+    import core.data_sources as ds
+    ds._REGISTERED_METRICS.clear()
+
+    def _boom():
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(ds, "get_engine", _boom)
+    # never raises into the ingest path; returns 0 and does NOT cache (so it retries)
+    assert ds.register_metric_names(["m_x"], "default") == 0
+    assert ("default", "m_x") not in ds._REGISTERED_METRICS

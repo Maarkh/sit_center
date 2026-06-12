@@ -291,4 +291,49 @@ def insert_metrics(points, source_name: str, tenant_id: str) -> int:
     engine = get_engine()
     with engine.begin() as conn:
         conn.execute(_METRIC_INSERT, rows)
+    # A: the catalog self-populates from incoming data (best-effort, never blocks ingest)
+    register_metric_names((r["metric_name"] for r in rows), tenant_id)
     return len(rows)
+
+
+# ── A: metric auto-registration (self-populating catalog) ────────────────────
+# A newly-seen metric arrives → ensure a stub row exists in metadata_metrics, so the
+# catalog fills itself instead of being typed in by hand. An in-process set caches the
+# (tenant, name) pairs already ensured by THIS process, so a hot ingest loop (collector
+# every few seconds, kafka per batch) doesn't fire an upsert every tick.
+_REGISTERED_METRICS: set = set()
+_REGISTERED_METRICS_MAX = 50_000
+
+_REGISTER_METRIC = text(
+    "INSERT INTO metadata_metrics (metric_name, display_name, is_active, tenant_id) "
+    "VALUES (:metric_name, :display_name, true, :tenant_id) "
+    "ON CONFLICT (metric_name, tenant_id) DO NOTHING"
+)
+
+
+def register_metric_names(names, tenant_id: str = "default") -> int:
+    """Ensure each metric name has a catalog row (display_name defaults to the key;
+    a human can later set unit/label/thresholds). Idempotent via ON CONFLICT DO NOTHING.
+    Best-effort: a registry hiccup must never break the ingest path, so it swallows and
+    logs. Returns the count of names sent to the DB this call."""
+    fresh, seen = [], set()
+    for n in names:
+        if not n or n in seen or (tenant_id, n) in _REGISTERED_METRICS:
+            continue
+        seen.add(n)
+        fresh.append(n)
+    if not fresh:
+        return 0
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(_REGISTER_METRIC,
+                         [{"metric_name": n, "display_name": n, "tenant_id": tenant_id} for n in fresh])
+    except Exception as e:  # transient DB/registry issue — retry on the next tick
+        logger.warning("metric auto-register skipped (tenant=%s): %s", tenant_id, e)
+        return 0
+    if len(_REGISTERED_METRICS) > _REGISTERED_METRICS_MAX:
+        _REGISTERED_METRICS.clear()
+    for n in fresh:
+        _REGISTERED_METRICS.add((tenant_id, n))
+    return len(fresh)

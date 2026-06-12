@@ -35,6 +35,7 @@ from sqlalchemy import text
 from core.database import get_engine
 from core.data_sources import (
     active_sources, active_tenant_ids, collect_host_agent, collect_http_pull,
+    register_metric_names,
 )
 
 SAMPLE = int(os.environ.get("SAMPLE_SECONDS", "5"))
@@ -105,6 +106,8 @@ def main():
                     with eng.begin() as c:
                         for m, v, src in rows:
                             c.execute(_INSERT, {"m": m, "v": float(v), "s": src, "t": tenant})
+                    # A: self-populating catalog — new metric names register themselves
+                    register_metric_names((m for m, _, _ in rows), tenant)
                     print(f"[{tenant}] " + ", ".join(f"{m}={v:.1f}@{src}" for m, v, src in rows))
         except Exception as e:
             print(f"⚠️  collect round failed: {e}")

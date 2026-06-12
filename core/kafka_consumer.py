@@ -125,3 +125,11 @@ class MetricKafkaConsumer:
         with self.engine.begin() as conn:
             conn.execute(insert_sql, batch)
         logger.debug("Inserted %d metrics from Kafka", len(batch))
+        # A: self-populating catalog. Batch rows can carry mixed tenants, so register
+        # per tenant. Best-effort (helper swallows) — never stalls offset commit.
+        from core.data_sources import register_metric_names
+        by_tenant: Dict[str, set] = {}
+        for r in batch:
+            by_tenant.setdefault(r["tenant_id"], set()).add(r["metric_name"])
+        for tid, names in by_tenant.items():
+            register_metric_names(names, tid)
