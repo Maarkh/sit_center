@@ -50,7 +50,11 @@ def make_celery(app_name=__name__):
         task_reject_on_worker_lost=True,
         beat_schedule=get_beat_schedule(),
         task_routes={
-            'core.ml_tasks.*': {'queue': 'ml'},
+            # Only the TF/torch-heavy detectors need the dedicated ML worker. The new
+            # calibrated z-score detector (detect_metric_anomalies_task) is dependency-
+            # light and runs on the default worker, so it is NOT routed here.
+            'core.ml_tasks.run_ml_anomaly_check': {'queue': 'ml'},
+            'core.ml_tasks.retrain_ml_models': {'queue': 'ml'},
         },
     )
     # RedBeat (the Redis-backed beat scheduler used in K8s/compose) reads
@@ -103,6 +107,7 @@ celery_app = make_celery()
 
 import core.celery_metrics  # noqa: F401, E402 — register Celery signal handlers
 import core.dss_tasks  # noqa: F401, E402 — register DSS beat tasks (default queue)
+import core.ml_tasks  # noqa: F401, E402 — register anomaly/rule tasks (light ones on default queue)
 
 @worker_process_init.connect
 def init_worker_tracing(**kwargs):

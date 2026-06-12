@@ -22,6 +22,14 @@ beat_schedule = {
     #     'task': 'core.ml_tasks.retrain_ml_models',
     #     'schedule': crontab(hour=3, minute=0)
     # },
+    # E: the legacy detector's REPLACEMENT — calibrated modified z-score (median/MAD,
+    # trained out-of-sample), dependency-light so it runs on the default worker. Persists
+    # to ml_anomalies (method='robust_zscore') + raises a rate-limited Alerts signal.
+    # Opt-out via ANOMALY_DETECTION_ENABLED=false.
+    'detect-metric-anomalies-10min': {
+        'task': 'core.ml_tasks.detect_metric_anomalies_task',
+        'schedule': crontab(minute='*/10')
+    },
     'update-mv-10min': {
         'task': 'tasks.update_mv_data',
         'schedule': crontab(minute='*/10')
