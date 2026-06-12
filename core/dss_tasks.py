@@ -182,6 +182,30 @@ def verify_remediation_task(deviation_id: str, tenant_id: str = "default"):
         return {"error": str(e)}
 
 
+@celery_app.task(time_limit=180, soft_time_limit=170)
+@single_run("dss:auto_provision_indicators", lease_ttl=190)
+def auto_provision_indicators_task():
+    """B (zero-touch): create a self-tuning baseline indicator for each live metric that
+    has enough history but isn't watched by any indicator yet, per tenant. Opt-in via
+    AUTO_PROVISION_INDICATORS — a no-op (returns {disabled}) when off."""
+    from core.auto_provision import AUTO_PROVISION_ENABLED, provision_tenant
+    if not AUTO_PROVISION_ENABLED:
+        return {"disabled": True}
+    try:
+        totals = {"candidates": 0, "created": 0}
+        for tenant_id in _active_tenant_ids():
+            s = provision_tenant(tenant_id)
+            totals["candidates"] += s["candidates"]
+            totals["created"] += s["created"]
+        if totals["created"]:
+            logger.info("Auto-provision: %d baseline indicator(s) created across tenants",
+                        totals["created"])
+        return totals
+    except Exception as e:
+        logger.exception("Auto-provision failed")
+        return {"error": str(e)}
+
+
 @celery_app.task(time_limit=120, soft_time_limit=110)
 @single_run("dss:check_process_step_sla", lease_ttl=130)
 def check_process_step_sla_task():

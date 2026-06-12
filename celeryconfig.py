@@ -63,6 +63,12 @@ beat_schedule = {
         'task': 'core.dss_tasks.correlate_situations_task',
         'schedule': crontab(minute='*/3')
     },
+    # B (zero-touch): auto-create baseline indicators for unwatched live metrics.
+    # No-op unless AUTO_PROVISION_INDICATORS=true; cheap when there's nothing to do.
+    'auto-provision-indicators-30min': {
+        'task': 'core.dss_tasks.auto_provision_indicators_task',
+        'schedule': crontab(minute='*/30')
+    },
     # DSS M10: auto-derive decision outcomes from finished processes (learning loop).
     'evaluate-decision-outcomes-10min': {
         'task': 'core.dss_tasks.evaluate_decision_outcomes_task',
