@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from 'react';
 import { Tabs, Spin } from 'antd';
 import {
   DashboardOutlined, ThunderboltOutlined, ProfileOutlined, AuditOutlined, ExperimentOutlined,
+  CarryOutOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import CockpitOverview from './CockpitOverview';
@@ -11,12 +12,14 @@ const PredictivePanel = lazy(() => import('./PredictivePanel'));
 const ProcessPanel = lazy(() => import('./ProcessPanel'));
 const DecisionLogPanel = lazy(() => import('./DecisionLogPanel'));
 const WhatIfPanel = lazy(() => import('./WhatIfPanel'));
+const MyTasksPanel = lazy(() => import('./MyTasksPanel'));
 
 const Loader = <Spin style={{ display: 'block', margin: '60px auto' }} />;
 
 // Each cockpit tab gets its own contextual help section (see i18n `help.cockpit*`).
 const HELP_SECTION: Record<string, string> = {
   overview: 'cockpitOverview',
+  mytasks: 'myTasks',
   predictive: 'cockpitPredictive',
   processes: 'cockpitProcesses',
   decisions: 'cockpitDecisions',
@@ -29,6 +32,8 @@ export default function CockpitPage() {
 
   const items = [
     { key: 'overview', label: <span><DashboardOutlined /> {t('cockpit.tabOverview')}</span>, children: <CockpitOverview /> },
+    { key: 'mytasks', label: <span><CarryOutOutlined /> {t('cockpit.tabMyTasks')}</span>,
+      children: <Suspense fallback={Loader}><MyTasksPanel /></Suspense> },
     { key: 'predictive', label: <span><ThunderboltOutlined /> {t('cockpit.tabPredictive')}</span>,
       children: <Suspense fallback={Loader}><PredictivePanel /></Suspense> },
     { key: 'processes', label: <span><ProfileOutlined /> {t('cockpit.tabProcesses')}</span>,

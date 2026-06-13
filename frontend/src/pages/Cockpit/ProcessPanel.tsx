@@ -5,6 +5,7 @@ import {
 import { ReloadOutlined, PlayCircleOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/utils/formatters';
+import ReassignControl from '@/components/Common/ReassignControl';
 import {
   listProcessInstances, getProcessInstance, startStep, updateStepChecklist, completeStep,
 } from '@/api/dss';
@@ -111,7 +112,7 @@ export default function ProcessPanel() {
                   </Space>
                 ),
                 status: (a.status === 'done' ? 'finish' : a.status === 'in_progress' || a.status === 'active' ? 'process' : 'wait') as 'finish' | 'process' | 'wait',
-                content: <StepBody a={a} busy={busy} onStart={onStart} onToggle={onToggle} onComplete={onComplete} t={t} />,
+                content: <StepBody a={a} busy={busy} onStart={onStart} onToggle={onToggle} onComplete={onComplete} reload={() => loadDetail(selected!)} t={t} />,
               }))}
               current={Math.max(0, detail.assignments.findIndex((a) => stepIndex(a.status) < 3))}
             />
@@ -128,10 +129,11 @@ interface StepBodyProps {
   onStart: (a: StepAssignmentRead) => void;
   onToggle: (a: StepAssignmentRead, idx: number, checked: boolean) => void;
   onComplete: (a: StepAssignmentRead, report: string, force: boolean) => void;
+  reload: () => void;
   t: (k: string) => string;
 }
 
-function StepBody({ a, busy, onStart, onToggle, onComplete, t }: StepBodyProps) {
+function StepBody({ a, busy, onStart, onToggle, onComplete, reload, t }: StepBodyProps) {
   const [report, setReport] = useState('');
   const active = a.status === 'active' || a.status === 'in_progress';
   const allDone = a.checklist_state.every((c) => c.done);
@@ -165,6 +167,7 @@ function StepBody({ a, busy, onStart, onToggle, onComplete, t }: StepBodyProps) 
           onClick={() => onComplete(a, report, !allDone)}>
           {allDone ? t('cockpit.complete') : t('cockpit.completeForce')}
         </Button>
+        <ReassignControl assignmentId={a.id} roleHint={a.assignee_role} value={a.assignee} onDone={reload} />
       </Space>
     </div>
   );

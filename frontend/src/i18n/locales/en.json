@@ -29,6 +29,14 @@
       "title": "What-if — scenario modelling",
       "body": "«What-if» scenarios: hypotheses with a potential effect, tied to an indicator.\nWhat to do: create a scenario with an assumption and run it to estimate the potential effect before acting for real."
     },
+    "myTasks": {
+      "title": "My tasks — your work queue",
+      "body": "Process steps addressed to your role or assigned to you personally, with statuses and deadlines (SLA).\nWhat to do: «Start» to claim a step; tick the checklist; «Complete» to advance the process. You can reassign a step to a specific person."
+    },
+    "processTemplates": {
+      "title": "Process templates — executable workflows",
+      "body": "Templates of ordered steps, each with a responsible role, checklist and deadline (SLA). Playbooks reference them — an accepted recommendation starts the process.\nWhat to do: define the steps and pick a responsible role for each (from the role catalog)."
+    },
     "map": {
       "title": "Map",
       "body": "Geography by region: where indicators left their corridor.\nWhat to do: click a region for details."
@@ -181,6 +189,7 @@
     "detected": "Detected",
     "incident": "Incident",
     "tabOverview": "Overview",
+    "tabMyTasks": "My tasks",
     "tabPredictive": "Predictive",
     "tabProcesses": "Processes",
     "tabDecisions": "Decisions",
@@ -514,6 +523,31 @@
     "action_filter": "Action",
     "resource_filter": "Resource",
     "username_filter": "Username"
+  },
+  "myTasks": {
+    "title": "My tasks",
+    "step": "Step",
+    "assignee": "Assignee",
+    "unclaimed": "unclaimed",
+    "due": "Due",
+    "empty": "No open tasks for you or your role",
+    "assignTo": "assign…",
+    "assigned": "Assigned to {{user}}",
+    "assignFailed": "Could not assign",
+    "noUsers": "no users with this role"
+  },
+  "settingsProc": {
+    "tab": "Process templates",
+    "newTemplate": "New template",
+    "steps": "Steps",
+    "stepsHint": "Steps run in order. Each has a responsible role, checklist and deadline (SLA).",
+    "stepName": "Step name",
+    "roleHint": "Responsible role — pick from the role catalog (or type your own).",
+    "sequential": "sequential",
+    "parallel": "parallel",
+    "dueMin": "SLA, min",
+    "addStep": "Add step",
+    "needStep": "Add at least one step"
   },
   "common": {
     "logout": "Logout",

@@ -6,7 +6,7 @@ import type {
   ForecastRead, DecisionLogItem, PlaybookStats, PlaybookListItem,
   ScenarioListItem, ScenarioRead, ScenarioResultRead, Assumption,
   GoalRead, IndicatorRead, IndicatorCreate, PlaybookRead, PlaybookCreate, ProcessTemplateListItem,
-  DependencyRead, DependencyCreate,
+  DependencyRead, DependencyCreate, MyTask, ProcessTemplateCreate, ProcessTemplateRead,
 } from '@/types/dss';
 
 // --- M2: indicator tree ---
@@ -188,6 +188,43 @@ export async function updateStepChecklist(assignmentId: string, checklist_state:
 export async function completeStep(assignmentId: string, report?: string, force = false): Promise<StepAssignmentRead> {
   const { data } = await client.post<StepAssignmentRead>(`/api/v1/processes/assignments/${assignmentId}/complete`, { report, force });
   return data;
+}
+
+// --- A: my task inbox ---
+export async function getMyTasks(openOnly = true): Promise<MyTask[]> {
+  const { data } = await client.get<MyTask[]>('/api/v1/processes/assignments/mine', { params: { open_only: openOnly } });
+  return data;
+}
+
+// --- D: explicit (re)assignment ---
+export async function assignStep(assignmentId: string, assignee: string): Promise<StepAssignmentRead> {
+  const { data } = await client.post<StepAssignmentRead>(`/api/v1/processes/assignments/${assignmentId}/assign`, { assignee });
+  return data;
+}
+
+export async function getAssignmentRoles(): Promise<string[]> {
+  const { data } = await client.get<string[]>('/api/v1/processes/roles');
+  return data;
+}
+
+export async function getAssignableUsers(role?: string): Promise<string[]> {
+  const { data } = await client.get<string[]>('/api/v1/processes/assignable-users', { params: role ? { role } : {} });
+  return data;
+}
+
+// --- C: process template authoring ---
+export async function getProcessTemplate(id: string): Promise<ProcessTemplateRead> {
+  const { data } = await client.get<ProcessTemplateRead>(`/api/v1/processes/templates/${id}`);
+  return data;
+}
+
+export async function createProcessTemplate(payload: ProcessTemplateCreate): Promise<ProcessTemplateRead> {
+  const { data } = await client.post<ProcessTemplateRead>('/api/v1/processes/templates', payload);
+  return data;
+}
+
+export async function deleteProcessTemplate(id: string): Promise<void> {
+  await client.delete(`/api/v1/processes/templates/${id}`);
 }
 
 // --- M10: decision log + playbook win-rate ---

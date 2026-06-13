@@ -174,6 +174,48 @@ export interface ProcessInstanceRead {
   assignments: StepAssignmentRead[];
 }
 
+// A: a step assignment plus its parent process title — the "My tasks" inbox row.
+export interface MyTask extends StepAssignmentRead {
+  instance_title: string | null;
+}
+
+// C: process template authoring
+export interface ProcessStepCreate {
+  name: string;
+  step_order: number;
+  step_type?: 'sequential' | 'parallel';
+  assignee_role?: string | null;
+  checklist?: string[];
+  due_after_minutes?: number | null;
+}
+
+export interface ProcessTemplateCreate {
+  name: string;
+  description?: string;
+  is_active?: boolean;
+  steps: ProcessStepCreate[];
+}
+
+export interface ProcessStepRead {
+  id: string;
+  step_order: number;
+  name: string;
+  step_type: string;
+  assignee_role: string | null;
+  checklist: string[];
+  due_after_minutes: number | null;
+}
+
+export interface ProcessTemplateRead {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  steps: ProcessStepRead[];
+}
+
 export interface ProcessInstanceListItem {
   id: string;
   template_id: string;
