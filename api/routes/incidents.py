@@ -329,9 +329,9 @@ def assign_incident(
     # Lock the row so the existence check and the update are atomic.
     with engine.begin() as conn:
         exists = conn.execute(
-            text("SELECT 1 FROM incidents WHERE id = :id AND tenant_id = :tid FOR UPDATE"),
+            text("SELECT alert_message FROM incidents WHERE id = :id AND tenant_id = :tid FOR UPDATE"),
             {"id": incident_id, "tid": current_user.tenant_id},
-        ).first()
+        ).mappings().first()
 
         if not exists:
             raise HTTPException(404, "Incident not found")
@@ -359,6 +359,15 @@ def assign_incident(
         resource_id=str(incident_id),
         changes={"assigned_to": data.assigned_to},
     )
+
+    # Tell the assignee on the Alerts stream (best-effort; no per-user channel exists).
+    if data.assigned_to:
+        try:
+            from core.notifications import notify
+            notify(f"👤 {data.assigned_to}: вам назначен инцидент #{incident_id} "
+                   f"«{exists['alert_message']}».", "info", tenant_id=current_user.tenant_id)
+        except Exception as e:
+            logger.warning(f"incident assign notify failed: {e}")
 
     # Sync to i-doit
     try:

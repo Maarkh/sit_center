@@ -2,11 +2,16 @@ import { useState } from 'react';
 import { Select, App } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { assignStep, getAssignableUsers } from '@/api/dss';
+import { getAssignableUsers } from '@/api/dss';
 
-/** D: pick a person (users holding the step's role) and assign the step to them. */
-export default function ReassignControl({ assignmentId, roleHint, value, onDone }: {
-  assignmentId: string;
+/**
+ * D: pick a person and assign something to them. Generic over the target — the caller
+ * supplies onAssign (assignStep for a process step, assignIncident for an incident).
+ * roleHint (if given) restricts the user list to holders of that role; omit it to list
+ * all active users (incidents have no role).
+ */
+export default function ReassignControl({ onAssign, roleHint, value, onDone }: {
+  onAssign: (user: string) => Promise<unknown>;
   roleHint?: string | null;
   value?: string | null;
   onDone?: () => void;
@@ -25,7 +30,7 @@ export default function ReassignControl({ assignmentId, roleHint, value, onDone 
   const onPick = async (user: string) => {
     setBusy(true);
     try {
-      await assignStep(assignmentId, user);
+      await onAssign(user);
       message.success(t('myTasks.assigned', { user }));
       onDone?.();
     } catch {

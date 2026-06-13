@@ -168,7 +168,8 @@ class TestAssignIncident:
         )
 
         with patch("api.routes.incidents.log_audit"), \
-             patch("core.idoit_service.push_assignment"):
+             patch("core.idoit_service.push_assignment"), \
+             patch("core.notifications.notify"):
             resp = api_client.patch(
                 "/incidents/1/assign",
                 json={"assigned_to": "ops-user"},
@@ -178,7 +179,8 @@ class TestAssignIncident:
 
     def test_assign_not_found(self, api_client, auth_headers, mock_db_engine):
         conn = _setup_conn(mock_db_engine, None)
-        conn.execute.return_value.first.return_value = None
+        # existence check is SELECT ... .mappings().first() → None means 404 (before notify)
+        conn.execute.return_value.mappings.return_value.first.return_value = None
 
         resp = api_client.patch(
             "/incidents/1/assign",

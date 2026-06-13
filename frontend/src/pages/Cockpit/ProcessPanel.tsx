@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/utils/formatters';
 import ReassignControl from '@/components/Common/ReassignControl';
 import {
-  listProcessInstances, getProcessInstance, startStep, updateStepChecklist, completeStep,
+  listProcessInstances, getProcessInstance, startStep, updateStepChecklist, completeStep, assignStep,
 } from '@/api/dss';
 import type { ProcessInstanceListItem, ProcessInstanceRead, StepAssignmentRead } from '@/types/dss';
 
@@ -167,7 +167,7 @@ function StepBody({ a, busy, onStart, onToggle, onComplete, reload, t }: StepBod
           onClick={() => onComplete(a, report, !allDone)}>
           {allDone ? t('cockpit.complete') : t('cockpit.completeForce')}
         </Button>
-        <ReassignControl assignmentId={a.id} roleHint={a.assignee_role} value={a.assignee} onDone={reload} />
+        <ReassignControl onAssign={(u) => assignStep(a.id, u)} roleHint={a.assignee_role} value={a.assignee} onDone={reload} />
       </Space>
     </div>
   );

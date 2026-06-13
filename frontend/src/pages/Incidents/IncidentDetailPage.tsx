@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Button, Space, Input, message, Timeline, Spin, Tag, Divider } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { getIncident, updateIncidentStatus, addComment, listComments } from '@/api/incidents';
+import { getIncident, updateIncidentStatus, addComment, listComments, assignIncident } from '@/api/incidents';
+import ReassignControl from '@/components/Common/ReassignControl';
 import StatusTag from '@/components/Common/StatusTag';
 import PriorityTag from '@/components/Common/PriorityTag';
 import SlaIndicator from '@/components/Common/SlaIndicator';
@@ -107,6 +108,13 @@ export default function IncidentDetailPage() {
             </Space>
           </>
         )}
+
+        <Divider>{t('incidents.assign')}</Divider>
+        <ReassignControl
+          onAssign={(u) => assignIncident(incident.id, u)}
+          value={incident.assigned_to}
+          onDone={load}
+        />
       </Card>
 
       <Card title={t('incidents.comments')} style={{ marginTop: 16 }}>

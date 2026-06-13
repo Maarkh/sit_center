@@ -339,6 +339,7 @@
     "active_only": "Active only",
     "id": "ID",
     "message": "Message",
+    "assign": "Assign",
     "metric": "Metric",
     "region": "Region",
     "assigned": "Assigned",
@@ -534,7 +535,11 @@
     "assignTo": "assign…",
     "assigned": "Assigned to {{user}}",
     "assignFailed": "Could not assign",
-    "noUsers": "no users with this role"
+    "noUsers": "no users with this role",
+    "steps": "My steps",
+    "incidents": "My incidents",
+    "noIncidents": "No incidents assigned to you",
+    "open": "Open"
   },
   "settingsProc": {
     "tab": "Process templates",

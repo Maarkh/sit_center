@@ -1,11 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Table, Tag, Button, Space, Checkbox, Input, Empty, Typography, App, Tooltip } from 'antd';
 import { ReloadOutlined, PlayCircleOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import ReassignControl from '@/components/Common/ReassignControl';
+import StatusTag from '@/components/Common/StatusTag';
+import PriorityTag from '@/components/Common/PriorityTag';
 import { formatDate } from '@/utils/formatters';
-import { getMyTasks, startStep, updateStepChecklist, completeStep } from '@/api/dss';
+import { useAuthStore } from '@/stores/authStore';
+import { getMyTasks, startStep, updateStepChecklist, completeStep, assignStep } from '@/api/dss';
+import { listIncidents, assignIncident } from '@/api/incidents';
 import type { MyTask } from '@/types/dss';
+import type { IncidentRead } from '@/types/incidents';
 
 const { Text } = Typography;
 
@@ -16,15 +22,28 @@ const STATUS_COLOR: Record<string, string> = {
 export default function MyTasksPanel() {
   const { t } = useTranslation();
   const { message } = App.useApp();
+  const navigate = useNavigate();
+  const username = useAuthStore((s) => s.user?.username);
   const [tasks, setTasks] = useState<MyTask[]>([]);
+  const [incidents, setIncidents] = useState<IncidentRead[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reports, setReports] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { setTasks(await getMyTasks(true)); } finally { setLoading(false); }
-  }, []);
+    try {
+      // One inbox: my process steps + my open incidents.
+      const [steps, inc] = await Promise.all([
+        getMyTasks(true),
+        username ? listIncidents({ assigned_to: username, active: true }).then((r) => r.items) : Promise.resolve([]),
+      ]);
+      setTasks(steps);
+      setIncidents(inc);
+    } finally {
+      setLoading(false);
+    }
+  }, [username]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -87,15 +106,31 @@ export default function MyTasksPanel() {
                 {allDone ? t('cockpit.complete') : t('cockpit.completeForce')}
               </Button>
             )}
-            <ReassignControl assignmentId={a.id} roleHint={a.assignee_role} value={a.assignee} onDone={load} />
+            <ReassignControl onAssign={(u) => assignStep(a.id, u)} roleHint={a.assignee_role} value={a.assignee} onDone={load} />
           </Space>
         );
       } },
   ];
 
+  const incidentColumns = [
+    { title: '#', dataIndex: 'id', key: 'id', width: 60 },
+    { title: t('incidents.message'), dataIndex: 'alert_message', key: 'alert_message', ellipsis: true },
+    { title: t('incidents.priority'), dataIndex: 'priority', key: 'priority', width: 110,
+      render: (p: string) => <PriorityTag priority={p} /> },
+    { title: t('cockpit.status'), dataIndex: 'status', key: 'status', width: 130,
+      render: (s: string) => <StatusTag status={s} /> },
+    { title: t('common.actions'), key: 'actions', width: 290,
+      render: (_: unknown, r: IncidentRead) => (
+        <Space wrap>
+          <Button size="small" onClick={() => navigate(`/incidents/${r.id}`)}>{t('myTasks.open')}</Button>
+          <ReassignControl onAssign={(u) => assignIncident(r.id, u)} value={r.assigned_to} onDone={load} />
+        </Space>
+      ) },
+  ];
+
   return (
     <>
-      <Card title={t('myTasks.title')} loading={loading}
+      <Card title={t('myTasks.steps')} loading={loading} style={{ marginBottom: 16 }}
         extra={<Button size="small" icon={<ReloadOutlined />} onClick={load} />}>
         {tasks.length === 0
           ? <Empty description={t('myTasks.empty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -122,6 +157,12 @@ export default function MyTasksPanel() {
               }}
             />
           )}
+      </Card>
+
+      <Card title={t('myTasks.incidents')} loading={loading}>
+        {incidents.length === 0
+          ? <Empty description={t('myTasks.noIncidents')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          : <Table size="small" rowKey="id" dataSource={incidents} columns={incidentColumns} pagination={false} />}
       </Card>
     </>
   );
