@@ -79,6 +79,19 @@ class ProcessEngine:
                     f"limit (raise MAX_PROCESS_STEPS to allow)"
                 )
 
+            # Responsibility map: a process remediating a deviation inherits the indicator's
+            # owner — steps the template left role-less get the owner role (and the owning
+            # person pre-assigned), so the work auto-routes instead of sitting unclaimed.
+            owner_user = owner_role = None
+            if deviation_id:
+                from core.responsibility import resolve_responsibility
+                ind_id = conn.execute(
+                    text("SELECT indicator_id FROM deviations WHERE id = :d AND tenant_id = :t"),
+                    {"d": deviation_id, "t": tenant_id},
+                ).scalar()
+                if ind_id:
+                    owner_user, owner_role, _ = resolve_responsibility(conn, ind_id, tenant_id)
+
             inst_id = conn.execute(
                 text(
                     "INSERT INTO process_instances (tenant_id, template_id, incident_id, "
@@ -92,16 +105,19 @@ class ProcessEngine:
             for s in steps:
                 checklist = s["checklist"] or []
                 state = [{"item": str(i), "done": False} for i in checklist]
+                # Keep an explicit template role; only inherit the owner where it's blank.
+                eff_role = s["assignee_role"] or owner_role
+                eff_assignee = owner_user if (not s["assignee_role"] and owner_user) else None
                 conn.execute(
                     text(
                         "INSERT INTO step_assignments (tenant_id, instance_id, step_id, step_order, "
-                        "step_type, name, assignee_role, checklist_state, status, due_after_minutes) "
-                        "VALUES (:tid, :inst, :sid, :ord, :type, :name, :role, "
+                        "step_type, name, assignee_role, assignee, checklist_state, status, due_after_minutes) "
+                        "VALUES (:tid, :inst, :sid, :ord, :type, :name, :role, :assignee, "
                         "CAST(:state AS jsonb), 'pending', :due)"
                     ),
                     {"tid": tenant_id, "inst": inst_id, "sid": s["id"], "ord": s["step_order"],
-                     "type": s["step_type"], "name": s["name"], "role": s["assignee_role"],
-                     "state": _json(state), "due": s["due_after_minutes"]},
+                     "type": s["step_type"], "name": s["name"], "role": eff_role,
+                     "assignee": eff_assignee, "state": _json(state), "due": s["due_after_minutes"]},
                 )
 
             activated = self._activate_wave(conn, inst_id, tenant_id)

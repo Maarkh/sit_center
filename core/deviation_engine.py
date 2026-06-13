@@ -392,32 +392,27 @@ class IndicatorEvaluator:
             ).scalar()
             if existing:
                 return False
+            # Responsibility map: assign the incident to the indicator's owner and attach
+            # ITS escalation chain (fall back to goal, then the tenant default) — so it
+            # auto-routes and auto-escalates instead of landing unassigned on a default chain.
+            from core.responsibility import resolve_responsibility
+            owner_user, owner_role, chain = resolve_responsibility(conn, ind["id"], tenant_id)
+            assignee = owner_user or owner_role
             msg = (f"Показатель '{ind['name']}': значение {value:.2f} вне коридора "
                    f"({breach_dir}), хроника {periods} периодов")
             inc_id = conn.execute(
                 text("INSERT INTO incidents (alert_message, metric, region, value, priority, "
-                     "status, detected_at, description, tenant_id) "
-                     "VALUES (:msg, :metric, 'all', :val, 'critical', 'new', :now, :desc, :tid) "
-                     "RETURNING id"),
+                     "status, detected_at, description, assigned_to, escalation_chain_id, tenant_id) "
+                     "VALUES (:msg, :metric, 'all', :val, 'critical', 'new', :now, :desc, "
+                     ":assignee, :chain, :tid) RETURNING id"),
                 {"msg": msg, "metric": ind["name"], "val": str(round(value, 2)), "now": now,
-                 "desc": "Авто-инцидент из DSS (хроническое отклонение показателя)", "tid": tenant_id},
+                 "desc": "Авто-инцидент из DSS (хроническое отклонение показателя)",
+                 "assignee": assignee, "chain": chain, "tid": tenant_id},
             ).scalar()
             conn.execute(
                 text("UPDATE deviations SET incident_id = :inc WHERE id = :id"),
                 {"inc": inc_id, "id": dev_id},
             )
-            # Attach the tenant's default escalation chain so auto-escalation
-            # (check_auto_escalation skips incidents with no chain) can act on it.
-            chain = conn.execute(
-                text("SELECT id FROM escalation_chains WHERE tenant_id = :tid "
-                     "AND is_active = true ORDER BY created_at LIMIT 1"),
-                {"tid": tenant_id},
-            ).scalar()
-            if chain:
-                conn.execute(
-                    text("UPDATE incidents SET escalation_chain_id = :cid WHERE id = :id"),
-                    {"cid": chain, "id": inc_id},
-                )
         # Apply the SLA policy (response/resolution deadlines) like create_incident does,
         # outside the txn above — otherwise the incident shows "SLA: N/A".
         try:

@@ -26,6 +26,7 @@ class GoalCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     owner_role: Optional[str] = Field(None, max_length=100)
+    escalation_chain_id: Optional[UUID] = None
     is_active: bool = True
 
 
@@ -38,6 +39,7 @@ class GoalRead(BaseModel):
     name: str
     description: Optional[str] = None
     owner_role: Optional[str] = None
+    escalation_chain_id: Optional[UUID] = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -87,6 +89,10 @@ class _IndicatorBase(BaseModel):
     direction: Direction = "both"
     chronicle_threshold: int = Field(3, ge=1, le=100)
     is_active: bool = True
+    # responsibility map (033): who owns this indicator + which escalation chain applies
+    owner_role: Optional[str] = Field(None, max_length=100)
+    owner_user: Optional[str] = Field(None, max_length=100)
+    escalation_chain_id: Optional[UUID] = None
 
     @model_validator(mode="after")
     def _check_corridor(self):
@@ -122,6 +128,9 @@ class IndicatorRead(BaseModel):
     direction: str
     chronicle_threshold: int
     is_active: bool
+    owner_role: Optional[str] = None
+    owner_user: Optional[str] = None
+    escalation_chain_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
     factors: List[FactorRead] = Field(default_factory=list)

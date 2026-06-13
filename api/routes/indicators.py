@@ -28,7 +28,8 @@ router = APIRouter(prefix="/indicators", tags=["DSS: Indicators"])
 
 _IND_COLS = """
     id, goal_id, name, description, unit, target_low, target_high, corridor_type,
-    baseline_model_ref, direction, chronicle_threshold, is_active, created_at, updated_at
+    baseline_model_ref, direction, chronicle_threshold, is_active,
+    owner_role, owner_user, escalation_chain_id, created_at, updated_at
 """
 
 
@@ -64,6 +65,9 @@ def _row_to_indicator(conn, row) -> IndicatorRead:
         direction=row["direction"],
         chronicle_threshold=row["chronicle_threshold"],
         is_active=row["is_active"],
+        owner_role=row["owner_role"],
+        owner_user=row["owner_user"],
+        escalation_chain_id=row["escalation_chain_id"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         factors=_load_factors(conn, row["id"]),
@@ -104,12 +108,12 @@ def create_goal(
         with engine.begin() as conn:
             row = conn.execute(
                 text(
-                    "INSERT INTO goals (tenant_id, name, description, owner_role, is_active) "
-                    "VALUES (:tid, :name, :desc, :owner, :active) "
-                    "RETURNING id, name, description, owner_role, is_active, created_at, updated_at"
+                    "INSERT INTO goals (tenant_id, name, description, owner_role, escalation_chain_id, is_active) "
+                    "VALUES (:tid, :name, :desc, :owner, :chain, :active) "
+                    "RETURNING id, name, description, owner_role, escalation_chain_id, is_active, created_at, updated_at"
                 ),
                 {"tid": current_user.tenant_id, "name": data.name, "desc": data.description,
-                 "owner": data.owner_role, "active": data.is_active},
+                 "owner": data.owner_role, "chain": data.escalation_chain_id, "active": data.is_active},
             ).mappings().first()
         log_audit(current_user.username, current_user.tenant_id, "create", "goal", resource_id=str(row["id"]))
         return GoalRead(**row)
@@ -128,7 +132,7 @@ def list_goals(
     with engine.connect() as conn:
         rows = conn.execute(
             text(
-                f"SELECT id, name, description, owner_role, is_active, created_at, updated_at "
+                f"SELECT id, name, description, owner_role, escalation_chain_id, is_active, created_at, updated_at "
                 f"FROM goals WHERE {where} ORDER BY name"
             ),
             {"tid": current_user.tenant_id},
@@ -145,7 +149,7 @@ def get_goal(
     with engine.connect() as conn:
         row = conn.execute(
             text(
-                "SELECT id, name, description, owner_role, is_active, created_at, updated_at "
+                "SELECT id, name, description, owner_role, escalation_chain_id, is_active, created_at, updated_at "
                 "FROM goals WHERE id = :id AND tenant_id = :tid"
             ),
             {"id": goal_id, "tid": current_user.tenant_id},
@@ -168,11 +172,12 @@ def update_goal(
         row = conn.execute(
             text(
                 "UPDATE goals SET name = :name, description = :desc, owner_role = :owner, "
-                "is_active = :active WHERE id = :id AND tenant_id = :tid "
-                "RETURNING id, name, description, owner_role, is_active, created_at, updated_at"
+                "escalation_chain_id = :chain, is_active = :active WHERE id = :id AND tenant_id = :tid "
+                "RETURNING id, name, description, owner_role, escalation_chain_id, is_active, created_at, updated_at"
             ),
             {"id": goal_id, "tid": current_user.tenant_id, "name": data.name,
-             "desc": data.description, "owner": data.owner_role, "active": data.is_active},
+             "desc": data.description, "owner": data.owner_role, "chain": data.escalation_chain_id,
+             "active": data.is_active},
         ).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Goal not found")
@@ -225,13 +230,15 @@ def create_indicator(
                 text(
                     "INSERT INTO indicators (tenant_id, goal_id, name, description, unit, "
                     "target_low, target_high, corridor_type, baseline_model_ref, direction, "
-                    "chronicle_threshold, is_active) VALUES (:tid, :goal, :name, :desc, :unit, "
-                    ":low, :high, :ctype, :bref, :dir, :chron, :active) RETURNING id"
+                    "chronicle_threshold, is_active, owner_role, owner_user, escalation_chain_id) "
+                    "VALUES (:tid, :goal, :name, :desc, :unit, "
+                    ":low, :high, :ctype, :bref, :dir, :chron, :active, :orole, :ouser, :chain) RETURNING id"
                 ),
                 {"tid": current_user.tenant_id, "goal": data.goal_id, "name": data.name,
                  "desc": data.description, "unit": data.unit, "low": data.target_low,
                  "high": data.target_high, "ctype": data.corridor_type, "bref": data.baseline_model_ref,
-                 "dir": data.direction, "chron": data.chronicle_threshold, "active": data.is_active},
+                 "dir": data.direction, "chron": data.chronicle_threshold, "active": data.is_active,
+                 "orole": data.owner_role, "ouser": data.owner_user, "chain": data.escalation_chain_id},
             ).scalar()
 
             for factor in data.factors:
@@ -356,13 +363,15 @@ def update_indicator(
                     "UPDATE indicators SET goal_id = :goal, name = :name, description = :desc, "
                     "unit = :unit, target_low = :low, target_high = :high, corridor_type = :ctype, "
                     "baseline_model_ref = :bref, direction = :dir, chronicle_threshold = :chron, "
-                    "is_active = :active WHERE id = :id AND tenant_id = :tid RETURNING id"
+                    "is_active = :active, owner_role = :orole, owner_user = :ouser, "
+                    "escalation_chain_id = :chain WHERE id = :id AND tenant_id = :tid RETURNING id"
                 ),
                 {"id": indicator_id, "tid": current_user.tenant_id, "goal": data.goal_id,
                  "name": data.name, "desc": data.description, "unit": data.unit,
                  "low": data.target_low, "high": data.target_high, "ctype": data.corridor_type,
                  "bref": data.baseline_model_ref, "dir": data.direction,
-                 "chron": data.chronicle_threshold, "active": data.is_active},
+                 "chron": data.chronicle_threshold, "active": data.is_active,
+                 "orole": data.owner_role, "ouser": data.owner_user, "chain": data.escalation_chain_id},
             ).first()
             if not row:
                 raise HTTPException(status_code=404, detail="Indicator not found")
