@@ -22,7 +22,7 @@ from config import mask_secrets, logger
 from api.schemas_dss import (
     ProcessTemplateCreate, ProcessTemplateRead, ProcessTemplateListItem, ProcessStepRead,
     ProcessInstanceCreate, ProcessInstanceRead, ProcessInstanceListItem, StepAssignmentRead,
-    StepStartRequest, ChecklistUpdateRequest, StepCompleteRequest,
+    StepStartRequest, ChecklistUpdateRequest, StepCompleteRequest, MyTaskRead, StepAssignRequest,
 )
 
 router = APIRouter(prefix="/processes", tags=["DSS: Processes"])
@@ -253,6 +253,72 @@ def cancel_instance(
 # ---------------------------------------------------------------------------
 # Step assignment actions
 # ---------------------------------------------------------------------------
+@router.get("/assignments/mine", response_model=List[MyTaskRead],
+            summary="My task inbox (assigned to me or my role)")
+def my_tasks(
+    open_only: bool = Query(True, description="only non-terminal (actionable/upcoming) steps"),
+    current_user: TokenData = Depends(require_permission("read:processes")),
+):
+    rows = process_engine.my_assignments(
+        current_user.tenant_id, current_user.username, current_user.roles, open_only=open_only)
+    return [MyTaskRead(**r) for r in rows]
+
+
+@router.get("/roles", response_model=List[str], summary="Role names (for assignee_role)")
+def list_assignment_roles(
+    current_user: TokenData = Depends(require_permission("read:processes")),
+):
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT name FROM roles WHERE tenant_id = :tid ORDER BY name"),
+            {"tid": current_user.tenant_id},
+        ).scalars().all()
+    return list(rows)
+
+
+@router.get("/assignable-users", response_model=List[str],
+            summary="Users that can take a step (optionally filtered by role)")
+def assignable_users(
+    role: Optional[str] = Query(None, description="restrict to users holding this role"),
+    current_user: TokenData = Depends(require_permission("read:processes")),
+):
+    engine = get_engine()
+    with engine.connect() as conn:
+        if role:
+            rows = conn.execute(
+                text("SELECT DISTINCT u.username FROM users u "
+                     "JOIN user_roles ur ON ur.user_id = u.id JOIN roles r ON r.id = ur.role_id "
+                     "WHERE u.tenant_id = :tid AND u.is_active = true AND r.name = :role "
+                     "ORDER BY u.username"),
+                {"tid": current_user.tenant_id, "role": role},
+            ).scalars().all()
+        else:
+            rows = conn.execute(
+                text("SELECT username FROM users WHERE tenant_id = :tid AND is_active = true "
+                     "ORDER BY username"),
+                {"tid": current_user.tenant_id},
+            ).scalars().all()
+    return list(rows)
+
+
+@router.post("/assignments/{assignment_id}/assign", response_model=StepAssignmentRead,
+             summary="Assign a step to a specific person")
+@limiter.limit("60/minute")
+def assign_assignment(
+    request: Request,
+    assignment_id: UUID,
+    data: StepAssignRequest,
+    current_user: TokenData = Depends(require_permission("write:processes")),
+):
+    try:
+        a = process_engine.assign_step(assignment_id, current_user.tenant_id,
+                                       assignee=data.assignee, by_user=current_user.username)
+    except ProcessError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return StepAssignmentRead(**a)
+
+
 @router.post("/assignments/{assignment_id}/start", response_model=StepAssignmentRead,
              summary="Start working on a step")
 @limiter.limit("60/minute")

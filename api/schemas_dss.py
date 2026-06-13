@@ -338,6 +338,16 @@ class StepAssignmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MyTaskRead(StepAssignmentRead):
+    """A step assignment plus its process title — for the 'My tasks' inbox (A)."""
+    instance_title: Optional[str] = None
+
+
+class StepAssignRequest(BaseModel):
+    """Reassign a step to a specific person (D)."""
+    assignee: str = Field(..., min_length=1, max_length=100)
+
+
 class ProcessInstanceRead(BaseModel):
     id: UUID
     template_id: UUID

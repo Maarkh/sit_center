@@ -104,17 +104,22 @@ class ProcessEngine:
                      "state": _json(state), "due": s["due_after_minutes"]},
                 )
 
-            self._activate_wave(conn, inst_id, tenant_id)
+            activated = self._activate_wave(conn, inst_id, tenant_id)
+            inst_title = title or tmpl["name"]
         log_audit(started_by, tenant_id, "create", "process_instance", resource_id=str(inst_id))
+        self._notify_activated(tenant_id, inst_title, activated)  # B: after commit
         return str(inst_id)
 
     # -- wave activation ---------------------------------------------------
-    def _activate_wave(self, conn, instance_id, tenant_id: str):
-        """Activate pending steps in the current wave; complete the instance if none."""
+    def _activate_wave(self, conn, instance_id, tenant_id: str) -> list:
+        """Activate pending steps in the current wave; complete the instance if none.
+        Returns the steps newly activated this call as [{name, role}] so the caller can
+        notify their assignee role AFTER the transaction commits (notify dispatches via
+        Redis/Celery and must not run inside the DB txn)."""
         rows = conn.execute(
             text(
-                "SELECT id, step_order, status, due_after_minutes FROM step_assignments "
-                "WHERE instance_id = :id ORDER BY step_order"
+                "SELECT id, step_order, status, name, assignee_role, due_after_minutes "
+                "FROM step_assignments WHERE instance_id = :id ORDER BY step_order"
             ),
             {"id": instance_id},
         ).mappings().all()
@@ -129,8 +134,9 @@ class ProcessEngine:
                 ),
                 {"id": instance_id},
             )
-            return
+            return []
 
+        activated = []
         for a in assignments:
             if a["step_order"] == wave and a["status"] == "pending":
                 due_expr = (
@@ -144,6 +150,19 @@ class ProcessEngine:
                     {"id": a["id"], "due": a["due_after_minutes"]} if a["due_after_minutes"]
                     else {"id": a["id"]},
                 )
+                activated.append({"name": a["name"], "role": a["assignee_role"]})
+        return activated
+
+    def _notify_activated(self, tenant_id: str, title: str, activated: list) -> None:
+        """B: tell the assignee role a step is now theirs to pick up (Alerts stream)."""
+        for s in activated:
+            who = f"роль «{s['role']}»" if s.get("role") else "ответственный"
+            try:
+                from core.notifications import notify
+                notify(f"📋 Назначен шаг «{s['name']}» ({who}) в процессе «{title}». "
+                       f"Откройте Кокпит → Процессы → «Начать».", "info", tenant_id=tenant_id)
+            except Exception as e:
+                logger.error("step-activation notify failed: %s", e)
 
     # -- step transitions --------------------------------------------------
     def start_step(self, assignment_id, tenant_id: str, *, user: str,
@@ -167,6 +186,61 @@ class ProcessEngine:
                 {"id": assignment_id, "assignee": assignee, "user": user},
             )
             return self._load_assignment(conn, assignment_id)
+
+    def my_assignments(self, tenant_id: str, username: str, roles: list, *, open_only: bool = True) -> list:
+        """A: the caller's task inbox — steps assigned to them personally OR addressed to
+        one of their roles, with the parent process title. open_only keeps it to
+        non-terminal (actionable/upcoming) steps. Sorted by due date (soonest first)."""
+        clause = "AND sa.status = ANY(:nonterm)" if open_only else ""
+        engine = get_engine()
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    "SELECT sa.id, sa.instance_id, sa.step_id, sa.step_order, sa.step_type, sa.name, "
+                    "sa.assignee_role, sa.assignee, sa.checklist_state, sa.status, sa.report, sa.due_at, "
+                    "sa.escalated, sa.started_at, sa.activated_at, sa.completed_at, sa.completed_by, "
+                    "pi.title AS instance_title FROM step_assignments sa "
+                    "JOIN process_instances pi ON pi.id = sa.instance_id "
+                    "WHERE sa.tenant_id = :tid AND (sa.assignee = :user OR sa.assignee_role = ANY(:roles)) "
+                    f"{clause} ORDER BY sa.due_at NULLS LAST, sa.step_order"
+                ),
+                {"tid": tenant_id, "user": username, "roles": list(roles or []),
+                 "nonterm": list(NON_TERMINAL)},
+            ).mappings().all()
+        return [dict(r) for r in rows]
+
+    def assign_step(self, assignment_id, tenant_id: str, *, assignee: str, by_user: str) -> dict:
+        """D: hand a (non-terminal) step to a specific person. Records the assignee and
+        notifies the tenant stream (there is no per-user channel) naming who it's for."""
+        engine = get_engine()
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("SELECT status, name, instance_id FROM step_assignments "
+                     "WHERE id = :id AND tenant_id = :tid FOR UPDATE"),
+                {"id": assignment_id, "tid": tenant_id},
+            ).mappings().first()
+            if not row:
+                raise ProcessError("assignment not found")
+            if row["status"] in TERMINAL:
+                raise ProcessError("cannot reassign a finished step")
+            conn.execute(
+                text("UPDATE step_assignments SET assignee = :a WHERE id = :id"),
+                {"a": assignee, "id": assignment_id},
+            )
+            title = conn.execute(
+                text("SELECT title FROM process_instances WHERE id = :i"),
+                {"i": row["instance_id"]},
+            ).scalar()
+            assignment = self._load_assignment(conn, assignment_id)
+        log_audit(by_user, tenant_id, "assign", "process_step", resource_id=str(assignment_id),
+                  changes={"assignee": assignee})
+        try:
+            from core.notifications import notify
+            notify(f"👤 {assignee}: вам назначен шаг «{row['name']}» в процессе «{title}».",
+                   "info", tenant_id=tenant_id)
+        except Exception as e:
+            logger.error("assign notify failed: %s", e)
+        return assignment
 
     def update_checklist(self, assignment_id, tenant_id: str, checklist_state: list) -> dict:
         engine = get_engine()
@@ -216,16 +290,18 @@ class ProcessEngine:
                 {"id": assignment_id, "report": report, "user": user},
             )
             instance_id = row["instance_id"]
-            self._activate_wave(conn, instance_id, tenant_id)
+            activated = self._activate_wave(conn, instance_id, tenant_id)
             assignment = self._load_assignment(conn, assignment_id)
             # Did THIS completion finish the whole instance, and was it remediating a
             # deviation? Capture inside the txn; schedule the Observe re-check after commit.
             inst = conn.execute(
-                text("SELECT status, deviation_id FROM process_instances "
+                text("SELECT status, deviation_id, title FROM process_instances "
                      "WHERE id = :id AND tenant_id = :tid"),
                 {"id": instance_id, "tid": tenant_id},
             ).mappings().first()
         log_audit(user, tenant_id, "complete", "process_step", resource_id=str(assignment_id))
+        if activated:  # B: the next wave just opened — notify its assignee role(s)
+            self._notify_activated(tenant_id, inst["title"] if inst else "", activated)
         if inst and inst["status"] == "completed" and inst["deviation_id"]:
             self._schedule_remediation_verify(inst["deviation_id"], tenant_id)
         return assignment

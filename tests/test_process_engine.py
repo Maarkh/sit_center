@@ -98,3 +98,22 @@ class TestProcessRBAC:
             headers=auth_headers,
         )
         assert resp.status_code == 422
+
+
+class TestAssignmentManagement:
+    """A/C/D: auth + schema gates on the new endpoints (DB behaviour is covered by the
+    live/integration path, like the rest of this module's non-DB unit tests)."""
+    def test_my_tasks_requires_auth(self, api_client):
+        assert api_client.get("/api/v1/processes/assignments/mine").status_code in (401, 403)
+
+    def test_assign_requires_auth(self, api_client):
+        resp = api_client.post(
+            "/api/v1/processes/assignments/00000000-0000-0000-0000-000000000000/assign",
+            json={"assignee": "bob"})
+        assert resp.status_code in (401, 403)
+
+    def test_assign_rejects_empty_assignee(self, api_client, auth_headers):
+        resp = api_client.post(
+            "/api/v1/processes/assignments/00000000-0000-0000-0000-000000000000/assign",
+            json={"assignee": ""}, headers=auth_headers)
+        assert resp.status_code == 422  # schema: min_length=1
