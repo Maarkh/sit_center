@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Popconfirm, Tag, App,
+  Table, Button, Modal, Form, Input, InputNumber, Select, AutoComplete, Switch, Space, Popconfirm, Tag, App,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, MinusCircleOutlined, AppstoreAddOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -8,8 +8,11 @@ import PageHelp from '@/components/Common/PageHelp';
 import {
   listIndicators, createIndicator, updateIndicator, deleteIndicator,
   listGoals, createGoal, updateGoal, deleteGoal,
+  getAssignmentRoles, getAssignableUsers,
 } from '@/api/dss';
+import { listChains } from '@/api/escalation';
 import type { IndicatorRead, GoalRead, IndicatorCreate } from '@/types/dss';
+import type { EscalationChain } from '@/types/escalation';
 
 const csvToList = (s?: string): string[] =>
   (s ?? '').split(',').map((x) => x.trim()).filter(Boolean);
@@ -19,6 +22,9 @@ export default function IndicatorsTab() {
   const { message } = App.useApp();
   const [indicators, setIndicators] = useState<IndicatorRead[]>([]);
   const [goals, setGoals] = useState<GoalRead[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [users, setUsers] = useState<string[]>([]);
+  const [chains, setChains] = useState<EscalationChain[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<IndicatorRead | null>(null);
@@ -43,6 +49,13 @@ export default function IndicatorsTab() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Responsibility-map pick lists (roles / users / escalation chains). Best-effort.
+  useEffect(() => {
+    getAssignmentRoles().then(setRoles).catch(() => {});
+    getAssignableUsers().then(setUsers).catch(() => {});
+    listChains().then(setChains).catch(() => {});
+  }, []);
+
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
@@ -55,6 +68,9 @@ export default function IndicatorsTab() {
     setEditing(ind);
     form.setFieldsValue({
       ...ind,
+      owner_role: ind.owner_role ?? undefined,
+      owner_user: ind.owner_user ?? undefined,
+      escalation_chain_id: ind.escalation_chain_id ?? undefined,
       factors: ind.factors.map((f) => ({ name: f.name, weight: f.weight, metrics: f.metrics.join(', ') })),
     });
     setModalOpen(true);
@@ -74,6 +90,9 @@ export default function IndicatorsTab() {
       direction: values.direction,
       chronicle_threshold: values.chronicle_threshold,
       is_active: values.is_active ?? true,
+      owner_role: values.owner_role ?? null,
+      owner_user: values.owner_user ?? null,
+      escalation_chain_id: values.escalation_chain_id ?? null,
       factors: (values.factors ?? [])
         .filter((f: { name?: string }) => f && f.name)
         .map((f: { name: string; weight?: number; metrics?: string }) => ({
@@ -105,7 +124,8 @@ export default function IndicatorsTab() {
 
   const openGoalEdit = (g: GoalRead) => {
     setEditingGoal(g);
-    goalForm.setFieldsValue({ name: g.name, owner_role: g.owner_role, description: g.description });
+    goalForm.setFieldsValue({ name: g.name, owner_role: g.owner_role ?? undefined,
+      escalation_chain_id: g.escalation_chain_id ?? undefined, description: g.description });
     setGoalModalOpen(true);
   };
 
@@ -135,6 +155,10 @@ export default function IndicatorsTab() {
     { title: t('settingsDss.corridor'), key: 'corridor',
       render: (_: unknown, r: IndicatorRead) => `[${r.target_low ?? '−∞'}, ${r.target_high ?? '+∞'}]${r.unit ? ' ' + r.unit : ''}` },
     { title: t('settingsDss.direction'), dataIndex: 'direction', key: 'direction', width: 90 },
+    { title: t('settingsDss.owner'), key: 'owner', width: 130,
+      render: (_: unknown, r: IndicatorRead) => (r.owner_user || r.owner_role
+        ? <Tag color="blue">{r.owner_user || r.owner_role}</Tag>
+        : <span style={{ color: '#bbb' }}>{t('settingsDss.fromGoal')}</span>) },
     { title: t('settingsDss.factors'), key: 'factors', width: 90,
       render: (_: unknown, r: IndicatorRead) => r.factors.length },
     { title: t('settingsDss.active'), dataIndex: 'is_active', key: 'is_active', width: 80,
@@ -193,6 +217,23 @@ export default function IndicatorsTab() {
             <Form.Item name="is_active" label={t('settingsDss.active')} valuePropName="checked"><Switch /></Form.Item>
           </Space>
 
+          <div style={{ fontWeight: 500, margin: '4px 0 2px' }}>{t('settingsDss.responsibility')}</div>
+          <div style={{ color: '#888', fontSize: 12, margin: '0 0 8px' }}>{t('settingsDss.responsibilityHint')}</div>
+          <Space style={{ display: 'flex' }} align="start" wrap>
+            <Form.Item name="owner_role" label={t('settingsDss.ownerRole')} style={{ minWidth: 160 }}>
+              <Select allowClear showSearch placeholder={t('settingsDss.fromGoal')}
+                options={roles.map((r) => ({ label: r, value: r }))} />
+            </Form.Item>
+            <Form.Item name="owner_user" label={t('settingsDss.ownerUser')} style={{ minWidth: 160 }}>
+              <AutoComplete allowClear options={users.map((u) => ({ value: u }))}
+                placeholder={t('settingsDss.optional')} filterOption />
+            </Form.Item>
+            <Form.Item name="escalation_chain_id" label={t('settingsDss.escalationChain')} style={{ minWidth: 200 }}>
+              <Select allowClear showSearch optionFilterProp="label" placeholder={t('settingsDss.fromGoalOrDefault')}
+                options={chains.map((c) => ({ label: c.name, value: c.id }))} />
+            </Form.Item>
+          </Space>
+
           <div style={{ fontWeight: 500, margin: '4px 0 8px' }}>{t('settingsDss.factors')}</div>
           <Form.List name="factors">
             {(fields, { add, remove }) => (
@@ -224,7 +265,13 @@ export default function IndicatorsTab() {
         open={goalModalOpen} onOk={handleSaveGoal} onCancel={() => setGoalModalOpen(false)} forceRender>
         <Form form={goalForm} layout="vertical">
           <Form.Item name="name" label={t('settingsDss.name')} rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="owner_role" label={t('settingsDss.ownerRole')}><Input /></Form.Item>
+          <Form.Item name="owner_role" label={t('settingsDss.ownerRole')} extra={t('settingsDss.goalOwnerHint')}>
+            <Select allowClear showSearch options={roles.map((r) => ({ label: r, value: r }))} />
+          </Form.Item>
+          <Form.Item name="escalation_chain_id" label={t('settingsDss.escalationChain')}>
+            <Select allowClear showSearch optionFilterProp="label"
+              options={chains.map((c) => ({ label: c.name, value: c.id }))} />
+          </Form.Item>
           <Form.Item name="description" label={t('settingsDss.description')}><Input.TextArea rows={2} /></Form.Item>
         </Form>
         {goals.length > 0 && (

@@ -100,12 +100,12 @@ export async function listGoals(): Promise<GoalRead[]> {
   return data;
 }
 
-export async function createGoal(payload: { name: string; owner_role?: string; description?: string }): Promise<GoalRead> {
+export async function createGoal(payload: { name: string; owner_role?: string; escalation_chain_id?: string | null; description?: string }): Promise<GoalRead> {
   const { data } = await client.post<GoalRead>('/api/v1/indicators/goals', payload);
   return data;
 }
 
-export async function updateGoal(id: string, payload: { name: string; owner_role?: string; description?: string }): Promise<GoalRead> {
+export async function updateGoal(id: string, payload: { name: string; owner_role?: string; escalation_chain_id?: string | null; description?: string }): Promise<GoalRead> {
   const { data } = await client.put<GoalRead>(`/api/v1/indicators/goals/${id}`, payload);
   return data;
 }

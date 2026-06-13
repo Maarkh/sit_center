@@ -338,6 +338,7 @@ export interface GoalRead {
   name: string;
   description: string | null;
   owner_role: string | null;
+  escalation_chain_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -362,6 +363,9 @@ export interface IndicatorRead {
   direction: string;
   chronicle_threshold: number;
   is_active: boolean;
+  owner_role: string | null;
+  owner_user: string | null;
+  escalation_chain_id: string | null;
   created_at: string;
   updated_at: string;
   factors: FactorRead[];
@@ -378,6 +382,9 @@ export interface IndicatorCreate {
   direction?: string;
   chronicle_threshold?: number;
   is_active?: boolean;
+  owner_role?: string | null;
+  owner_user?: string | null;
+  escalation_chain_id?: string | null;
   factors?: FactorCreate[];
 }
 
